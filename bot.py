@@ -1,6 +1,7 @@
 import time
 import requests
 import pandas as pd
+import os
 import numpy as np
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -21,7 +22,42 @@ TREND_TIMEFRAME = "15m"
 session = requests.Session()
 session.headers.update({"User-Agent": "CryptoSignalScanner/2.0"})
 
+# ---------------- TELEGRAM ----------------
 
+def send_telegram_message(signal):
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        print("Telegram credentials are missing.")
+        return
+
+    message = (
+        f"🚨 CRYPTO SIGNAL 🚨\n\n"
+        f"Coin: {signal['symbol']}\n"
+        f"Direction: {signal['direction']}\n"
+        f"Confirmations: {signal['confirmations']}/7\n\n"
+        f"Entry: {signal['entry']:.10g}\n"
+        f"Stop Loss: {signal['stop_loss']:.10g}\n"
+        f"TP1: {signal['tp1']:.10g}\n"
+        f"TP2: {signal['tp2']:.10g}\n\n"
+        f"RSI: {signal['rsi']:.2f}\n"
+        f"Volume Ratio: {signal['volume_ratio']:.2f}\n"
+    )
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+    response = requests.post(
+        url,
+        data={
+            "chat_id": chat_id,
+            "text": message
+        },
+        timeout=15
+    )
+
+    response.raise_for_status()
+    print(f"Telegram message sent: {signal['symbol']}")
 # ---------------- TIME ----------------
 
 def iran_time():
@@ -322,6 +358,8 @@ def main():
         print("-" * 45)
 
         for signal in signals:
+            send_telegram_message(signal)
+           
             print(
                 f"\n{signal['symbol']} {signal['direction']}"
             )
