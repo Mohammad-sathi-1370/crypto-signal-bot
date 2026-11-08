@@ -167,10 +167,12 @@
       "signal_time": 1794156900000,
       "signal_date": "2026-11-08",
       "tp1_hit": true,
-      "last_checked_time": 1794161999999,
-      "status": "OPEN",
+      "last_checked_time": 1794162299999,
+      "status": "TP2",
       "id": "BMTUSDT_SELL_1794156900000",
-      "tp1_time": 1794159899999
+      "tp1_time": 1794159899999,
+      "tp2_hit": true,
+      "result_time": 1794162299999
     },
     {
       "symbol": "PUMPUSDT",
@@ -272,7 +274,7 @@
       "signal_time": 1794162000000,
       "signal_date": "2026-11-08",
       "tp1_hit": false,
-      "last_checked_time": 1794161999999,
+      "last_checked_time": 1794165599999,
       "status": "OPEN",
       "id": "ZECUSDT_BUY_1794162000000"
     },
@@ -291,10 +293,12 @@
       "volume_ratio": 1.2260892356822861,
       "signal_time": 1794162000000,
       "signal_date": "2026-11-08",
-      "tp1_hit": false,
-      "last_checked_time": 1794161999999,
-      "status": "OPEN",
-      "id": "SOLUSDT_BUY_1794162000000"
+      "tp1_hit": true,
+      "last_checked_time": 1794164999999,
+      "status": "TP1",
+      "id": "SOLUSDT_BUY_1794162000000",
+      "tp1_time": 1794162299999,
+      "result_time": 1794164999999
     }
   ],
   "daily": {
