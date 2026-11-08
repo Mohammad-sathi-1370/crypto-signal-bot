@@ -1,0 +1,60 @@
+{
+  "signals": [
+    {
+      "symbol": "ONEUSDT",
+      "direction": "SELL",
+      "confirmations": 5,
+      "entry": 0.001768,
+      "stop_loss": 0.001830852066257904,
+      "tp1": 0.0017051479337420962,
+      "tp2": 0.0016422958674841923,
+      "rsi": 27.02509689065836,
+      "adx": 21.941727756869607,
+      "plus_di": 12.247314920417455,
+      "minus_di": 40.763983363560854,
+      "volume_ratio": 2.7656235895707355,
+      "signal_time": 1794156300000,
+      "signal_date": "2026-11-08",
+      "tp1_hit": false,
+      "last_checked_time": 1794156299999,
+      "status": "OPEN",
+      "id": "ONEUSDT_SELL_1794156300000"
+    },
+    {
+      "symbol": "ENAUSDT",
+      "direction": "SELL",
+      "confirmations": 5,
+      "entry": 0.1536,
+      "stop_loss": 0.1542304083093221,
+      "tp1": 0.15296959169067786,
+      "tp2": 0.15233918338135571,
+      "rsi": 40.621422871903256,
+      "adx": 21.488570802957298,
+      "plus_di": 14.942792733302529,
+      "minus_di": 33.49876521467849,
+      "volume_ratio": 1.3248227431089408,
+      "signal_time": 1794156300000,
+      "signal_date": "2026-11-08",
+      "tp1_hit": false,
+      "last_checked_time": 1794156299999,
+      "status": "OPEN",
+      "id": "ENAUSDT_SELL_1794156300000"
+    }
+  ],
+  "daily": {
+    "2026-11-08": {
+      "scans": 1,
+      "signals": 2,
+      "diagnostics": {
+        "insufficient_data": 0,
+        "invalid_values": 0,
+        "adx_rejected": 8,
+        "volatility_rejected": 4,
+        "volume_rejected": 4,
+        "confirmations_rejected": 2,
+        "direction_rejected": 0,
+        "errors": 0
+      }
+    }
+  }
+}
