@@ -165,6 +165,27 @@ def get_market_coins():
 
 # ================= CANDLES =================
 
+def candles_to_dataframe(data):
+    columns = [
+        "time", "open", "high", "low", "close", "volume",
+        "close_time", "quote_volume", "trades",
+        "taker_buy", "taker_quote", "ignore"
+    ]
+
+    df = pd.DataFrame(data, columns=columns)
+
+    if df.empty:
+        return df
+
+    for col in ["open", "high", "low", "close", "volume"]:
+        df[col] = df[col].astype(float)
+
+    df["time"] = df["time"].astype("int64")
+    df["close_time"] = df["close_time"].astype("int64")
+
+    return df
+
+
 def get_candles(symbol, timeframe, start_time=None):
     url = f"{BASE_URL}/api/v3/klines"
 
@@ -181,25 +202,90 @@ def get_candles(symbol, timeframe, start_time=None):
     response = session.get(url, params=params, timeout=20)
     response.raise_for_status()
 
-    columns = [
-        "time", "open", "high", "low", "close", "volume",
-        "close_time", "quote_volume", "trades",
-        "taker_buy", "taker_quote", "ignore"
-    ]
-
-    df = pd.DataFrame(response.json(), columns=columns)
+    df = candles_to_dataframe(response.json())
 
     if df.empty:
         return df
 
-    for col in ["open", "high", "low", "close", "volume"]:
-        df[col] = df[col].astype(float)
-
-    df["time"] = df["time"].astype("int64")
-    df["close_time"] = df["close_time"].astype("int64")
-
     # Only closed candles
     return df.iloc[:-1].copy().reset_index(drop=True)
+
+
+# ================= TRACKING CANDLES =================
+
+def get_tracking_candles(symbol, start_time):
+    """
+    Fetch all closed candles after start_time.
+    Uses pagination so Binance's 1000-candle limit
+    cannot prevent old signals from being tracked.
+    """
+
+    url = f"{BASE_URL}/api/v3/klines"
+    cursor = int(start_time)
+    now_ms = int(time.time() * 1000)
+
+    all_candles = []
+
+    while cursor < now_ms:
+
+        params = {
+            "symbol": symbol,
+            "interval": TIMEFRAME,
+            "startTime": cursor,
+            "limit": 1000
+        }
+
+        response = session.get(
+            url,
+            params=params,
+            timeout=20
+        )
+        response.raise_for_status()
+
+        data = response.json()
+
+        if not data:
+            break
+
+        df = candles_to_dataframe(data)
+
+        if df.empty:
+            break
+
+        # Keep only candles that have fully closed
+        closed = df[df["close_time"] < now_ms].copy()
+
+        if not closed.empty:
+            all_candles.append(closed)
+
+        last_close_time = int(df.iloc[-1]["close_time"])
+
+        # No more pages if Binance returned fewer than 1000
+        if len(data) < 1000:
+            break
+
+        next_cursor = last_close_time + 1
+
+        if next_cursor <= cursor:
+            break
+
+        cursor = next_cursor
+
+        time.sleep(0.1)
+
+    if not all_candles:
+        return pd.DataFrame()
+
+    result = pd.concat(
+        all_candles,
+        ignore_index=True
+    )
+
+    result = result.drop_duplicates(
+        subset=["time"]
+    )
+
+    return result.sort_values("time").reset_index(drop=True)
 
 
 # ================= INDICATORS =================
@@ -403,6 +489,8 @@ def analyze_coin(symbol):
             tp1 = price - risk
             tp2 = price - (risk * 2)
 
+        signal_time = int(current["close_time"]) + 1
+
         return {
             "symbol": symbol,
             "direction": direction,
@@ -416,9 +504,10 @@ def analyze_coin(symbol):
             "plus_di": plus_di,
             "minus_di": minus_di,
             "volume_ratio": float(volume_ratio),
-            "signal_time": int(current["close_time"]) + 1,
+            "signal_time": signal_time,
             "signal_date": get_today(),
             "tp1_hit": False,
+            "last_checked_time": signal_time - 1,
             "status": "OPEN"
         }
 
@@ -462,24 +551,32 @@ def update_signal_results(state):
             continue
 
         try:
-            df = get_candles(
+            # Compatibility with signals saved by older versions
+            start_time = int(
+                signal.get(
+                    "last_checked_time",
+                    int(signal["signal_time"]) - 1
+                )
+            ) + 1
+
+            df = get_tracking_candles(
                 signal["symbol"],
-                TIMEFRAME,
-                signal["signal_time"]
+                start_time
             )
 
             if df.empty:
                 continue
 
+            entry = float(signal["entry"])
+            sl = float(signal["stop_loss"])
+            tp1 = float(signal["tp1"])
+            tp2 = float(signal["tp2"])
+
             for _, candle in df.iterrows():
 
                 high = float(candle["high"])
                 low = float(candle["low"])
-
-                entry = float(signal["entry"])
-                sl = float(signal["stop_loss"])
-                tp1 = float(signal["tp1"])
-                tp2 = float(signal["tp2"])
+                close_time = int(candle["close_time"])
 
                 if signal["direction"] == "BUY":
                     sl_hit = low <= sl
@@ -490,24 +587,42 @@ def update_signal_results(state):
                     tp1_hit = low <= tp1
                     tp2_hit = low <= tp2
 
-                # Conservative rule: SL first
+                # If TP1 was reached in an earlier candle,
+                # a later SL must be recorded as TP1.
                 if sl_hit:
-                    signal["status"] = "SL"
-                    signal["result_time"] = int(candle["close_time"])
-                    print("SL reached:", signal["symbol"])
+                    if signal.get("tp1_hit", False):
+                        signal["status"] = "TP1"
+                        print(
+                            "TP1 result (SL after TP1):",
+                            signal["symbol"]
+                        )
+                    else:
+                        signal["status"] = "SL"
+                        print("SL reached:", signal["symbol"])
+
+                    signal["result_time"] = close_time
+                    signal["last_checked_time"] = close_time
                     break
 
+                # TP2 is the final higher target.
                 if tp2_hit:
                     signal["tp1_hit"] = True
+                    signal["tp2_hit"] = True
                     signal["status"] = "TP2"
-                    signal["result_time"] = int(candle["close_time"])
+                    signal["result_time"] = close_time
+                    signal["last_checked_time"] = close_time
+
                     print("TP2 reached:", signal["symbol"])
                     break
 
-                if tp1_hit and not signal.get("tp1_hit"):
+                # TP1 is recorded but remains open for TP2.
+                if tp1_hit and not signal.get("tp1_hit", False):
                     signal["tp1_hit"] = True
-                    signal["tp1_time"] = int(candle["close_time"])
+                    signal["tp1_time"] = close_time
+
                     print("TP1 reached:", signal["symbol"])
+
+                signal["last_checked_time"] = close_time
 
         except Exception as error:
             print(
@@ -550,9 +665,10 @@ def send_daily_report(state):
 
     total = len(today_signals)
 
+    # Final TP1 results: TP1 was reached, then SL was hit.
     tp1_count = sum(
         1 for signal in today_signals
-        if signal.get("tp1_hit")
+        if signal.get("status") == "TP1"
     )
 
     tp2_count = sum(
@@ -570,10 +686,10 @@ def send_daily_report(state):
         if signal.get("status") == "OPEN"
     )
 
-    resolved = tp2_count + sl_count
+    resolved = tp1_count + tp2_count + sl_count
 
     win_rate = (
-        (tp2_count / resolved) * 100
+        ((tp1_count + tp2_count) / resolved) * 100
         if resolved > 0 else 0
     )
 
@@ -584,11 +700,11 @@ def send_daily_report(state):
         f"Date: {today}\n\n"
         f"Scans completed: {record['scans']}\n"
         f"Total signals: {total}\n\n"
-        f"🎯 TP1 reached: {tp1_count}\n"
-        f"🏆 TP2 reached: {tp2_count}\n"
-        f"🛑 Stop Loss: {sl_count}\n"
+        f"🎯 TP1 results: {tp1_count}\n"
+        f"🏆 TP2 results: {tp2_count}\n"
+        f"🛑 Stop Loss before TP1: {sl_count}\n"
         f"⏳ Still open: {open_count}\n\n"
-        f"Win rate (TP2 vs SL): {win_rate:.1f}%\n\n"
+        f"Win rate (TP1 + TP2): {win_rate:.1f}%\n\n"
         f"📋 DIAGNOSTICS\n"
         f"ADX rejected: {diagnostics['adx_rejected']}\n"
         f"Low volatility: {diagnostics['volatility_rejected']}\n"
