@@ -1,0 +1,5 @@
+print("CRYPTO SIGNAL BOT")
+print("Bot is starting...")
+print("Tehran Time: 09:00 - 21:00")
+print("Signal confirmation: 5 of 7")
+print("System ready!")
