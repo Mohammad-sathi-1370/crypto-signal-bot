@@ -4,7 +4,7 @@ import numpy as np
 import time
 from datetime import datetime, timezone, timedelta
 
-BASE_URL = "https://api.binance.com"
+BASE_URL = "https://data-api.binance.vision"
 
 TIMEFRAME = "5m"
 TREND_TIMEFRAME = "15m"
