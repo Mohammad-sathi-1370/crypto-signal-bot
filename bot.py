@@ -19,6 +19,18 @@ IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 session = requests.Session()
 session.headers.update({"User-Agent": "CryptoSignalBot/1.0"})
 
+# DIAGNOSTICS
+DIAGNOSTICS = {
+    "insufficient_data": 0,
+    "invalid_values": 0,
+    "adx_rejected": 0,
+    "volatility_rejected": 0,
+    "volume_rejected": 0,
+    "confirmations_rejected": 0,
+    "direction_rejected": 0,
+    "errors": 0
+}
+
 
 # TELEGRAM
 def send_telegram_message(signal):
@@ -74,9 +86,7 @@ def get_market_coins():
         if not symbol.endswith("USDT"):
             continue
 
-        base = symbol[:-4]
-
-        if base in excluded:
+        if symbol[:-4] in excluded:
             continue
 
         quote_volume = float(item["quoteVolume"])
@@ -198,6 +208,7 @@ def analyze_coin(symbol):
         df15 = calculate_indicators(get_candles(symbol, TREND_TIMEFRAME))
 
         if len(df5) < 210 or len(df15) < 210:
+            DIAGNOSTICS["insufficient_data"] += 1
             return None
 
         current = df5.iloc[-1]
@@ -205,30 +216,20 @@ def analyze_coin(symbol):
         trend = df15.iloc[-1]
 
         required_values = [
-            current["close"],
-            current["open"],
-            current["rsi"],
-            current["ema20"],
-            current["ema50"],
-            current["ema200"],
-            current["bb_mid"],
-            current["bb_upper"],
-            current["bb_lower"],
-            current["volume"],
-            current["volume_avg"],
-            current["atr"],
-            current["adx"],
-            current["plus_di"],
-            current["minus_di"],
-            previous["rsi"],
-            previous["high"],
-            previous["low"],
-            trend["close"],
-            trend["ema20"],
-            trend["ema50"]
+            current["close"], current["open"],
+            current["rsi"], current["ema20"],
+            current["ema50"], current["ema200"],
+            current["bb_mid"], current["bb_upper"],
+            current["bb_lower"], current["volume"],
+            current["volume_avg"], current["atr"],
+            current["adx"], current["plus_di"],
+            current["minus_di"], previous["rsi"],
+            previous["high"], previous["low"],
+            trend["close"], trend["ema20"], trend["ema50"]
         ]
 
         if any(pd.isna(value) for value in required_values):
+            DIAGNOSTICS["invalid_values"] += 1
             return None
 
         price = float(current["close"])
@@ -237,27 +238,24 @@ def analyze_coin(symbol):
         plus_di = float(current["plus_di"])
         minus_di = float(current["minus_di"])
 
-        if price <= 0 or atr <= 0:
+        if price <= 0 or atr <= 0 or current["volume_avg"] <= 0:
+            DIAGNOSTICS["invalid_values"] += 1
             return None
 
-        if current["volume_avg"] <= 0:
-            return None
-
-        # ADX strength filter
         if adx < ADX_MINIMUM:
+            DIAGNOSTICS["adx_rejected"] += 1
             return None
 
-        # Volatility filter
         if atr / price < 0.001:
+            DIAGNOSTICS["volatility_rejected"] += 1
             return None
 
-        # Mandatory volume filter
         volume_ratio = current["volume"] / current["volume_avg"]
 
         if volume_ratio <= VOLUME_MULTIPLIER:
+            DIAGNOSTICS["volume_rejected"] += 1
             return None
 
-        # BUY confirmations: 7 conditions
         buy_checks = [
             current["ema20"] > current["ema50"],
             price > current["ema200"],
@@ -268,7 +266,6 @@ def analyze_coin(symbol):
             current["close"] > current["open"] and current["close"] > previous["high"]
         ]
 
-        # SELL confirmations: 7 conditions
         sell_checks = [
             current["ema20"] < current["ema50"],
             price < current["ema200"],
@@ -284,17 +281,22 @@ def analyze_coin(symbol):
 
         if buy_score >= MIN_CONFIRMATIONS and buy_score > sell_score:
             if plus_di <= minus_di:
+                DIAGNOSTICS["direction_rejected"] += 1
                 return None
+
             direction = "BUY"
             score = buy_score
 
         elif sell_score >= MIN_CONFIRMATIONS and sell_score > buy_score:
             if minus_di <= plus_di:
+                DIAGNOSTICS["direction_rejected"] += 1
                 return None
+
             direction = "SELL"
             score = sell_score
 
         else:
+            DIAGNOSTICS["confirmations_rejected"] += 1
             return None
 
         risk = atr * 1.5
@@ -324,16 +326,20 @@ def analyze_coin(symbol):
         }
 
     except Exception as error:
+        DIAGNOSTICS["errors"] += 1
         print(f"{symbol} ERROR: {error}")
         return None
 
 
 # MAIN
 def main():
+    for key in DIAGNOSTICS:
+        DIAGNOSTICS[key] = 0
+
     now = datetime.now(IRAN_TZ)
 
     print("=" * 45)
-    print("CRYPTO SIGNAL BOT - ADX VERSION")
+    print("CRYPTO SIGNAL BOT - DIAGNOSTIC VERSION")
     print("Iran time:", now.strftime("%Y-%m-%d %H:%M"))
     print("=" * 45)
 
@@ -354,8 +360,19 @@ def main():
 
         time.sleep(0.2)
 
-    print("\nSCAN FINISHED")
+    print("\n========== SCAN RESULTS ==========")
+    print("Coins scanned:", len(coins))
     print("Signals found:", len(signals))
+
+    print("\n========== DIAGNOSTICS ==========")
+    print("ADX rejected:", DIAGNOSTICS["adx_rejected"])
+    print("Low volatility:", DIAGNOSTICS["volatility_rejected"])
+    print("Low volume:", DIAGNOSTICS["volume_rejected"])
+    print("Not enough confirmations:", DIAGNOSTICS["confirmations_rejected"])
+    print("DI direction rejected:", DIAGNOSTICS["direction_rejected"])
+    print("Insufficient candle data:", DIAGNOSTICS["insufficient_data"])
+    print("Invalid indicator values:", DIAGNOSTICS["invalid_values"])
+    print("Errors:", DIAGNOSTICS["errors"])
 
     for signal in signals:
         print("\n-----------------------------")
