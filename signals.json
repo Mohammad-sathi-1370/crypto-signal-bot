@@ -16,10 +16,11 @@
       "signal_time": 1794156300000,
       "signal_date": "2026-11-08",
       "tp1_hit": true,
-      "last_checked_time": 1794161099999,
-      "status": "OPEN",
+      "last_checked_time": 1794161699999,
+      "status": "TP1",
       "id": "ONEUSDT_SELL_1794156300000",
-      "tp1_time": 1794156899999
+      "tp1_time": 1794156899999,
+      "result_time": 1794161699999
     },
     {
       "symbol": "ENAUSDT",
@@ -60,10 +61,11 @@
       "signal_time": 1794156900000,
       "signal_date": "2026-11-08",
       "tp1_hit": true,
-      "last_checked_time": 1794161099999,
-      "status": "OPEN",
+      "last_checked_time": 1794161699999,
+      "status": "TP1",
       "id": "ZECUSDT_SELL_1794156900000",
-      "tp1_time": 1794158099999
+      "tp1_time": 1794158099999,
+      "result_time": 1794161699999
     },
     {
       "symbol": "SOLUSDT",
@@ -165,7 +167,7 @@
       "signal_time": 1794156900000,
       "signal_date": "2026-11-08",
       "tp1_hit": true,
-      "last_checked_time": 1794161099999,
+      "last_checked_time": 1794161999999,
       "status": "OPEN",
       "id": "BMTUSDT_SELL_1794156900000",
       "tp1_time": 1794159899999
@@ -207,9 +209,10 @@
       "signal_time": 1794159000000,
       "signal_date": "2026-11-08",
       "tp1_hit": false,
-      "last_checked_time": 1794161099999,
-      "status": "OPEN",
-      "id": "XRPUSDT_SELL_1794159000000"
+      "last_checked_time": 1794161699999,
+      "status": "SL",
+      "id": "XRPUSDT_SELL_1794159000000",
+      "result_time": 1794161699999
     },
     {
       "symbol": "UNIUSDT",
@@ -248,22 +251,63 @@
       "signal_time": 1794159000000,
       "signal_date": "2026-11-08",
       "tp1_hit": false,
-      "last_checked_time": 1794161099999,
+      "last_checked_time": 1794161699999,
+      "status": "SL",
+      "id": "DOGEUSDT_SELL_1794159000000",
+      "result_time": 1794161699999
+    },
+    {
+      "symbol": "ZECUSDT",
+      "direction": "BUY",
+      "confirmations": 5,
+      "entry": 1264.8,
+      "stop_loss": 1256.85909784687,
+      "tp1": 1272.7409021531298,
+      "tp2": 1280.6818043062597,
+      "rsi": 62.715376776202724,
+      "adx": 33.155227609215984,
+      "plus_di": 23.892445023303573,
+      "minus_di": 19.289565332182555,
+      "volume_ratio": 3.218026374220373,
+      "signal_time": 1794162000000,
+      "signal_date": "2026-11-08",
+      "tp1_hit": false,
+      "last_checked_time": 1794161999999,
       "status": "OPEN",
-      "id": "DOGEUSDT_SELL_1794159000000"
+      "id": "ZECUSDT_BUY_1794162000000"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "direction": "BUY",
+      "confirmations": 5,
+      "entry": 89.63,
+      "stop_loss": 89.40100209177965,
+      "tp1": 89.85899790822035,
+      "tp2": 90.08799581644071,
+      "rsi": 63.375697897370195,
+      "adx": 24.546226180046567,
+      "plus_di": 30.48015818600149,
+      "minus_di": 15.365687906239046,
+      "volume_ratio": 1.2260892356822861,
+      "signal_time": 1794162000000,
+      "signal_date": "2026-11-08",
+      "tp1_hit": false,
+      "last_checked_time": 1794161999999,
+      "status": "OPEN",
+      "id": "SOLUSDT_BUY_1794162000000"
     }
   ],
   "daily": {
     "2026-11-08": {
-      "scans": 4,
-      "signals": 12,
+      "scans": 5,
+      "signals": 14,
       "diagnostics": {
         "insufficient_data": 0,
         "invalid_values": 0,
-        "adx_rejected": 17,
-        "volatility_rejected": 23,
-        "volume_rejected": 25,
-        "confirmations_rejected": 3,
+        "adx_rejected": 19,
+        "volatility_rejected": 30,
+        "volume_rejected": 30,
+        "confirmations_rejected": 7,
         "direction_rejected": 0,
         "errors": 0
       }
