@@ -16,7 +16,7 @@
       "signal_time": 1794156300000,
       "signal_date": "2026-11-08",
       "tp1_hit": true,
-      "last_checked_time": 1794158999999,
+      "last_checked_time": 1794161099999,
       "status": "OPEN",
       "id": "ONEUSDT_SELL_1794156300000",
       "tp1_time": 1794156899999
@@ -60,7 +60,7 @@
       "signal_time": 1794156900000,
       "signal_date": "2026-11-08",
       "tp1_hit": true,
-      "last_checked_time": 1794158999999,
+      "last_checked_time": 1794161099999,
       "status": "OPEN",
       "id": "ZECUSDT_SELL_1794156900000",
       "tp1_time": 1794158099999
@@ -164,10 +164,11 @@
       "volume_ratio": 3.59518738622479,
       "signal_time": 1794156900000,
       "signal_date": "2026-11-08",
-      "tp1_hit": false,
-      "last_checked_time": 1794158999999,
+      "tp1_hit": true,
+      "last_checked_time": 1794161099999,
       "status": "OPEN",
-      "id": "BMTUSDT_SELL_1794156900000"
+      "id": "BMTUSDT_SELL_1794156900000",
+      "tp1_time": 1794159899999
     },
     {
       "symbol": "PUMPUSDT",
@@ -185,9 +186,10 @@
       "signal_time": 1794156900000,
       "signal_date": "2026-11-08",
       "tp1_hit": false,
-      "last_checked_time": 1794158999999,
-      "status": "OPEN",
-      "id": "PUMPUSDT_SELL_1794156900000"
+      "last_checked_time": 1794159899999,
+      "status": "SL",
+      "id": "PUMPUSDT_SELL_1794156900000",
+      "result_time": 1794159899999
     },
     {
       "symbol": "XRPUSDT",
@@ -205,7 +207,7 @@
       "signal_time": 1794159000000,
       "signal_date": "2026-11-08",
       "tp1_hit": false,
-      "last_checked_time": 1794158999999,
+      "last_checked_time": 1794161099999,
       "status": "OPEN",
       "id": "XRPUSDT_SELL_1794159000000"
     },
@@ -225,9 +227,10 @@
       "signal_time": 1794159000000,
       "signal_date": "2026-11-08",
       "tp1_hit": false,
-      "last_checked_time": 1794158999999,
-      "status": "OPEN",
-      "id": "UNIUSDT_SELL_1794159000000"
+      "last_checked_time": 1794160499999,
+      "status": "SL",
+      "id": "UNIUSDT_SELL_1794159000000",
+      "result_time": 1794160499999
     },
     {
       "symbol": "DOGEUSDT",
@@ -245,21 +248,21 @@
       "signal_time": 1794159000000,
       "signal_date": "2026-11-08",
       "tp1_hit": false,
-      "last_checked_time": 1794158999999,
+      "last_checked_time": 1794161099999,
       "status": "OPEN",
       "id": "DOGEUSDT_SELL_1794159000000"
     }
   ],
   "daily": {
     "2026-11-08": {
-      "scans": 3,
+      "scans": 4,
       "signals": 12,
       "diagnostics": {
         "insufficient_data": 0,
         "invalid_values": 0,
-        "adx_rejected": 15,
-        "volatility_rejected": 15,
-        "volume_rejected": 15,
+        "adx_rejected": 17,
+        "volatility_rejected": 23,
+        "volume_rejected": 25,
         "confirmations_rejected": 3,
         "direction_rejected": 0,
         "errors": 0
