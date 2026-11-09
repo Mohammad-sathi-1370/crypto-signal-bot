@@ -274,9 +274,11 @@
       "signal_time": 1794162000000,
       "signal_date": "2026-11-08",
       "tp1_hit": false,
-      "last_checked_time": 1794165599999,
-      "status": "OPEN",
-      "id": "ZECUSDT_BUY_1794162000000"
+      "last_checked_time": 1794203399999,
+      "status": "SL",
+      "id": "ZECUSDT_BUY_1794162000000",
+      "result_time": 1794168599999,
+      "result_price": 1256.85909784687
     },
     {
       "symbol": "SOLUSDT",
@@ -313,6 +315,25 @@
         "volume_rejected": 30,
         "confirmations_rejected": 7,
         "direction_rejected": 0,
+        "errors": 0
+      }
+    },
+    "2026-11-09": {
+      "scans": 1,
+      "signals": 0,
+      "diagnostics": {
+        "insufficient_data": 0,
+        "invalid_values": 0,
+        "adx_rejected": 7,
+        "volatility_rejected": 2,
+        "volume_rejected": 7,
+        "confirmations_rejected": 0,
+        "direction_rejected": 0,
+        "sweep_rejected": 0,
+        "structure_rejected": 4,
+        "fvg_rejected": 0,
+        "order_block_detected": 0,
+        "risk_rejected": 0,
         "errors": 0
       }
     }
