@@ -33,8 +33,9 @@ STATE_FILE = "signals.json"
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 session = requests.Session()
-session.headers.update({"User-Agent": "CryptoSignalBot/5.0"})
+session.headers.update({"User-Agent": "CryptoSignalBot/5.1"})
 
+# Per-run diagnostics. Values are added to the current day's record.
 DIAGNOSTICS = {
     "insufficient_data": 0,
     "invalid_values": 0,
@@ -44,8 +45,12 @@ DIAGNOSTICS = {
     "confirmations_rejected": 0,
     "direction_rejected": 0,
     "sweep_rejected": 0,
+    "sweep_detected": 0,
     "structure_rejected": 0,
+    "structure_detected": 0,
     "fvg_rejected": 0,
+    "fvg_detected": 0,
+    "fvg_retest_detected": 0,
     "order_block_detected": 0,
     "risk_rejected": 0,
     "errors": 0
@@ -63,6 +68,7 @@ def iran_now():
 def current_time_string():
     return iran_now().strftime("%Y-%m-%d %H:%M")
 
+
 def today_string():
     return iran_now().strftime("%Y-%m-%d")
 
@@ -76,7 +82,6 @@ def is_trading_time():
 # =====================================================
 
 def send_telegram_text(message):
-
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -93,7 +98,6 @@ def send_telegram_text(message):
             timeout=20
         )
         response.raise_for_status()
-
         result = response.json()
 
         if not result.get("ok"):
@@ -109,7 +113,6 @@ def send_telegram_text(message):
 
 
 def send_signal(signal):
-
     ob_text = "YES" if signal["order_block"] else "NO"
 
     message = (
@@ -132,7 +135,6 @@ def send_signal(signal):
         f"ADX: {signal['adx']:.2f}\n"
         f"Volume Ratio: {signal['volume_ratio']:.2f}"
     )
-
     return send_telegram_text(message)
 
 
@@ -141,12 +143,15 @@ def send_signal(signal):
 # =====================================================
 
 def load_state():
-
     if not os.path.exists(STATE_FILE):
         return {"signals": [], "daily": {}}
 
-    with open(STATE_FILE, "r", encoding="utf-8") as file:
-        state = json.load(file)
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as file:
+            state = json.load(file)
+    except (json.JSONDecodeError, OSError) as error:
+        print("State file could not be read:", error)
+        return {"signals": [], "daily": {}}
 
     if not isinstance(state, dict):
         return {"signals": [], "daily": {}}
@@ -154,26 +159,22 @@ def load_state():
     state.setdefault("signals", [])
     state.setdefault("daily", {})
 
+    if not isinstance(state["signals"], list):
+        state["signals"] = []
+    if not isinstance(state["daily"], dict):
+        state["daily"] = {}
+
     return state
 
 
 def save_state(state):
-
     temp_file = STATE_FILE + ".tmp"
-
     with open(temp_file, "w", encoding="utf-8") as file:
-        json.dump(
-            state,
-            file,
-            ensure_ascii=False,
-            indent=2
-        )
-
+        json.dump(state, file, ensure_ascii=False, indent=2)
     os.replace(temp_file, STATE_FILE)
 
 
 def get_daily_record(state):
-
     today = today_string()
 
     if today not in state["daily"]:
@@ -184,7 +185,6 @@ def get_daily_record(state):
         }
 
     record = state["daily"][today]
-
     record.setdefault("scans", 0)
     record.setdefault("signals", 0)
     record.setdefault("diagnostics", {})
@@ -200,41 +200,33 @@ def get_daily_record(state):
 # =====================================================
 
 def get_market_coins():
-
     url = f"{BASE_URL}/api/v3/ticker/24hr"
-
     response = session.get(url, timeout=20)
     response.raise_for_status()
 
     excluded = {
-        "USDC", "FDUSD", "TUSD",
-        "USDP", "DAI", "USDE", "BUSD"
+        "USDC", "FDUSD", "TUSD", "USDP",
+        "DAI", "USDE", "BUSD"
     }
 
     coins = []
-
     for item in response.json():
-
         symbol = item["symbol"]
 
         if not symbol.endswith("USDT"):
             continue
-
         if symbol[:-4] in excluded:
             continue
 
         volume = float(item["quoteVolume"])
-
         if volume > 0:
             coins.append((symbol, volume))
 
     coins.sort(key=lambda item: item[1], reverse=True)
-
     return [item[0] for item in coins[:TOP_COINS]]
 
 
 def candles_to_dataframe(data):
-
     columns = [
         "time", "open", "high", "low", "close",
         "volume", "close_time", "quote_volume",
@@ -242,7 +234,6 @@ def candles_to_dataframe(data):
     ]
 
     df = pd.DataFrame(data, columns=columns)
-
     if df.empty:
         return df
 
@@ -252,17 +243,13 @@ def candles_to_dataframe(data):
     ]
 
     for column in numeric_columns:
-        df[column] = pd.to_numeric(
-            df[column], errors="coerce"
-        )
+        df[column] = pd.to_numeric(df[column], errors="coerce")
 
     df = df.dropna(subset=numeric_columns)
-
     return df.reset_index(drop=True)
 
 
 def get_candles(symbol, timeframe):
-
     url = f"{BASE_URL}/api/v3/klines"
 
     response = session.get(
@@ -274,33 +261,24 @@ def get_candles(symbol, timeframe):
         },
         timeout=20
     )
-
     response.raise_for_status()
 
     df = candles_to_dataframe(response.json())
-
     if df.empty:
         return df
 
     now_ms = int(time.time() * 1000)
-
-    # Only closed candles.
     df = df[df["close_time"] < now_ms]
-
     return df.reset_index(drop=True)
 
 
 def get_tracking_candles(symbol, start_time):
-
     url = f"{BASE_URL}/api/v3/klines"
-
     cursor = int(start_time)
     now_ms = int(time.time() * 1000)
-
     all_candles = []
 
     while cursor < now_ms:
-
         response = session.get(
             url,
             params={
@@ -311,31 +289,25 @@ def get_tracking_candles(symbol, start_time):
             },
             timeout=20
         )
-
         response.raise_for_status()
-
         data = response.json()
 
         if not data:
             break
 
         df = candles_to_dataframe(data)
-
         if df.empty:
             break
 
         closed = df[df["close_time"] < now_ms].copy()
-
         if not closed.empty:
             all_candles.append(closed)
 
         last_time = int(df.iloc[-1]["close_time"])
-
         if len(data) < 1000:
             break
 
         next_cursor = last_time + 1
-
         if next_cursor <= cursor:
             break
 
@@ -347,7 +319,6 @@ def get_tracking_candles(symbol, start_time):
 
     result = pd.concat(all_candles, ignore_index=True)
     result = result.drop_duplicates(subset=["time"])
-
     return result.sort_values("time").reset_index(drop=True)
 
 
@@ -356,52 +327,30 @@ def get_tracking_candles(symbol, start_time):
 # =====================================================
 
 def calculate_indicators(df):
-
     df = df.copy()
     close = df["close"]
 
-    df["ema20"] = close.ewm(
-        span=20, adjust=False
-    ).mean()
-
-    df["ema50"] = close.ewm(
-        span=50, adjust=False
-    ).mean()
-
-    df["ema200"] = close.ewm(
-        span=200, adjust=False
-    ).mean()
+    df["ema20"] = close.ewm(span=20, adjust=False).mean()
+    df["ema50"] = close.ewm(span=50, adjust=False).mean()
+    df["ema200"] = close.ewm(span=200, adjust=False).mean()
 
     delta = close.diff()
-
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
 
-    avg_gain = gain.ewm(
-        alpha=1 / 14, adjust=False
-    ).mean()
-
-    avg_loss = loss.ewm(
-        alpha=1 / 14, adjust=False
-    ).mean()
-
+    avg_gain = gain.ewm(alpha=1 / 14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / 14, adjust=False).mean()
     rs = avg_gain / avg_loss.replace(0, np.nan)
-
-    df["rsi"] = (
-        100 - (100 / (1 + rs))
-    ).fillna(100)
+    df["rsi"] = (100 - (100 / (1 + rs))).fillna(100)
 
     df["bb_mid"] = close.rolling(20).mean()
-
     std = close.rolling(20).std()
-
     df["bb_upper"] = df["bb_mid"] + 2 * std
     df["bb_lower"] = df["bb_mid"] - 2 * std
 
     df["volume_avg"] = df["volume"].rolling(20).mean()
 
     previous_close = close.shift(1)
-
     tr = pd.concat(
         [
             df["high"] - df["low"],
@@ -411,54 +360,34 @@ def calculate_indicators(df):
         axis=1
     ).max(axis=1)
 
-    df["atr"] = tr.ewm(
-        alpha=1 / 14, adjust=False
-    ).mean()
+    df["atr"] = tr.ewm(alpha=1 / 14, adjust=False).mean()
 
     up_move = df["high"].diff()
     down_move = -df["low"].diff()
 
     plus_dm = up_move.where(
-        (up_move > down_move) & (up_move > 0),
-        0
+        (up_move > down_move) & (up_move > 0), 0
     )
-
     minus_dm = down_move.where(
-        (down_move > up_move) & (down_move > 0),
-        0
+        (down_move > up_move) & (down_move > 0), 0
     )
 
-    plus_smoothed = plus_dm.ewm(
-        alpha=1 / 14, adjust=False
-    ).mean()
-
-    minus_smoothed = minus_dm.ewm(
-        alpha=1 / 14, adjust=False
-    ).mean()
-
-    atr_adx = tr.ewm(
-        alpha=1 / 14, adjust=False
-    ).mean()
+    plus_smoothed = plus_dm.ewm(alpha=1 / 14, adjust=False).mean()
+    minus_smoothed = minus_dm.ewm(alpha=1 / 14, adjust=False).mean()
+    atr_adx = tr.ewm(alpha=1 / 14, adjust=False).mean()
 
     df["plus_di"] = (
-        100 * plus_smoothed /
-        atr_adx.replace(0, np.nan)
+        100 * plus_smoothed / atr_adx.replace(0, np.nan)
     )
-
     df["minus_di"] = (
-        100 * minus_smoothed /
-        atr_adx.replace(0, np.nan)
+        100 * minus_smoothed / atr_adx.replace(0, np.nan)
     )
 
     dx = (
         100 * (df["plus_di"] - df["minus_di"]).abs()
-        /
-        (df["plus_di"] + df["minus_di"]).replace(0, np.nan)
+        / (df["plus_di"] + df["minus_di"]).replace(0, np.nan)
     )
-
-    df["adx"] = dx.ewm(
-        alpha=1 / 14, adjust=False
-    ).mean()
+    df["adx"] = dx.ewm(alpha=1 / 14, adjust=False).mean()
 
     return df
 
@@ -468,25 +397,19 @@ def calculate_indicators(df):
 # =====================================================
 
 def detect_sweep(df):
-
     if len(df) < 40:
         return None
 
     last_index = len(df) - 1
     first_index = max(12, last_index - SWEEP_LOOKBACK)
 
-    # Search from newest closed candle backwards.
     for i in range(last_index, first_index - 1, -1):
-
-        prior = df.iloc[
-            max(0, i - LIQUIDITY_LOOKBACK):i
-        ]
+        prior = df.iloc[max(0, i - LIQUIDITY_LOOKBACK):i]
 
         if len(prior) < LIQUIDITY_LOOKBACK:
             continue
 
         candle = df.iloc[i]
-
         liquidity_low = float(prior["low"].min())
         liquidity_high = float(prior["high"].max())
 
@@ -494,14 +417,12 @@ def detect_sweep(df):
             candle["low"] < liquidity_low
             and candle["close"] > liquidity_low
         )
-
         bearish_sweep = (
             candle["high"] > liquidity_high
             and candle["close"] < liquidity_high
         )
 
         if bullish_sweep:
-
             return {
                 "direction": "BUY",
                 "index": i,
@@ -512,7 +433,6 @@ def detect_sweep(df):
             }
 
         if bearish_sweep:
-
             return {
                 "direction": "SELL",
                 "index": i,
@@ -530,16 +450,11 @@ def detect_sweep(df):
 # =====================================================
 
 def detect_structure(df, sweep):
-
     sweep_index = sweep["index"]
     direction = sweep["direction"]
 
-    # Structure must occur after the sweep.
     for j in range(sweep_index + 1, len(df)):
-
-        prior = df.iloc[
-            max(0, j - STRUCTURE_LOOKBACK):j
-        ]
+        prior = df.iloc[max(0, j - STRUCTURE_LOOKBACK):j]
 
         if len(prior) < STRUCTURE_LOOKBACK:
             continue
@@ -547,19 +462,14 @@ def detect_structure(df, sweep):
         candle = df.iloc[j]
 
         if direction == "BUY":
-
             swing_high = float(prior["high"].max())
-
             if candle["close"] > swing_high:
                 return {
                     "name": "BOS/CHoCH",
                     "time": int(candle["time"])
                 }
-
         else:
-
             swing_low = float(prior["low"].min())
-
             if candle["close"] < swing_low:
                 return {
                     "name": "BOS/CHoCH",
@@ -570,22 +480,19 @@ def detect_structure(df, sweep):
 
 
 # =====================================================
-# FAIR VALUE GAP
+# FAIR VALUE GAP + RETEST DIAGNOSTICS
 # =====================================================
 
 def detect_fvg_retest(df, direction, after_time):
-
     if len(df) < 30:
         return None
 
     last_index = len(df) - 1
     start = max(2, last_index - FVG_LOOKBACK)
-
     last = df.iloc[-1]
+    counted_fvg = False
 
-    # Search for the most recent valid FVG.
     for i in range(last_index - 1, start - 1, -1):
-
         first = df.iloc[i - 2]
         third = df.iloc[i]
 
@@ -593,29 +500,29 @@ def detect_fvg_retest(df, direction, after_time):
             continue
 
         if direction == "BUY":
-
-            # Bullish FVG.
+            # Bullish FVG: third candle's low above first candle's high.
             if third["low"] <= first["high"]:
                 continue
 
             zone_low = float(first["high"])
             zone_high = float(third["low"])
-
             later = df.iloc[i + 1:last_index]
 
-            if not later.empty:
-                if (later["low"] <= zone_low).any():
-                    continue
+            if not later.empty and (later["low"] <= zone_low).any():
+                continue
+
+            if not counted_fvg:
+                DIAGNOSTICS["fvg_detected"] += 1
+                counted_fvg = True
 
             touched = (
                 last["high"] >= zone_low
                 and last["low"] <= zone_high
             )
-
             bullish_close = last["close"] > last["open"]
 
             if touched and bullish_close:
-
+                DIAGNOSTICS["fvg_retest_detected"] += 1
                 return {
                     "lower": zone_low,
                     "upper": zone_high,
@@ -623,29 +530,29 @@ def detect_fvg_retest(df, direction, after_time):
                 }
 
         else:
-
-            # Bearish FVG.
+            # Bearish FVG: third candle's high below first candle's low.
             if third["high"] >= first["low"]:
                 continue
 
             zone_low = float(third["high"])
             zone_high = float(first["low"])
-
             later = df.iloc[i + 1:last_index]
 
-            if not later.empty:
-                if (later["high"] >= zone_high).any():
-                    continue
+            if not later.empty and (later["high"] >= zone_high).any():
+                continue
+
+            if not counted_fvg:
+                DIAGNOSTICS["fvg_detected"] += 1
+                counted_fvg = True
 
             touched = (
                 last["high"] >= zone_low
                 and last["low"] <= zone_high
             )
-
             bearish_close = last["close"] < last["open"]
 
             if touched and bearish_close:
-
+                DIAGNOSTICS["fvg_retest_detected"] += 1
                 return {
                     "lower": zone_low,
                     "upper": zone_high,
@@ -660,23 +567,15 @@ def detect_fvg_retest(df, direction, after_time):
 # =====================================================
 
 def detect_order_block(df, direction):
-
     if len(df) < ORDER_BLOCK_LOOKBACK + 2:
         return False
 
-    recent = df.iloc[
-        -(ORDER_BLOCK_LOOKBACK + 1):-1
-    ]
+    recent = df.iloc[-(ORDER_BLOCK_LOOKBACK + 1):-1]
 
     if direction == "BUY":
+        return bool((recent["close"] < recent["open"]).any())
 
-        return bool(
-            (recent["close"] < recent["open"]).any()
-        )
-
-    return bool(
-        (recent["close"] > recent["open"]).any()
-    )
+    return bool((recent["close"] > recent["open"]).any())
 
 
 # =====================================================
@@ -684,9 +583,7 @@ def detect_order_block(df, direction):
 # =====================================================
 
 def generate_signal(symbol, df5, df15):
-
     if len(df5) < 210 or len(df15) < 50:
-
         DIAGNOSTICS["insufficient_data"] += 1
         return None
 
@@ -697,21 +594,12 @@ def generate_signal(symbol, df5, df15):
     trend = df15.iloc[-1]
 
     required = [
-        row["rsi"],
-        row["atr"],
-        row["adx"],
-        row["volume_avg"],
-        row["ema200"],
-        row["bb_mid"],
-        row["plus_di"],
-        row["minus_di"],
-        trend["ema20"],
-        trend["ema50"],
-        trend["ema200"]
+        row["rsi"], row["atr"], row["adx"], row["volume_avg"],
+        row["ema200"], row["bb_mid"], row["plus_di"], row["minus_di"],
+        trend["ema20"], trend["ema50"], trend["ema200"]
     ]
 
     if not np.isfinite(required).all():
-
         DIAGNOSTICS["invalid_values"] += 1
         return None
 
@@ -719,151 +607,111 @@ def generate_signal(symbol, df5, df15):
     atr = float(row["atr"])
 
     if atr <= 0 or row["volume_avg"] <= 0:
-
         DIAGNOSTICS["invalid_values"] += 1
         return None
 
     if row["adx"] < ADX_MINIMUM:
-
         DIAGNOSTICS["adx_rejected"] += 1
         return None
 
     volatility_ratio = atr / price
-
     if volatility_ratio < 0.0005:
-
         DIAGNOSTICS["volatility_rejected"] += 1
         return None
 
-    volume_ratio = float(
-        row["volume"] / row["volume_avg"]
-    )
-
+    volume_ratio = float(row["volume"] / row["volume_avg"])
     if volume_ratio < VOLUME_MULTIPLIER:
-
         DIAGNOSTICS["volume_rejected"] += 1
         return None
 
-    # Liquidity sweep on 15m.
+    # Mandatory liquidity sweep on 15m.
     sweep = detect_sweep(df15)
-
     if sweep is None:
-
         DIAGNOSTICS["sweep_rejected"] += 1
         return None
 
+    DIAGNOSTICS["sweep_detected"] += 1
     direction = sweep["direction"]
 
-    # BOS / CHoCH after the sweep.
+    # Mandatory BOS / CHoCH after sweep.
     structure = detect_structure(df15, sweep)
-
     if structure is None:
-
         DIAGNOSTICS["structure_rejected"] += 1
         return None
 
-    # FVG retest on 5m after structure confirmation.
-    fvg = detect_fvg_retest(
-        df5,
-        direction,
-        structure["time"]
-    )
+    DIAGNOSTICS["structure_detected"] += 1
 
+    # Mandatory FVG retest on 5m after structure confirmation.
+    fvg = detect_fvg_retest(df5, direction, structure["time"])
     if fvg is None:
-
         DIAGNOSTICS["fvg_rejected"] += 1
         return None
+
+    # Order Block is recorded as an additional confluence, not mandatory.
+    order_block = detect_order_block(df5, direction)
+    if order_block:
+        DIAGNOSTICS["order_block_detected"] += 1
 
     # Seven confirmations.
     confirmations = 0
 
     if direction == "BUY":
-
         if row["rsi"] > 50:
             confirmations += 1
-
         if row["close"] > row["bb_mid"]:
             confirmations += 1
-
         if row["ema20"] > row["ema50"] > row["ema200"]:
             confirmations += 1
-
         if volume_ratio >= VOLUME_MULTIPLIER:
             confirmations += 1
-
         if trend["ema20"] > trend["ema50"] > trend["ema200"]:
             confirmations += 1
-
         if row["adx"] >= ADX_MINIMUM:
             confirmations += 1
-
         if row["plus_di"] > row["minus_di"]:
             confirmations += 1
-
     else:
-
         if row["rsi"] < 50:
             confirmations += 1
-
         if row["close"] < row["bb_mid"]:
             confirmations += 1
-
         if row["ema20"] < row["ema50"] < row["ema200"]:
             confirmations += 1
-
         if volume_ratio >= VOLUME_MULTIPLIER:
             confirmations += 1
-
         if trend["ema20"] < trend["ema50"] < trend["ema200"]:
             confirmations += 1
-
         if row["adx"] >= ADX_MINIMUM:
             confirmations += 1
-
         if row["minus_di"] > row["plus_di"]:
             confirmations += 1
 
     if confirmations < MIN_CONFIRMATIONS:
-
         DIAGNOSTICS["confirmations_rejected"] += 1
         return None
 
-    order_block = detect_order_block(df5, direction)
-
-    if order_block:
-        DIAGNOSTICS["order_block_detected"] += 1
-
     # Structural stop + ATR protection.
     if direction == "BUY":
-
         stop_loss = min(
             price - atr * MIN_RISK_ATR,
             sweep["sweep_low"] - atr * 0.15
         )
-
         risk = price - stop_loss
-
     else:
-
         stop_loss = max(
             price + atr * MIN_RISK_ATR,
             sweep["sweep_high"] + atr * 0.15
         )
-
         risk = stop_loss - price
 
     if risk <= 0 or risk > atr * MAX_RISK_ATR:
-
         DIAGNOSTICS["risk_rejected"] += 1
         return None
 
     if direction == "BUY":
-
         tp1 = price + risk
         tp2 = price + risk * 2
-
     else:
-
         tp1 = price - risk
         tp2 = price - risk * 2
 
@@ -890,7 +738,8 @@ def generate_signal(symbol, df5, df15):
         "last_checked_time": signal_time,
         "tp1_hit": False,
         "status": "OPEN",
-        "created_at": current_time_string()
+        "created_at": current_time_string(),
+        "created_date": today_string()
     }
 
 
@@ -899,16 +748,13 @@ def generate_signal(symbol, df5, df15):
 # =====================================================
 
 def update_signal_results(state):
-
     changed = False
 
     for signal in state["signals"]:
-
         if signal.get("status") not in ("OPEN", None):
             continue
 
         symbol = signal.get("symbol")
-
         if not symbol:
             continue
 
@@ -918,92 +764,72 @@ def update_signal_results(state):
         )
 
         try:
-
             candles = get_tracking_candles(
                 symbol,
                 int(last_checked) + 1
             )
-
         except Exception as error:
-
-            print(
-                f"Tracking error {symbol}: {error}"
-            )
+            print(f"Tracking error {symbol}: {error}")
             continue
 
         if candles.empty:
             continue
 
         direction = signal["direction"]
-
-        entry = float(signal["entry"])
         stop = float(signal["stop_loss"])
         tp1 = float(signal["tp1"])
         tp2 = float(signal["tp2"])
-
         tp1_hit = bool(signal.get("tp1_hit", False))
 
         for _, candle in candles.iterrows():
-
             high = float(candle["high"])
             low = float(candle["low"])
-
             close_time = int(candle["close_time"])
 
             if direction == "BUY":
-
                 stop_hit = low <= stop
                 first_hit = high >= tp1
                 second_hit = high >= tp2
-
             else:
-
                 stop_hit = high >= stop
                 first_hit = low <= tp1
                 second_hit = low <= tp2
 
-            # Conservative rule:
-            # If TP1 and SL occur in the same candle,
-            # SL has priority unless TP1 was hit earlier.
-            if not tp1_hit and stop_hit:
+            # Before TP1: SL wins if SL and TP1 occur in the same candle.
+            if not tp1_hit:
+                if stop_hit:
+                    signal["status"] = "SL"
+                    signal["result_time"] = close_time
+                    signal["result_price"] = stop
+                    changed = True
+                    break
 
-                signal["status"] = "SL"
-                signal["result_time"] = close_time
-                signal["result_price"] = stop
+                if first_hit:
+                    tp1_hit = True
+                    signal["tp1_hit"] = True
+                    signal["tp1_time"] = close_time
+                    changed = True
 
-                changed = True
-                break
+                    # Do not award TP2 in the same candle as TP1.
+                    continue
 
-            if not tp1_hit and first_hit:
+            # After TP1: if SL and TP2 occur in one candle, record TP1.
+            else:
+                if stop_hit:
+                    signal["status"] = "TP1"
+                    signal["result_time"] = close_time
+                    signal["result_price"] = stop
+                    changed = True
+                    break
 
-                tp1_hit = True
-                signal["tp1_hit"] = True
-                signal["tp1_time"] = close_time
+                if second_hit:
+                    signal["status"] = "TP2"
+                    signal["result_time"] = close_time
+                    signal["result_price"] = tp2
+                    changed = True
+                    break
 
-                changed = True
-
-            if tp1_hit and second_hit:
-
-                signal["status"] = "TP2"
-                signal["result_time"] = close_time
-                signal["result_price"] = tp2
-
-                changed = True
-                break
-
-            if tp1_hit and stop_hit:
-
-                signal["status"] = "TP1"
-                signal["result_time"] = close_time
-                signal["result_price"] = stop
-
-                changed = True
-                break
-
-        signal["last_checked_time"] = int(
-            candles.iloc[-1]["close_time"]
-        )
-
+        signal["last_checked_time"] = int(candles.iloc[-1]["close_time"])
         changed = True
 
     return changed
@@ -1013,73 +839,94 @@ def update_signal_results(state):
 # DAILY REPORT
 # =====================================================
 
+def signal_created_date(signal):
+    created_date = signal.get("created_date")
+    if created_date:
+        return str(created_date)[:10]
+
+    created_at = signal.get("created_at", "")
+    if created_at:
+        return str(created_at)[:10]
+
+    # Legacy signals without a creation date are excluded from today's cohort.
+    return None
+
+
 def create_daily_report(state):
-
     today = today_string()
-
-    signals = state["signals"]
+    today_signals = [
+        signal for signal in state["signals"]
+        if signal_created_date(signal) == today
+    ]
 
     tp1_count = 0
     tp2_count = 0
     sl_count = 0
     open_count = 0
 
-    for signal in signals:
-
+    for signal in today_signals:
         status = signal.get("status", "OPEN")
 
         if status == "TP1":
             tp1_count += 1
-
         elif status == "TP2":
             tp2_count += 1
-
         elif status == "SL":
             sl_count += 1
-
         elif status == "OPEN":
             open_count += 1
 
-    total = tp1_count + tp2_count + sl_count
-
+    total_closed = tp1_count + tp2_count + sl_count
     win_rate = (
-        (tp1_count + tp2_count) / total * 100
-        if total > 0 else 0
+        (tp1_count + tp2_count) / total_closed * 100
+        if total_closed > 0 else 0
     )
 
-    record = state["daily"].get(
+    record = state.get("daily", {}).get(
         today,
-        {
-            "scans": 0,
-            "signals": 0,
-            "diagnostics": {}
-        }
+        {"scans": 0, "signals": 0, "diagnostics": {}}
     )
-
     diagnostics = record.get("diagnostics", {})
 
     message = (
-        f"📊 DAILY PERFORMANCE REPORT\n"
+        "📊 DAILY PERFORMANCE REPORT\n"
         f"Date: {today}\n\n"
         f"Scans completed: {record.get('scans', 0)}\n"
-        f"Total signals today: {record.get('signals', 0)}\n\n"
-        f"TP1 results: {tp1_count}\n"
-        f"TP2 results: {tp2_count}\n"
+        f"New signals today: {record.get('signals', 0)}\n\n"
+        "TODAY'S SIGNALS STATUS:\n"
+        f"TP1 then SL: {tp1_count}\n"
+        f"TP2 reached: {tp2_count}\n"
         f"Stop Loss before TP1: {sl_count}\n"
         f"Still open: {open_count}\n\n"
         f"Win rate (TP1 + TP2): {win_rate:.1f}%\n\n"
-        "DIAGNOSTICS:\n"
+        "SMART MONEY DIAGNOSTICS:\n"
+        f"Liquidity Sweep detected: {diagnostics.get('sweep_detected', 0)}\n"
+        f"Liquidity Sweep rejected: {diagnostics.get('sweep_rejected', 0)}\n"
+        f"BOS / CHoCH detected: {diagnostics.get('structure_detected', 0)}\n"
+        f"Structure rejected: {diagnostics.get('structure_rejected', 0)}\n"
+        f"FVG detected: {diagnostics.get('fvg_detected', 0)}\n"
+        f"FVG Retest confirmed: {diagnostics.get('fvg_retest_detected', 0)}\n"
+        f"FVG rejected: {diagnostics.get('fvg_rejected', 0)}\n"
+        f"Order Block detected: {diagnostics.get('order_block_detected', 0)}\n\n"
+        "OTHER FILTERS:\n"
     )
 
-    for key in DIAGNOSTICS:
-        message += (
-            f"{key}: {diagnostics.get(key, 0)}\n"
-        )
+    other_keys = [
+        "insufficient_data",
+        "invalid_values",
+        "adx_rejected",
+        "volatility_rejected",
+        "volume_rejected",
+        "confirmations_rejected",
+        "direction_rejected",
+        "risk_rejected",
+        "errors"
+    ]
 
-    message += (
-        f"\nReport time: {current_time_string()}"
-    )
+    for key in other_keys:
+        message += f"{key}: {diagnostics.get(key, 0)}\n"
 
+    message += f"\nReport time: {current_time_string()}"
     return message
 
 
@@ -1088,14 +935,11 @@ def create_daily_report(state):
 # =====================================================
 
 def run_scanner():
-
     if not is_trading_time():
-
         print("Outside trading hours: 08:00-22:00 Iran.")
         return
 
     state = load_state()
-
     record = get_daily_record(state)
 
     print("=" * 45)
@@ -1103,7 +947,7 @@ def run_scanner():
     print("Iran time:", current_time_string())
     print("=" * 45)
 
-    # Reset diagnostics for this scan.
+    # Reset diagnostics for this scan only.
     for key in DIAGNOSTICS:
         DIAGNOSTICS[key] = 0
 
@@ -1112,9 +956,7 @@ def run_scanner():
 
     try:
         coins = get_market_coins()
-
     except Exception as error:
-
         print("Market coins ERROR:", error)
         DIAGNOSTICS["errors"] += 1
 
@@ -1127,32 +969,22 @@ def run_scanner():
         return
 
     print(f"Scanning {len(coins)} coins...")
-
     found = 0
 
     for symbol in coins:
-
         try:
-
             df5 = get_candles(symbol, TIMEFRAME)
             df15 = get_candles(symbol, TREND_TIMEFRAME)
 
             if df5.empty or df15.empty:
-
                 DIAGNOSTICS["insufficient_data"] += 1
                 continue
 
-            signal = generate_signal(
-                symbol,
-                df5,
-                df15
-            )
-
+            signal = generate_signal(symbol, df5, df15)
             if signal is None:
                 time.sleep(0.15)
                 continue
 
-            # Prevent duplicate signals for the same candle.
             duplicate = any(
                 item.get("symbol") == symbol
                 and item.get("signal_time") == signal["signal_time"]
@@ -1163,7 +995,6 @@ def run_scanner():
                 continue
 
             state["signals"].append(signal)
-
             found += 1
             record["signals"] += 1
 
@@ -1173,21 +1004,15 @@ def run_scanner():
             )
 
             send_signal(signal)
-
             time.sleep(0.2)
 
         except Exception as error:
-
             DIAGNOSTICS["errors"] += 1
-
-            print(
-                f"ERROR {symbol}: {error}"
-            )
+            print(f"ERROR {symbol}: {error}")
 
     record["scans"] += 1
 
     for key, value in DIAGNOSTICS.items():
-
         record["diagnostics"][key] = (
             record["diagnostics"].get(key, 0) + value
         )
@@ -1196,6 +1021,7 @@ def run_scanner():
 
     print("=" * 45)
     print("SCAN FINISHED")
+    print("Coins scanned:", len(coins))
     print("Signals found:", found)
     print("Diagnostics:", DIAGNOSTICS)
     print("=" * 45)
@@ -1206,15 +1032,11 @@ def run_scanner():
 # =====================================================
 
 def run_report():
-
     state = load_state()
-
     update_signal_results(state)
 
     message = create_daily_report(state)
-
     print(message)
-
     send_telegram_text(message)
 
     save_state(state)
@@ -1225,18 +1047,11 @@ def run_report():
 # =====================================================
 
 if __name__ == "__main__":
-
     try:
-
         if len(sys.argv) > 1 and sys.argv[1] == "report":
-
             run_report()
-
         else:
-
             run_scanner()
-
     except Exception as error:
-
         print("FATAL ERROR:", error)
         raise
