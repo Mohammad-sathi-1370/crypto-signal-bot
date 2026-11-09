@@ -319,14 +319,14 @@
       }
     },
     "2026-11-09": {
-      "scans": 8,
+      "scans": 9,
       "signals": 0,
       "diagnostics": {
         "insufficient_data": 0,
         "invalid_values": 0,
         "adx_rejected": 32,
-        "volatility_rejected": 15,
-        "volume_rejected": 69,
+        "volatility_rejected": 17,
+        "volume_rejected": 87,
         "confirmations_rejected": 0,
         "direction_rejected": 0,
         "sweep_rejected": 6,
