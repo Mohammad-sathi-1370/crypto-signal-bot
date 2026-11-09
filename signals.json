@@ -319,26 +319,26 @@
       }
     },
     "2026-11-09": {
-      "scans": 9,
+      "scans": 10,
       "signals": 0,
       "diagnostics": {
         "insufficient_data": 0,
         "invalid_values": 0,
-        "adx_rejected": 32,
-        "volatility_rejected": 17,
+        "adx_rejected": 33,
+        "volatility_rejected": 19,
         "volume_rejected": 87,
-        "confirmations_rejected": 0,
+        "confirmations_rejected": 1,
         "direction_rejected": 0,
-        "sweep_rejected": 6,
-        "structure_rejected": 37,
-        "fvg_rejected": 1,
-        "order_block_detected": 0,
+        "sweep_rejected": 11,
+        "structure_rejected": 40,
+        "fvg_rejected": 9,
+        "order_block_detected": 1,
         "risk_rejected": 0,
         "errors": 0,
-        "sweep_detected": 28,
-        "structure_detected": 1,
-        "fvg_detected": 1,
-        "fvg_retest_detected": 0
+        "sweep_detected": 40,
+        "structure_detected": 10,
+        "fvg_detected": 5,
+        "fvg_retest_detected": 1
       }
     }
   }
