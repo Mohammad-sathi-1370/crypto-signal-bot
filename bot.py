@@ -60,6 +60,9 @@ def iran_now():
     return datetime.now(IRAN_TZ)
 
 
+def current_time_string():
+    return iran_now().strftime("%Y-%m-%d %H:%M")
+
 def today_string():
     return iran_now().strftime("%Y-%m-%d")
 
