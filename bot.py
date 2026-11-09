@@ -1,4 +1,3 @@
-
 import os
 import sys
 import json
@@ -12,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =====================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.3
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.3 DEBUG
 # =====================================================
 
-VERSION = "5.3"
+VERSION = "5.3-DEBUG"
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -23,13 +22,10 @@ TIMEFRAME = "5m"
 TREND_TIMEFRAME = "15m"
 
 TOP_COINS = 20
-
 MIN_CONFIRMATIONS = 5
 
-# Volume is a confirmation, not a hard rejection.
 VOLUME_MULTIPLIER = 0.90
 
-# ADX hard filter and confirmation threshold.
 ADX_MINIMUM = 14
 ADX_CONFIRMATION = 18
 
@@ -57,7 +53,7 @@ STATE_FILE = "signals.json"
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 # =====================================================
-# HTTP SESSION WITH RETRIES
+# HTTP SESSION
 # =====================================================
 
 session = requests.Session()
@@ -72,7 +68,6 @@ retry_strategy = Retry(
 )
 
 adapter = HTTPAdapter(max_retries=retry_strategy)
-
 session.mount("https://", adapter)
 
 session.headers.update({
@@ -95,6 +90,10 @@ DIAGNOSTICS = {
     "sweep_detected": 0,
     "structure_rejected": 0,
     "structure_detected": 0,
+    "structure_no_pivot": 0,
+    "structure_no_break": 0,
+    "structure_pivots_found": 0,
+    "structure_bars_checked": 0,
     "fvg_rejected": 0,
     "fvg_detected": 0,
     "fvg_retest_detected": 0,
@@ -103,6 +102,7 @@ DIAGNOSTICS = {
     "errors": 0
 }
 
+STRUCTURE_DEBUG = []
 
 # =====================================================
 # TIME
@@ -383,9 +383,7 @@ def get_candles(symbol, timeframe):
 def get_tracking_candles(symbol, start_time):
 
     cursor = int(start_time)
-
     now_ms = int(time.time() * 1000)
-
     all_candles = []
 
     while cursor < now_ms:
@@ -431,7 +429,6 @@ def get_tracking_candles(symbol, start_time):
             break
 
         cursor = next_cursor
-
         time.sleep(0.1)
 
     if not all_candles:
@@ -457,7 +454,6 @@ def get_tracking_candles(symbol, start_time):
 def calculate_indicators(df):
 
     df = df.copy()
-
     close = df["close"]
 
     df["ema20"] = close.ewm(
@@ -686,7 +682,7 @@ def detect_sweep_candidates(df):
 
 
 # =====================================================
-# MARKET STRUCTURE
+# MARKET STRUCTURE - DEBUG VERSION
 # =====================================================
 
 def detect_structure(df, sweep):
@@ -710,7 +706,22 @@ def detect_structure(df, sweep):
             if item["index"] < sweep_index
         ]
 
+    DIAGNOSTICS["structure_pivots_found"] += len(valid)
+
     if not valid:
+
+        DIAGNOSTICS["structure_no_pivot"] += 1
+
+        STRUCTURE_DEBUG.append({
+            "direction": direction,
+            "sweep_time": sweep["time"],
+            "reason": "NO_CONFIRMED_PIVOT",
+            "pivot_count": 0,
+            "reference": None,
+            "bars_checked": 0,
+            "best_close": None
+        })
+
         return None
 
     reference = valid[-1]
@@ -720,6 +731,9 @@ def detect_structure(df, sweep):
         sweep_index + MAX_STRUCTURE_BARS
     )
 
+    bars_checked = 0
+    best_close = None
+
     for j in range(
         sweep_index + 1,
         end_index + 1
@@ -728,8 +742,33 @@ def detect_structure(df, sweep):
         candle = df.iloc[j]
         close = float(candle["close"])
 
+        bars_checked += 1
+
+        if best_close is None:
+            best_close = close
+
+        elif direction == "BUY" and close > best_close:
+            best_close = close
+
+        elif direction == "SELL" and close < best_close:
+            best_close = close
+
+        DIAGNOSTICS["structure_bars_checked"] += 1
+
         if direction == "BUY":
+
             if close > reference["price"]:
+
+                STRUCTURE_DEBUG.append({
+                    "direction": direction,
+                    "sweep_time": sweep["time"],
+                    "reason": "STRUCTURE_CONFIRMED",
+                    "pivot_count": len(valid),
+                    "reference": reference["price"],
+                    "bars_checked": bars_checked,
+                    "best_close": best_close
+                })
+
                 return {
                     "name": "BOS/CHoCH",
                     "time": int(candle["close_time"]),
@@ -737,12 +776,36 @@ def detect_structure(df, sweep):
                 }
 
         else:
+
             if close < reference["price"]:
+
+                STRUCTURE_DEBUG.append({
+                    "direction": direction,
+                    "sweep_time": sweep["time"],
+                    "reason": "STRUCTURE_CONFIRMED",
+                    "pivot_count": len(valid),
+                    "reference": reference["price"],
+                    "bars_checked": bars_checked,
+                    "best_close": best_close
+                })
+
                 return {
                     "name": "BOS/CHoCH",
                     "time": int(candle["close_time"]),
                     "index": j
                 }
+
+    DIAGNOSTICS["structure_no_break"] += 1
+
+    STRUCTURE_DEBUG.append({
+        "direction": direction,
+        "sweep_time": sweep["time"],
+        "reason": "NO_STRUCTURE_BREAK",
+        "pivot_count": len(valid),
+        "reference": reference["price"],
+        "bars_checked": bars_checked,
+        "best_close": best_close
+    })
 
     return None
 
@@ -794,7 +857,6 @@ def detect_fvg_retest(df, direction, after_time):
     )
 
     last = df.iloc[last_index]
-
     counted_fvg = False
 
     for i in range(
@@ -979,8 +1041,6 @@ def generate_signal(symbol, df5, df15):
         row["volume"] / row["volume_avg"]
     )
 
-    # Volume is not a hard rejection filter.
-
     sweep, structure, sweep_count, paired = (
         find_sweep_structure(df15)
     )
@@ -1160,7 +1220,6 @@ def update_signal_results(state):
 
             high = float(candle["high"])
             low = float(candle["low"])
-
             close_time = int(candle["close_time"])
 
             if direction == "BUY":
@@ -1177,10 +1236,6 @@ def update_signal_results(state):
 
             if not tp1_hit:
 
-                # Conservative rule:
-                # If SL and TP1 occur in the same candle,
-                # SL has priority.
-
                 if stop_hit:
 
                     signal["status"] = "SL"
@@ -1193,20 +1248,16 @@ def update_signal_results(state):
                 if first_hit:
 
                     tp1_hit = True
-
                     signal["tp1_hit"] = True
                     signal["tp1_time"] = close_time
 
                     changed = True
-
-                    # TP2 is not awarded in the same candle.
                     continue
 
             else:
 
                 if stop_hit:
 
-                    # TP1 remains counted as achieved.
                     signal["status"] = "TP1"
                     signal["result_time"] = close_time
                     signal["result_price"] = stop
@@ -1257,8 +1308,6 @@ def create_daily_report(state):
         if signal_created_date(s) == today
     ]
 
-    # TP1 status includes signals that hit TP1
-    # and subsequently returned to stop loss.
     tp1_then_sl = sum(
         s.get("status") == "TP1"
         for s in today_signals
@@ -1322,6 +1371,10 @@ def create_daily_report(state):
         f"Liquidity Sweep rejected: {diagnostics.get('sweep_rejected', 0)}\n"
         f"BOS / CHoCH detected: {diagnostics.get('structure_detected', 0)}\n"
         f"Structure rejected: {diagnostics.get('structure_rejected', 0)}\n"
+        f"Structure no pivot: {diagnostics.get('structure_no_pivot', 0)}\n"
+        f"Structure no break: {diagnostics.get('structure_no_break', 0)}\n"
+        f"Structure pivots found: {diagnostics.get('structure_pivots_found', 0)}\n"
+        f"Structure bars checked: {diagnostics.get('structure_bars_checked', 0)}\n"
         f"FVG detected: {diagnostics.get('fvg_detected', 0)}\n"
         f"FVG Retest confirmed: {diagnostics.get('fvg_retest_detected', 0)}\n"
         f"FVG rejected: {diagnostics.get('fvg_rejected', 0)}\n"
@@ -1365,7 +1418,6 @@ def run_scanner():
         return
 
     state = load_state()
-
     record = get_daily_record(state)
 
     print("=" * 45)
@@ -1383,6 +1435,8 @@ def run_scanner():
 
     for key in DIAGNOSTICS:
         DIAGNOSTICS[key] = 0
+
+    STRUCTURE_DEBUG.clear()
 
     update_signal_results(state)
 
@@ -1403,7 +1457,6 @@ def run_scanner():
             )
 
         save_state(state)
-
         return
 
     print(f"Scanning {len(coins)} coins...")
@@ -1427,7 +1480,6 @@ def run_scanner():
             if df5.empty or df15.empty:
 
                 DIAGNOSTICS["insufficient_data"] += 1
-
                 continue
 
             signal = generate_signal(
@@ -1439,7 +1491,6 @@ def run_scanner():
             if signal is None:
 
                 time.sleep(0.15)
-
                 continue
 
             duplicate = any(
@@ -1454,7 +1505,6 @@ def run_scanner():
             state["signals"].append(signal)
 
             found += 1
-
             record["signals"] += 1
 
             print(
@@ -1485,14 +1535,27 @@ def run_scanner():
     save_state(state)
 
     print("=" * 45)
-
     print("SCAN FINISHED")
-
     print("Coins scanned:", len(coins))
-
     print("Signals found:", found)
-
     print("Diagnostics:", DIAGNOSTICS)
+
+    print("=" * 45)
+    print("STRUCTURE DEBUG DETAILS")
+
+    if not STRUCTURE_DEBUG:
+        print("No structure debug records generated.")
+
+    for item in STRUCTURE_DEBUG:
+
+        print(
+            f"Direction: {item['direction']} | "
+            f"Reason: {item['reason']} | "
+            f"Pivot count: {item['pivot_count']} | "
+            f"Reference: {item['reference']} | "
+            f"Bars checked: {item['bars_checked']} | "
+            f"Best close: {item['best_close']}"
+        )
 
     print("=" * 45)
 
@@ -1538,5 +1601,4 @@ if __name__ == "__main__":
     except Exception as error:
 
         print("FATAL ERROR:", error)
-
         raise
