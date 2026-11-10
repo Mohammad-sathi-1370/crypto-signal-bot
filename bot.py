@@ -11,10 +11,12 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.0.1
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.0.2
 # =========================================================
 
-VERSION = "6.0.1"
+VERSION = "6.0.2"
+MAX_RISK_ATR = 4.0
+
 BASE_URL = "https://data-api.binance.vision"
 
 TIMEFRAME = "5m"
@@ -177,6 +179,19 @@ def send_signal(signal):
     direction = signal["direction"]
     label = "🟢 LONG" if direction == "BUY" else "🔴 SHORT"
 
+    risk_atr = float(signal.get("risk_atr", 0))
+    high_risk = risk_atr > MAX_RISK_ATR
+
+    risk_warning = ""
+
+    if high_risk:
+        risk_warning = (
+            "\n\n🚨 HIGH RISK WARNING\n"
+            f"Risk is above {MAX_RISK_ATR:.1f} ATR!\n"
+            "Consider reducing position size or skipping entry.\n"
+            "This signal is NOT blocked by the bot."
+        )
+
     message = (
         "━━━━━━━━━━━━━━━━━━\n"
         f"🚨 SMART MONEY SIGNAL {VERSION}\n"
@@ -200,9 +215,10 @@ def send_signal(signal):
         f"RSI: {signal['rsi']:.2f}\n"
         f"ADX: {signal['adx']:.2f}\n"
         f"Volume Ratio: {signal['volume_ratio']:.2f}\n"
-        f"Risk: {signal['risk_atr']:.2f} ATR\n"
+        f"Risk: {risk_atr:.2f} ATR"
+        f"{risk_warning}"
         + (
-            f"\n⚠️ HIGH-IMPACT NEWS WINDOW\n"
+            f"\n\n⚠️ HIGH-IMPACT NEWS WINDOW\n"
             f"{signal['news_warning']}\n"
             "Please assess volatility before entry.\n"
             if signal.get("news_warning") else ""
@@ -1564,6 +1580,9 @@ def generate_signal(symbol, df5, df15):
         DIAGNOSTICS["invalid_values"] += 1
         return None
 
+    risk_atr = float(risk / atr)
+    high_risk = risk_atr > MAX_RISK_ATR
+
     fvg = detect_fvg_retest(
         df5,
         direction,
@@ -1590,7 +1609,9 @@ def generate_signal(symbol, df5, df15):
         "tp2": float(tp2),
         "tp3": float(tp3),
         "risk": float(risk),
-        "risk_atr": float(risk / atr),
+        "risk_atr": risk_atr,
+        "high_risk": high_risk,
+        "risk_limit_atr": MAX_RISK_ATR,
         "confirmations": int(confirmations),
         "rsi": float(row["rsi"]),
         "adx": float(row["adx"]),
@@ -2079,11 +2100,18 @@ def run_scanner():
 
             new_signals += 1
 
+            risk_tag = (
+                " ⚠️ HIGH RISK"
+                if signal["risk_atr"] > MAX_RISK_ATR
+                else ""
+            )
+
             print(
                 f"NEW SIGNAL: {symbol} "
                 f"{signal['direction']} "
                 f"{signal['confirmations']}/7 "
                 f"RISK={signal['risk_atr']:.2f} ATR"
+                f"{risk_tag}"
             )
 
             save_state(state)
