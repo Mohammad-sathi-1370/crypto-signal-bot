@@ -11,12 +11,13 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.4.1
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.7.0
 # =========================================================
 
-VERSION = "5.6.0"
+VERSION = "5.7.0"
 
 BASE_URL = "https://data-api.binance.vision"
+
 TIMEFRAME = "5m"
 TREND_TIMEFRAME = "15m"
 
@@ -41,7 +42,16 @@ ORDER_BLOCK_LOOKBACK = 10
 
 MIN_RISK_ATR = 0.75
 MAX_RISK_ATR = 3.0
+
 SWEEP_STOP_BUFFER = 0.12
+
+# Pullback settings
+PULLBACK_LOOKBACK = 12
+PULLBACK_TOLERANCE_ATR = 0.30
+PULLBACK_STOP_BUFFER_ATR = 0.15
+MAX_ENTRY_DISTANCE_ATR = 0.50
+
+MAX_STRUCTURE_AGE_MINUTES = 120
 
 STATE_FILE = "signals.json"
 
@@ -92,6 +102,10 @@ DIAGNOSTICS = {
     "fvg_detected": 0,
     "fvg_retest_detected": 0,
     "order_block_detected": 0,
+    "pullback_waiting": 0,
+    "pullback_rejected": 0,
+    "pullback_confirmed": 0,
+    "entry_distance_rejected": 0,
     "risk_rejected": 0,
     "risk_rejected_invalid": 0,
     "risk_rejected_too_wide": 0,
@@ -180,12 +194,12 @@ def send_signal(signal):
         "━━━━━━━━━━━━━━━━━━\n\n"
         f"💎 Symbol: {signal['symbol']}\n"
         f"📍 Direction: {label}\n"
-        f"⏱ Timeframe: 5m\n"
+        "⏱ Timeframe: 5m\n"
         f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
         "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
-        "FVG Filter: DISABLED (NOT REQUIRED)\n"
+        f"Entry Model: {signal.get('entry_model', 'PULLBACK')}\n"
         f"FVG Context: {'YES' if signal.get('fvg_retest') else 'NO'}\n"
         f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n\n"
         "💰 TRADE LEVELS\n"
@@ -197,7 +211,8 @@ def send_signal(signal):
         "📈 INDICATORS\n"
         f"RSI: {signal['rsi']:.2f}\n"
         f"ADX: {signal['adx']:.2f}\n"
-        f"Volume Ratio: {signal['volume_ratio']:.2f}\n\n"
+        f"Volume Ratio: {signal['volume_ratio']:.2f}\n"
+        f"Risk: {signal['risk_atr']:.2f} ATR\n\n"
         f"🕒 {signal['created_at']}\n"
         "━━━━━━━━━━━━━━━━━━"
     )
@@ -298,7 +313,6 @@ def load_state():
             else:
                 signal["tp3"] = entry - 3 * risk
 
-        # Preserve previous TP milestones.
         if signal.get("tp3_hit"):
             signal["tp2_hit"] = True
             signal["tp1_hit"] = True
@@ -311,7 +325,6 @@ def load_state():
         elif signal.get("tp1_hit"):
             signal["result_stage"] = "TP1"
 
-        # Old signals already sent their initial alert.
         signal.setdefault(
             "telegram_events",
             {}
@@ -427,7 +440,6 @@ def candles_to_dataframe(data):
 
     df = df.dropna(subset=numeric)
 
-    # Reject impossible OHLC data.
     df = df[
         (df["high"] >= df["low"])
         & (df["high"] >= df["open"])
@@ -506,9 +518,6 @@ def get_tracking_candles(symbol, start_time):
             all_candles.append(closed)
 
         last_time = int(df.iloc[-1]["time"])
-
-        # Binance startTime is inclusive; advance exactly one 5m interval.
-        # +300001 would skip the immediately following candle.
         next_cursor = last_time + 300000
 
         if next_cursor <= cursor:
@@ -577,9 +586,7 @@ def calculate_indicators(df):
 
     rs = avg_gain / avg_loss.replace(0, np.nan)
 
-    df["rsi"] = (
-        100 - 100 / (1 + rs)
-    )
+    df["rsi"] = 100 - 100 / (1 + rs)
 
     df.loc[
         (avg_loss == 0) & (avg_gain > 0),
@@ -680,10 +687,7 @@ def find_confirmed_swings(df, end_index):
         len(df) - PIVOT_RIGHT - 1
     )
 
-    for i in range(
-        PIVOT_LEFT,
-        last_pivot + 1
-    ):
+    for i in range(PIVOT_LEFT, last_pivot + 1):
         left = df.iloc[i - PIVOT_LEFT:i]
         right = df.iloc[i + 1:i + PIVOT_RIGHT + 1]
 
@@ -712,7 +716,7 @@ def find_confirmed_swings(df, end_index):
 
 
 # =========================================================
-# STRUCTURE TREND CLASSIFICATION
+# STRUCTURE TREND
 # =========================================================
 
 def get_structure_trend(highs, lows, before_index):
@@ -811,7 +815,7 @@ def detect_sweep_candidates(df):
 
 
 # =========================================================
-# BOS / CHoCH STRUCTURE
+# BOS / CHoCH
 # =========================================================
 
 def detect_structure(df, sweep, symbol="UNKNOWN"):
@@ -859,23 +863,12 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         MAX_STRUCTURE_BARS
     )
 
-    best_close = None
-
     for j in range(
         sweep_index + 1,
         sweep_index + bars_checked + 1
     ):
         candle = df.iloc[j]
         close = float(candle["close"])
-
-        if best_close is None:
-            best_close = close
-
-        elif direction == "BUY":
-            best_close = max(best_close, close)
-
-        else:
-            best_close = min(best_close, close)
 
         broken = (
             close > reference
@@ -940,7 +933,6 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             "bars_checked": j - sweep_index
         }
 
-    # Not enough candles have formed yet.
     if available_bars < MAX_STRUCTURE_BARS:
         DIAGNOSTICS["structure_waiting"] += 1
 
@@ -950,7 +942,6 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             "state": "WAITING_FOR_CONFIRMATION",
             "reference": reference,
             "reference_type": reference_type,
-            "best_close": best_close,
             "bars_checked": bars_checked,
             "bars_required": MAX_STRUCTURE_BARS,
             "sweep_time": sweep["time"]
@@ -961,33 +952,12 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
     DIAGNOSTICS["structure_no_break"] += 1
     DIAGNOSTICS["structure_expired"] += 1
 
-    atr_value = (
-        float(df.iloc[sweep_index]["atr"])
-        if "atr" in df.columns
-        else 0
-    )
-
-    distance = (
-        abs(best_close - reference)
-        if best_close is not None
-        else None
-    )
-
-    distance_atr = (
-        distance / atr_value
-        if distance is not None and atr_value > 0
-        else None
-    )
-
     STRUCTURE_DEBUG.append({
         "symbol": symbol,
         "direction": direction,
         "state": "EXPIRED_NO_BREAK",
         "reference": reference,
         "reference_type": reference_type,
-        "best_close": best_close,
-        "distance": distance,
-        "distance_atr": distance_atr,
         "bars_checked": bars_checked,
         "sweep_time": sweep["time"]
     })
@@ -1024,7 +994,6 @@ def find_sweep_structure(df15, symbol):
         ):
             waiting_candidate = sweep
 
-    # Return the newest waiting sweep for diagnostics.
     if waiting_candidate is not None:
         return (
             waiting_candidate,
@@ -1037,7 +1006,157 @@ def find_sweep_structure(df15, symbol):
 
 
 # =========================================================
-# FAIR VALUE GAP + RETEST
+# PULLBACK ENTRY
+# =========================================================
+
+def detect_pullback_entry(
+    df5,
+    direction,
+    structure,
+    sweep,
+    atr
+):
+    """
+    Entry only after:
+    1. Confirmed BOS/CHoCH.
+    2. Price returns to the broken structure level.
+    3. A closed 5m candle confirms rejection.
+    """
+
+    reference = float(structure["reference"])
+    structure_time = int(structure["time"])
+
+    age_minutes = (
+        int(df5.iloc[-1]["close_time"]) - structure_time
+    ) / 60000
+
+    if age_minutes < 0 or age_minutes > MAX_STRUCTURE_AGE_MINUTES:
+        DIAGNOSTICS["pullback_rejected"] += 1
+        return None
+
+    after = df5[
+        df5["time"] >= structure_time
+    ].copy()
+
+    if len(after) < 2:
+        DIAGNOSTICS["pullback_waiting"] += 1
+        return None
+
+    after = after.tail(PULLBACK_LOOKBACK)
+
+    last = after.iloc[-1]
+
+    tolerance = atr * PULLBACK_TOLERANCE_ATR
+
+    entry = float(last["close"])
+
+    if direction == "BUY":
+        touched = (
+            float(last["low"]) <= reference + tolerance
+            and float(last["low"]) >= reference - tolerance
+        )
+
+        rejection = (
+            float(last["close"]) > float(last["open"])
+            and float(last["close"]) > reference
+        )
+
+        stop_anchor = min(
+            float(after["low"].min()),
+            float(sweep["sweep_low"])
+        )
+
+        structural_stop = (
+            stop_anchor - atr * PULLBACK_STOP_BUFFER_ATR
+        )
+
+        stop_loss = min(
+            structural_stop,
+            entry - atr * MIN_RISK_ATR
+        )
+
+        risk = entry - stop_loss
+
+        distance = max(0, entry - reference)
+
+    else:
+        touched = (
+            float(last["high"]) >= reference - tolerance
+            and float(last["high"]) <= reference + tolerance
+        )
+
+        rejection = (
+            float(last["close"]) < float(last["open"])
+            and float(last["close"]) < reference
+        )
+
+        stop_anchor = max(
+            float(after["high"].max()),
+            float(sweep["sweep_high"])
+        )
+
+        structural_stop = (
+            stop_anchor + atr * PULLBACK_STOP_BUFFER_ATR
+        )
+
+        stop_loss = max(
+            structural_stop,
+            entry + atr * MIN_RISK_ATR
+        )
+
+        risk = stop_loss - entry
+
+        distance = max(0, reference - entry)
+
+    if not touched or not rejection:
+        DIAGNOSTICS["pullback_waiting"] += 1
+        return None
+
+    if distance > atr * MAX_ENTRY_DISTANCE_ATR:
+        DIAGNOSTICS["entry_distance_rejected"] += 1
+
+        REJECTION_DEBUG.append({
+            "stage": "PULLBACK",
+            "reason": "ENTRY_TOO_FAR_FROM_STRUCTURE",
+            "distance_atr": distance / atr
+        })
+
+        return None
+
+    if not np.isfinite(risk) or risk <= 0:
+        DIAGNOSTICS["risk_rejected"] += 1
+        DIAGNOSTICS["risk_rejected_invalid"] += 1
+        return None
+
+    if risk > atr * MAX_RISK_ATR:
+        DIAGNOSTICS["risk_rejected"] += 1
+        DIAGNOSTICS["risk_rejected_too_wide"] += 1
+
+        REJECTION_DEBUG.append({
+            "stage": "RISK",
+            "reason": "SL_TOO_WIDE",
+            "entry": entry,
+            "stop_loss": stop_loss,
+            "risk_atr": risk / atr,
+            "maximum_risk_atr": MAX_RISK_ATR
+        })
+
+        return None
+
+    DIAGNOSTICS["pullback_confirmed"] += 1
+
+    return {
+        "entry": entry,
+        "stop_loss": float(stop_loss),
+        "risk": float(risk),
+        "risk_atr": float(risk / atr),
+        "reference": reference,
+        "pullback_time": int(last["close_time"])
+    }
+
+
+# =========================================================
+# FAIR VALUE GAP
 # =========================================================
 
 def detect_fvg_retest(df, direction, after_time, atr):
@@ -1045,21 +1164,12 @@ def detect_fvg_retest(df, direction, after_time, atr):
         return None
 
     last_index = len(df) - 1
-
-    start = max(
-        2,
-        last_index - FVG_LOOKBACK
-    )
+    start = max(2, last_index - FVG_LOOKBACK)
 
     last = df.iloc[last_index]
-
     counted = False
 
-    for i in range(
-        last_index - 1,
-        start - 1,
-        -1
-    ):
+    for i in range(last_index - 1, start - 1, -1):
         first = df.iloc[i - 2]
         third = df.iloc[i]
 
@@ -1109,9 +1219,13 @@ def detect_fvg_retest(df, direction, after_time, atr):
         )
 
         if direction == "BUY":
-            confirmed = float(last["close"]) > float(last["open"])
+            confirmed = (
+                float(last["close"]) > float(last["open"])
+            )
         else:
-            confirmed = float(last["close"]) < float(last["open"])
+            confirmed = (
+                float(last["close"]) < float(last["open"])
+            )
 
         if touched and confirmed:
             DIAGNOSTICS["fvg_retest_detected"] += 1
@@ -1126,7 +1240,7 @@ def detect_fvg_retest(df, direction, after_time, atr):
 
 
 # =========================================================
-# ORDER BLOCK - SUPPORTING ONLY
+# ORDER BLOCK
 # =========================================================
 
 def detect_order_block(df, direction):
@@ -1152,6 +1266,7 @@ def detect_order_block(df, direction):
 # =========================================================
 
 def generate_signal(symbol, df5, df15):
+
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
@@ -1199,7 +1314,6 @@ def generate_signal(symbol, df5, df15):
         row["volume"] / row["volume_avg"]
     )
 
-    # Calculate ATR for structure diagnostics.
     df15 = calculate_indicators(df15)
 
     sweep, structure, sweep_count, paired = find_sweep_structure(
@@ -1221,23 +1335,7 @@ def generate_signal(symbol, df5, df15):
 
     direction = sweep["direction"]
 
-    # FVG is measured as optional context only. It is NOT an entry gate.
-    # This isolates the effect of removing the old mandatory FVG retest.
-    fvg = detect_fvg_retest(
-        df5,
-        direction,
-        structure["time"],
-        atr
-    )
-
-    order_block = detect_order_block(
-        df5,
-        direction
-    )
-
-    if order_block:
-        DIAGNOSTICS["order_block_detected"] += 1
-
+    # Confirmation checks
     if direction == "BUY":
         checks = [
             row["rsi"] > 50,
@@ -1264,6 +1362,7 @@ def generate_signal(symbol, df5, df15):
 
     if confirmations < MIN_CONFIRMATIONS:
         DIAGNOSTICS["confirmations_rejected"] += 1
+
         REJECTION_DEBUG.append({
             "symbol": symbol,
             "stage": "CONFIRMATIONS",
@@ -1272,105 +1371,113 @@ def generate_signal(symbol, df5, df15):
             "required": MIN_CONFIRMATIONS,
             "direction": direction
         })
+
         return None
+
+    # Pullback entry
+    pullback = detect_pullback_entry(
+        df5,
+        direction,
+        structure,
+        sweep,
+        atr
+    )
+
+    if pullback is None:
+        return None
+
+    entry = pullback["entry"]
+    stop_loss = pullback["stop_loss"]
+    risk = pullback["risk"]
 
     if direction == "BUY":
-        stop_loss = min(
-            price - atr * MIN_RISK_ATR,
-            sweep["sweep_low"] - atr * SWEEP_STOP_BUFFER
-        )
-
-        risk = price - stop_loss
-
+        tp1 = entry + risk
+        tp2 = entry + risk * 2
+        tp3 = entry + risk * 3
     else:
-        stop_loss = max(
-            price + atr * MIN_RISK_ATR,
-            sweep["sweep_high"] + atr * SWEEP_STOP_BUFFER
-        )
+        tp1 = entry - risk
+        tp2 = entry - risk * 2
+        tp3 = entry - risk * 3
 
-        risk = stop_loss - price
+    fvg = detect_fvg_retest(
+        df5,
+        direction,
+        structure["time"],
+        atr
+    )
 
-    if not np.isfinite(risk) or risk <= 0:
-        DIAGNOSTICS["risk_rejected"] += 1
-        DIAGNOSTICS["risk_rejected_invalid"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol,
-            "stage": "RISK",
-            "reason": "INVALID_RISK",
-            "entry": price,
-            "stop_loss": float(stop_loss),
-            "risk": float(risk) if np.isfinite(risk) else None,
-            "atr": atr
-        })
-        return None
+    order_block = detect_order_block(
+        df5,
+        direction
+    )
 
-    if risk > atr * MAX_RISK_ATR:
-        DIAGNOSTICS["risk_rejected"] += 1
-        DIAGNOSTICS["risk_rejected_too_wide"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol,
-            "stage": "RISK",
-            "reason": "SL_TOO_WIDE",
-            "entry": price,
-            "stop_loss": float(stop_loss),
-            "risk": float(risk),
-            "risk_atr": float(risk / atr),
-            "maximum_risk_atr": MAX_RISK_ATR,
-            "sweep_extreme": float(sweep['sweep_low'] if direction == 'BUY' else sweep['sweep_high'])
-        })
-        return None
-
-    if direction == "BUY":
-        tp1 = price + risk
-        tp2 = price + risk * 2
-        tp3 = price + risk * 3
-
-    else:
-        tp1 = price - risk
-        tp2 = price - risk * 2
-        tp3 = price - risk * 3
+    if order_block:
+        DIAGNOSTICS["order_block_detected"] += 1
 
     signal_time = int(row["close_time"])
 
     return {
         "symbol": symbol,
         "direction": direction,
-        "entry": price,
+
+        "entry": float(entry),
         "stop_loss": float(stop_loss),
+
         "tp1": float(tp1),
         "tp2": float(tp2),
         "tp3": float(tp3),
+
         "risk": float(risk),
         "risk_atr": float(risk / atr),
+
         "confirmations": int(confirmations),
+
         "rsi": float(row["rsi"]),
         "adx": float(row["adx"]),
         "volume_ratio": volume_ratio,
         "atr": atr,
+
         "fvg_lower": fvg["lower"] if fvg else None,
         "fvg_upper": fvg["upper"] if fvg else None,
         "fvg_retest": bool(fvg),
         "fvg_required": False,
-        "entry_model": "SWEEP_STRUCTURE_NO_FVG",
+
+        "entry_model": "BOS_CHOCH_PULLBACK",
+
+        "pullback_reference": pullback["reference"],
+        "pullback_time": pullback["pullback_time"],
+
         "order_block": order_block,
+
         "structure": structure["name"],
-        "structure_trend": structure.get("trend_context", "NEUTRAL"),
+        "structure_trend": structure.get(
+            "trend_context",
+            "NEUTRAL"
+        ),
+
         "structure_time": structure["time"],
         "sweep_time": sweep["time"],
+
         "signal_time": signal_time,
         "last_checked_time": signal_time,
+
         "tp1_hit": False,
         "tp2_hit": False,
         "tp3_hit": False,
+
         "tp1_time": None,
         "tp2_time": None,
         "tp3_time": None,
+
         "result_stage": "NONE",
         "status": "OPEN",
+
         "result_time": None,
         "result_price": None,
+
         "telegram_events": {},
         "pending_events": [],
+
         "created_at": current_time_string(),
         "created_date": today_string()
     }
@@ -1401,17 +1508,16 @@ def process_pending_events(state):
         for event in list(pending):
             if send_event_message(signal, event):
                 signal.setdefault(
-                    "telegram_events", {}
+                    "telegram_events",
+                    {}
                 )[event] = True
 
                 pending.remove(event)
                 changed = True
 
-                # Save immediately after each successful send.
                 save_state(state)
 
             else:
-                # Keep failed notifications for a later run.
                 break
 
     return changed
@@ -1467,6 +1573,7 @@ def update_signal_results(state):
 
             if direction == "BUY":
                 stop_hit = low <= stop
+
                 reached_level = (
                     tp3 if high >= tp3
                     else tp2 if high >= tp2
@@ -1476,6 +1583,7 @@ def update_signal_results(state):
 
             else:
                 stop_hit = high >= stop
+
                 reached_level = (
                     tp3 if low <= tp3
                     else tp2 if low <= tp2
@@ -1483,15 +1591,12 @@ def update_signal_results(state):
                     else None
                 )
 
-            # Conservative rule:
-            # Stop has priority if stop and target occur
-            # inside the same candle.
+            # Conservative rule: SL wins if both hit in one candle.
             if stop_hit:
                 signal["status"] = "SL"
                 signal["result_time"] = close_time
                 signal["result_price"] = stop
 
-                # Do not erase an already reached milestone.
                 queue_event(signal, "SL")
 
                 changed = True
@@ -1500,8 +1605,6 @@ def update_signal_results(state):
             if reached_level is None:
                 continue
 
-            # Price reaching TP3 necessarily passes TP1 and TP2.
-            # Register every newly reached milestone.
             if reached_level == tp3:
                 if not signal.get("tp1_hit"):
                     signal["tp1_hit"] = True
@@ -1552,7 +1655,6 @@ def update_signal_results(state):
 
                 changed = True
 
-        # Advance cursor only after processing the candles.
         signal["last_checked_time"] = int(
             candles.iloc[-1]["close_time"]
         )
@@ -1661,6 +1763,14 @@ def create_daily_report(state):
 # =========================================================
 
 def run_scanner():
+    global DIAGNOSTICS
+    global STRUCTURE_DEBUG
+    global REJECTION_DEBUG
+
+    DIAGNOSTICS = {key: 0 for key in DIAGNOSTICS}
+    STRUCTURE_DEBUG = []
+    REJECTION_DEBUG = []
+
     print("=" * 45)
     print(f"SMART MONEY CRYPTO SIGNAL BOT v{VERSION}")
     print("Iran time:", current_time_string())
@@ -1673,8 +1783,6 @@ def run_scanner():
     state = load_state()
 
     update_signal_results(state)
-
-    # Persist tracking changes before sending notifications.
     save_state(state)
 
     process_pending_events(state)
@@ -1703,6 +1811,7 @@ def run_scanner():
                 old.get("symbol") == symbol
                 and int(old.get("signal_time", 0))
                 == signal["signal_time"]
+                and old.get("status") in ("OPEN", "TP3", "SL")
                 for old in state["signals"]
             )
 
@@ -1712,7 +1821,6 @@ def run_scanner():
 
             state["signals"].append(signal)
 
-            # Queue initial alert instead of sending directly.
             queue_event(signal, "ENTRY")
 
             new_signals += 1
@@ -1720,10 +1828,10 @@ def run_scanner():
             print(
                 f"NEW SIGNAL: {symbol} "
                 f"{signal['direction']} "
-                f"{signal['confirmations']}/7"
+                f"{signal['confirmations']}/7 "
+                f"RISK={signal['risk_atr']:.2f} ATR"
             )
 
-            # Persist signal before Telegram attempt.
             save_state(state)
 
         except Exception as error:
@@ -1742,7 +1850,6 @@ def run_scanner():
 
     save_state(state)
 
-    # Process ENTRY and other pending events.
     process_pending_events(state)
 
     save_state(state)
@@ -1761,6 +1868,7 @@ def run_scanner():
 
     print("=" * 45)
     print("REJECTION DEBUG DETAILS")
+
     for item in REJECTION_DEBUG:
         print(item)
 
