@@ -11,18 +11,17 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.8.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.0.1
 # =========================================================
 
-VERSION = "5.8.0"
-
+VERSION = "6.0.1"
 BASE_URL = "https://data-api.binance.vision"
 
 TIMEFRAME = "5m"
 TREND_TIMEFRAME = "15m"
 
-TOP_COINS = 20
-MIN_CONFIRMATIONS = 5
+TOP_COINS = 50
+MIN_CONFIRMATIONS = 6
 
 VOLUME_MULTIPLIER = 0.90
 ADX_MINIMUM = 14
@@ -40,10 +39,10 @@ FVG_LOOKBACK = 25
 FVG_MIN_ATR = 0.05
 ORDER_BLOCK_LOOKBACK = 10
 
+FALLBACK_STOP_ATR = 0.75
 SWEEP_STOP_BUFFER = 0.12
 
 STATE_FILE = "signals.json"
-
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 # =========================================================
@@ -99,6 +98,9 @@ DIAGNOSTICS = {
     "risk_rejected_invalid": 0,
     "risk_rejected_too_wide": 0,
     "duplicate_signals": 0,
+    "open_trade_locked": 0,
+    "news_warning_active": 0,
+    "news_calendar_errors": 0,
     "errors": 0
 }
 
@@ -157,7 +159,6 @@ def send_telegram_text(message):
         )
 
         response.raise_for_status()
-
         result = response.json()
 
         if not result.get("ok"):
@@ -174,7 +175,6 @@ def send_telegram_text(message):
 
 def send_signal(signal):
     direction = signal["direction"]
-
     label = "🟢 LONG" if direction == "BUY" else "🔴 SHORT"
 
     message = (
@@ -184,11 +184,11 @@ def send_signal(signal):
         f"💎 Symbol: {signal['symbol']}\n"
         f"📍 Direction: {label}\n"
         "⏱ Timeframe: 5m\n"
-        f"⭐ Confirmations: {signal['confirmations']}/7 (minimum 5)\n\n"
+        f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
         "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
-        f"Entry Model: {signal.get('entry_model', 'PULLBACK')}\n"
+        f"Entry Model: {signal.get('entry_model', 'DIRECT_CLOSED_5M_AFTER_BOS_CHOCH')}\n"
         f"FVG Context: {'YES' if signal.get('fvg_retest') else 'NO'}\n"
         f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n\n"
         "💰 TRADE LEVELS\n"
@@ -196,13 +196,18 @@ def send_signal(signal):
         f"Stop Loss: {signal['stop_loss']:.8g}\n"
         f"TP1: {signal['tp1']:.8g} (1R)\n"
         f"TP2: {signal['tp2']:.8g} (2R)\n"
-        f"TP3: {signal['tp3']:.8g} (3R)\n\n"
         "📈 INDICATORS\n"
         f"RSI: {signal['rsi']:.2f}\n"
         f"ADX: {signal['adx']:.2f}\n"
         f"Volume Ratio: {signal['volume_ratio']:.2f}\n"
-        f"Risk: {signal['risk_atr']:.2f} ATR\n\n"
-        f"🕒 {signal['created_at']}\n"
+        f"Risk: {signal['risk_atr']:.2f} ATR\n"
+        + (
+            f"\n⚠️ HIGH-IMPACT NEWS WINDOW\n"
+            f"{signal['news_warning']}\n"
+            "Please assess volatility before entry.\n"
+            if signal.get("news_warning") else ""
+        )
+        + f"\n🕒 {signal['created_at']}\n"
         "━━━━━━━━━━━━━━━━━━"
     )
 
@@ -219,12 +224,15 @@ def send_event_message(signal, event):
         "TP1": (
             f"✅ TP1 HIT\n{symbol}\n"
             f"Price: {signal['tp1']:.8g}\n"
-            "Milestone: 1R"
+            "Milestone: 1R\n"
+            "Statistical result: WIN (locked)\n"
+            "Trade remains OPEN until TP2 or SL."
         ),
         "TP2": (
             f"🔥 TP2 HIT\n{symbol}\n"
             f"Price: {signal['tp2']:.8g}\n"
-            "Milestone: 2R"
+            "Milestone: 2R\n"
+            "Trade tracking closed."
         ),
         "TP3": (
             f"🏆 TP3 HIT\n{symbol}\n"
@@ -235,6 +243,7 @@ def send_event_message(signal, event):
         "SL": (
             f"🛑 STOP LOSS HIT\n{symbol}\n"
             f"Price: {signal['stop_loss']:.8g}\n"
+            f"Statistical result: {signal.get('stat_result', 'LOSS')}\n"
             f"Previous milestone: {signal.get('result_stage', 'NONE')}"
         )
     }
@@ -253,13 +262,13 @@ def load_state():
     if not os.path.exists(STATE_FILE):
         return {
             "signals": [],
-            "daily": {}
+            "daily": {},
+            "news_filter": {}
         }
 
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as file:
             state = json.load(file)
-
     except Exception as error:
         raise RuntimeError(
             f"Cannot safely load {STATE_FILE}: {error}"
@@ -270,6 +279,7 @@ def load_state():
 
     state.setdefault("signals", [])
     state.setdefault("daily", {})
+    state.setdefault("news_filter", {})
 
     if not isinstance(state["signals"], list):
         raise RuntimeError("Invalid signals history.")
@@ -284,39 +294,52 @@ def load_state():
         signal.setdefault("telegram_events", {})
         signal.setdefault("pending_events", [])
         signal.setdefault("result_stage", "NONE")
-
         signal.setdefault("tp1_time", None)
         signal.setdefault("tp2_time", None)
         signal.setdefault("tp3_time", None)
-
         signal.setdefault("result_time", None)
         signal.setdefault("result_price", None)
 
-        if "tp3" not in signal and "entry" in signal:
+        if (
+            "tp3" not in signal
+            and "entry" in signal
+            and "stop_loss" in signal
+        ):
             entry = float(signal["entry"])
-            stop = float(signal["stop_loss"])
-            risk = abs(entry - stop)
+            risk = abs(entry - float(signal["stop_loss"]))
 
-            if signal.get("direction") == "BUY":
-                signal["tp3"] = entry + 3 * risk
+            signal["tp3"] = (
+                entry + 3 * risk
+                if signal.get("direction") == "BUY"
+                else entry - 3 * risk
+            )
+
+        # TP1 is one statistical WIN but the trade remains OPEN.
+        if signal.get("tp1_hit"):
+            signal["stat_result"] = (
+                signal.get("stat_result") or "WIN"
+            )
+            signal["result_locked"] = True
+
+            if signal.get("status") == "TP1":
+                signal["status"] = "OPEN"
+
+            if signal.get("result_stage") == "NONE":
+                signal["result_stage"] = "TP1"
+
+        # SL before TP1 = LOSS; SL after TP1 preserves WIN.
+        if signal.get("status") == "SL":
+            if signal.get("tp1_hit"):
+                signal["stat_result"] = "WIN"
             else:
-                signal["tp3"] = entry - 3 * risk
+                signal["stat_result"] = (
+                    signal.get("stat_result") or "LOSS"
+                )
 
-        if signal.get("tp3_hit"):
-            signal["tp2_hit"] = True
-            signal["tp1_hit"] = True
-            signal["result_stage"] = "TP3"
-
-        elif signal.get("tp2_hit"):
-            signal["tp1_hit"] = True
-            signal["result_stage"] = "TP2"
-
-        elif signal.get("tp1_hit"):
-            signal["result_stage"] = "TP1"
+            signal["result_locked"] = True
 
         signal.setdefault(
-            "telegram_events",
-            {}
+            "telegram_events", {}
         ).setdefault("ENTRY", True)
 
     return state
@@ -360,27 +383,72 @@ def get_daily_record(state):
 # =========================================================
 
 def get_market_coins():
+    """
+    Top 50 liquid Binance USDT markets intersected
+    with active Nobitex assets.
+    """
+
+    nobitex_response = session.get(
+        NOBITEX_STATS_URL,
+        timeout=15
+    )
+    nobitex_response.raise_for_status()
+
+    nobitex_payload = nobitex_response.json()
+    stats = nobitex_payload.get("stats", {})
+
+    if not isinstance(stats, dict) or not stats:
+        raise RuntimeError(
+            "Nobitex market list is empty or has an unexpected format"
+        )
+
+    nobitex_assets = set()
+
+    for market, details in stats.items():
+        if not isinstance(details, dict):
+            continue
+
+        if details.get("isClosed") is True:
+            continue
+
+        normalized = str(market).lower().replace("_", "-")
+        parts = normalized.split("-")
+
+        if (
+            len(parts) == 2
+            and parts[1] in ("rls", "usdt")
+        ):
+            nobitex_assets.add(parts[0].upper())
+
+    if not nobitex_assets:
+        raise RuntimeError(
+            "Could not identify active Nobitex spot assets"
+        )
+
     response = session.get(
         f"{BASE_URL}/api/v3/ticker/24hr",
         timeout=20
     )
-
     response.raise_for_status()
 
     excluded = {
-        "USDC", "FDUSD", "TUSD", "USDP",
-        "DAI", "USDE", "BUSD"
+        "USDC", "FDUSD", "TUSD", "USDP", "DAI", "USDE",
+        "BUSD", "USDS", "UST", "USTC", "EUR", "TRY",
+        "BRL", "BIDR", "IDRT", "UAH", "RUB", "AUD", "GBP"
     }
 
     coins = []
 
     for item in response.json():
-        symbol = item["symbol"]
+        symbol = str(item.get("symbol", ""))
 
         if not symbol.endswith("USDT"):
             continue
 
         base = symbol[:-4]
+
+        if base not in nobitex_assets:
+            continue
 
         if base in excluded:
             continue
@@ -389,19 +457,21 @@ def get_market_coins():
             continue
 
         try:
-            volume = float(item["quoteVolume"])
-        except (ValueError, TypeError):
+            quote_volume = float(item.get("quoteVolume", 0))
+        except (TypeError, ValueError):
             continue
 
-        if volume > 0:
-            coins.append((symbol, volume))
+        if quote_volume > 0:
+            coins.append((symbol, quote_volume))
 
     coins.sort(
         key=lambda item: item[1],
         reverse=True
     )
 
-    return [item[0] for item in coins[:TOP_COINS]]
+    return [
+        symbol for symbol, _ in coins[:TOP_COINS]
+    ]
 
 
 def candles_to_dataframe(data):
@@ -535,6 +605,211 @@ def get_tracking_candles(symbol, start_time):
 
 
 # =========================================================
+# HIGH-IMPACT ECONOMIC NEWS FILTER
+# =========================================================
+
+NEWS_API_URL = "https://showmytrades.com/api/public/calendar/v1"
+NOBITEX_STATS_URL = "https://apiv2.nobitex.ir/market/stats"
+
+NEWS_CURRENCIES = (
+    "USD,EUR,GBP,JPY,AUD,NZD,CAD,CHF,CNY"
+)
+
+NEWS_IMPACT = "high"
+NEWS_DAYS_AHEAD = 7
+
+NEWS_REFRESH_SECONDS = 15 * 60
+NEWS_CACHE_MAX_AGE = 30 * 60
+
+NEWS_PAUSE_BEFORE_MINUTES = 60
+NEWS_PAUSE_AFTER_MINUTES = 90
+
+NEWS_CACHE = []
+NEWS_CACHE_MONOTONIC = 0.0
+NEWS_SERVER_TIME = 0
+NEWS_SERVER_MONOTONIC = 0.0
+NEWS_LAST_ERROR = None
+
+
+def refresh_news_calendar(force=False):
+    """
+    Refresh public high-impact economic calendar.
+    This is warning-only and never blocks signals.
+    """
+
+    global NEWS_CACHE
+    global NEWS_CACHE_MONOTONIC
+    global NEWS_SERVER_TIME
+    global NEWS_SERVER_MONOTONIC
+    global NEWS_LAST_ERROR
+
+    now_mono = time.monotonic()
+
+    if (
+        not force
+        and NEWS_SERVER_TIME > 0
+        and now_mono - NEWS_CACHE_MONOTONIC
+        < NEWS_REFRESH_SECONDS
+    ):
+        return True
+
+    try:
+        response = session.get(
+            NEWS_API_URL,
+            params={
+                "currency": NEWS_CURRENCIES,
+                "impact": NEWS_IMPACT,
+                "days": NEWS_DAYS_AHEAD,
+                "format": "json"
+            },
+            timeout=15
+        )
+
+        response.raise_for_status()
+
+        payload = response.json()
+
+        events = (
+            payload.get("events")
+            if isinstance(payload, dict)
+            else None
+        )
+
+        server_time = (
+            payload.get("server_time")
+            if isinstance(payload, dict)
+            else None
+        )
+
+        if not isinstance(events, list) or not server_time:
+            raise ValueError(
+                "Unexpected economic calendar response"
+            )
+
+        clean_events = []
+
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+
+            try:
+                ts = int(event.get("ts", 0))
+            except (TypeError, ValueError):
+                continue
+
+            if ts <= 0:
+                continue
+
+            if str(event.get("impact", "")).lower() != "high":
+                continue
+
+            clean_events.append(event)
+
+        NEWS_CACHE = clean_events
+        NEWS_CACHE_MONOTONIC = now_mono
+        NEWS_SERVER_TIME = int(server_time)
+        NEWS_SERVER_MONOTONIC = now_mono
+        NEWS_LAST_ERROR = None
+
+        return True
+
+    except Exception as error:
+        NEWS_LAST_ERROR = str(error)
+
+        if (
+            NEWS_CACHE
+            and now_mono - NEWS_CACHE_MONOTONIC
+            <= NEWS_CACHE_MAX_AGE
+        ):
+            return True
+
+        return False
+
+
+def news_clock_now():
+    """
+    Use calendar provider UTC clock,
+    advanced by monotonic elapsed time.
+    """
+
+    if NEWS_SERVER_TIME and NEWS_SERVER_MONOTONIC:
+        return (
+            NEWS_SERVER_TIME
+            + int(time.monotonic() - NEWS_SERVER_MONOTONIC)
+        )
+
+    return int(time.time())
+
+
+def active_high_impact_news(force_refresh=False):
+    """
+    Return:
+    (news_active, matching_event, calendar_ok)
+    """
+
+    calendar_ok = refresh_news_calendar(
+        force=force_refresh
+    )
+
+    if not calendar_ok:
+        return False, None, False
+
+    now_utc = news_clock_now()
+
+    before = NEWS_PAUSE_BEFORE_MINUTES * 60
+    after = NEWS_PAUSE_AFTER_MINUTES * 60
+
+    active = []
+
+    for event in NEWS_CACHE:
+        try:
+            event_ts = int(event.get("ts", 0))
+        except (TypeError, ValueError):
+            continue
+
+        if event_ts - before <= now_utc <= event_ts + after:
+            active.append(event)
+
+    if not active:
+        return False, None, True
+
+    event = min(
+        active,
+        key=lambda item: abs(
+            int(item.get("ts", 0)) - now_utc
+        )
+    )
+
+    return True, event, True
+
+
+def format_news_event(event):
+    if not event:
+        return "High-impact economic calendar unavailable"
+
+    title = event.get("title", "High-impact event")
+    currency = event.get("currency", "")
+    event_time = event.get("time", "")
+
+    return (
+        f"{currency} | {title} | UTC: {event_time}"
+    )
+
+
+def has_open_trade_for_symbol(state, symbol):
+    """
+    TP1 does not close a trade.
+    Only TP2 or SL releases the symbol lock.
+    """
+
+    return any(
+        old.get("symbol") == symbol
+        and old.get("status") == "OPEN"
+        for old in state.get("signals", [])
+    )
+
+
+# =========================================================
 # INDICATORS
 # =========================================================
 
@@ -596,18 +871,26 @@ def calculate_indicators(df):
 
     std = close.rolling(20).std()
 
-    df["bb_upper"] = df["bb_mid"] + 2 * std
-    df["bb_lower"] = df["bb_mid"] - 2 * std
+    df["bb_upper"] = (
+        df["bb_mid"] + 2 * std
+    )
+
+    df["bb_lower"] = (
+        df["bb_mid"] - 2 * std
+    )
 
     df["volume_avg"] = df["volume"].rolling(20).mean()
 
     prev_close = close.shift(1)
 
-    tr = pd.concat([
-        df["high"] - df["low"],
-        (df["high"] - prev_close).abs(),
-        (df["low"] - prev_close).abs()
-    ], axis=1).max(axis=1)
+    tr = pd.concat(
+        [
+            df["high"] - df["low"],
+            (df["high"] - prev_close).abs(),
+            (df["low"] - prev_close).abs()
+        ],
+        axis=1
+    ).max(axis=1)
 
     df["atr"] = tr.ewm(
         alpha=1 / 14,
@@ -643,16 +926,20 @@ def calculate_indicators(df):
     ).mean()
 
     df["plus_di"] = (
-        100 * plus_smoothed / atr_adx.replace(0, np.nan)
+        100 * plus_smoothed
+        / atr_adx.replace(0, np.nan)
     )
 
     df["minus_di"] = (
-        100 * minus_smoothed / atr_adx.replace(0, np.nan)
+        100 * minus_smoothed
+        / atr_adx.replace(0, np.nan)
     )
 
     dx = (
         100 * (df["plus_di"] - df["minus_di"]).abs()
-        / (df["plus_di"] + df["minus_di"]).replace(0, np.nan)
+        / (
+            df["plus_di"] + df["minus_di"]
+        ).replace(0, np.nan)
     )
 
     df["adx"] = dx.ewm(
@@ -676,9 +963,17 @@ def find_confirmed_swings(df, end_index):
         len(df) - PIVOT_RIGHT - 1
     )
 
-    for i in range(PIVOT_LEFT, last_pivot + 1):
-        left = df.iloc[i - PIVOT_LEFT:i]
-        right = df.iloc[i + 1:i + PIVOT_RIGHT + 1]
+    for i in range(
+        PIVOT_LEFT,
+        last_pivot + 1
+    ):
+        left = df.iloc[
+            i - PIVOT_LEFT:i
+        ]
+
+        right = df.iloc[
+            i + 1:i + PIVOT_RIGHT + 1
+        ]
 
         high = float(df.iloc[i]["high"])
         low = float(df.iloc[i]["low"])
@@ -979,7 +1274,8 @@ def find_sweep_structure(df15, symbol):
 
         if (
             waiting_candidate is None
-            and len(df15) - 1 - sweep["index"] < MAX_STRUCTURE_BARS
+            and len(df15) - 1 - sweep["index"]
+            < MAX_STRUCTURE_BARS
         ):
             waiting_candidate = sweep
 
@@ -991,7 +1287,12 @@ def find_sweep_structure(df15, symbol):
             False
         )
 
-    return candidates[0], None, len(candidates), False
+    return (
+        candidates[0],
+        None,
+        len(candidates),
+        False
+    )
 
 
 # =========================================================
@@ -1008,7 +1309,11 @@ def detect_fvg_retest(df, direction, after_time, atr):
     last = df.iloc[last_index]
     counted = False
 
-    for i in range(last_index - 1, start - 1, -1):
+    for i in range(
+        last_index - 1,
+        start - 1,
+        -1
+    ):
         first = df.iloc[i - 2]
         third = df.iloc[i]
 
@@ -1032,7 +1337,9 @@ def detect_fvg_retest(df, direction, after_time, atr):
         if zone_high - zone_low < atr * FVG_MIN_ATR:
             continue
 
-        later = df.iloc[i + 1:last_index]
+        later = df.iloc[
+            i + 1:last_index
+        ]
 
         if direction == "BUY":
             invalidated = (
@@ -1105,7 +1412,6 @@ def detect_order_block(df, direction):
 # =========================================================
 
 def generate_signal(symbol, df5, df15):
-
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
@@ -1137,7 +1443,11 @@ def generate_signal(symbol, df5, df15):
     price = float(row["close"])
     atr = float(row["atr"])
 
-    if price <= 0 or atr <= 0 or row["volume_avg"] <= 0:
+    if (
+        price <= 0
+        or atr <= 0
+        or float(row["volume_avg"]) <= 0
+    ):
         DIAGNOSTICS["invalid_values"] += 1
         return None
 
@@ -1153,11 +1463,8 @@ def generate_signal(symbol, df5, df15):
         row["volume"] / row["volume_avg"]
     )
 
-    df15 = calculate_indicators(df15)
-
-    sweep, structure, sweep_count, paired = find_sweep_structure(
-        df15,
-        symbol
+    sweep, structure, sweep_count, paired = (
+        find_sweep_structure(df15, symbol)
     )
 
     if sweep_count == 0:
@@ -1174,7 +1481,6 @@ def generate_signal(symbol, df5, df15):
 
     direction = sweep["direction"]
 
-    # Confirmation checks
     if direction == "BUY":
         checks = [
             row["rsi"] > 50,
@@ -1197,7 +1503,9 @@ def generate_signal(symbol, df5, df15):
             row["minus_di"] > row["plus_di"]
         ]
 
-    confirmations = sum(bool(x) for x in checks)
+    confirmations = sum(
+        bool(value) for value in checks
+    )
 
     if confirmations < MIN_CONFIRMATIONS:
         DIAGNOSTICS["confirmations_rejected"] += 1
@@ -1213,45 +1521,48 @@ def generate_signal(symbol, df5, df15):
 
         return None
 
-    # Direct entry: no pullback wait and no maximum-risk rejection.
     # Entry is the latest fully closed 5m candle close.
-    entry = float(row["close"])
+    entry = price
 
-    # Keep a structural stop beyond the liquidity-sweep extreme.
-    # If price has already crossed that level, use a fallback stop
-    # 0.75 ATR away so that TP calculations remain valid.
     if direction == "BUY":
         structural_stop = (
-            float(sweep["sweep_low"]) - atr * SWEEP_STOP_BUFFER
+            float(sweep["sweep_low"])
+            - atr * SWEEP_STOP_BUFFER
         )
+
         stop_loss = (
             structural_stop
             if structural_stop < entry
-            else entry - atr * 0.75
+            else entry - atr * FALLBACK_STOP_ATR
         )
+
         risk = entry - stop_loss
+
+        tp1 = entry + risk
+        tp2 = entry + 2 * risk
+        tp3 = entry + 3 * risk
+
     else:
         structural_stop = (
-            float(sweep["sweep_high"]) + atr * SWEEP_STOP_BUFFER
+            float(sweep["sweep_high"])
+            + atr * SWEEP_STOP_BUFFER
         )
+
         stop_loss = (
             structural_stop
             if structural_stop > entry
-            else entry + atr * 0.75
+            else entry + atr * FALLBACK_STOP_ATR
         )
+
         risk = stop_loss - entry
 
-    # No risk-size filter in this test version: large stop distances
-    # are allowed and are reported transparently in the signal.
-
-    if direction == "BUY":
-        tp1 = entry + risk
-        tp2 = entry + risk * 2
-        tp3 = entry + risk * 3
-    else:
         tp1 = entry - risk
-        tp2 = entry - risk * 2
-        tp3 = entry - risk * 3
+        tp2 = entry - 2 * risk
+        tp3 = entry - 3 * risk
+
+    if not np.isfinite(risk) or risk <= 0:
+        DIAGNOSTICS["invalid_values"] += 1
+        return None
 
     fvg = detect_fvg_retest(
         df5,
@@ -1273,62 +1584,47 @@ def generate_signal(symbol, df5, df15):
     return {
         "symbol": symbol,
         "direction": direction,
-
         "entry": float(entry),
         "stop_loss": float(stop_loss),
-
         "tp1": float(tp1),
         "tp2": float(tp2),
         "tp3": float(tp3),
-
         "risk": float(risk),
         "risk_atr": float(risk / atr),
-
         "confirmations": int(confirmations),
-
         "rsi": float(row["rsi"]),
         "adx": float(row["adx"]),
         "volume_ratio": volume_ratio,
         "atr": atr,
-
         "fvg_lower": fvg["lower"] if fvg else None,
         "fvg_upper": fvg["upper"] if fvg else None,
         "fvg_retest": bool(fvg),
         "fvg_required": False,
-
-        "entry_model": "DIRECT_AFTER_BOS_CHOCH",
-
+        "entry_model": "DIRECT_CLOSED_5M_AFTER_BOS_CHOCH",
         "order_block": order_block,
-
         "structure": structure["name"],
         "structure_trend": structure.get(
             "trend_context",
             "NEUTRAL"
         ),
-
         "structure_time": structure["time"],
         "sweep_time": sweep["time"],
-
         "signal_time": signal_time,
         "last_checked_time": signal_time,
-
         "tp1_hit": False,
         "tp2_hit": False,
         "tp3_hit": False,
-
         "tp1_time": None,
         "tp2_time": None,
         "tp3_time": None,
-
         "result_stage": "NONE",
         "status": "OPEN",
-
+        "stat_result": None,
+        "result_locked": False,
         "result_time": None,
         "result_price": None,
-
         "telegram_events": {},
         "pending_events": [],
-
         "created_at": current_time_string(),
         "created_date": today_string()
     }
@@ -1339,12 +1635,18 @@ def generate_signal(symbol, df5, df15):
 # =========================================================
 
 def queue_event(signal, event):
-    sent = signal.setdefault("telegram_events", {})
+    sent = signal.setdefault(
+        "telegram_events",
+        {}
+    )
 
     if sent.get(event):
         return
 
-    pending = signal.setdefault("pending_events", [])
+    pending = signal.setdefault(
+        "pending_events",
+        []
+    )
 
     if event not in pending:
         pending.append(event)
@@ -1354,7 +1656,10 @@ def process_pending_events(state):
     changed = False
 
     for signal in state["signals"]:
-        pending = signal.setdefault("pending_events", [])
+        pending = signal.setdefault(
+            "pending_events",
+            []
+        )
 
         for event in list(pending):
             if send_event_message(signal, event):
@@ -1402,7 +1707,6 @@ def update_signal_results(state):
                 symbol,
                 last_checked + 1
             )
-
         except Exception as error:
             print(f"Tracking error {symbol}: {error}")
             continue
@@ -1415,7 +1719,6 @@ def update_signal_results(state):
         stop = float(signal["stop_loss"])
         tp1 = float(signal["tp1"])
         tp2 = float(signal["tp2"])
-        tp3 = float(signal["tp3"])
 
         for _, candle in candles.iterrows():
             high = float(candle["high"])
@@ -1424,87 +1727,70 @@ def update_signal_results(state):
 
             if direction == "BUY":
                 stop_hit = low <= stop
-
-                reached_level = (
-                    tp3 if high >= tp3
-                    else tp2 if high >= tp2
-                    else tp1 if high >= tp1
-                    else None
-                )
+                tp1_hit = high >= tp1
+                tp2_hit = high >= tp2
 
             else:
                 stop_hit = high >= stop
+                tp1_hit = low <= tp1
+                tp2_hit = low <= tp2
 
-                reached_level = (
-                    tp3 if low <= tp3
-                    else tp2 if low <= tp2
-                    else tp1 if low <= tp1
-                    else None
-                )
+            # Conservative rule:
+            # If SL and target are in the same candle,
+            # assume SL happened first.
 
-            # Conservative rule: SL wins if both hit in one candle.
             if stop_hit:
                 signal["status"] = "SL"
                 signal["result_time"] = close_time
                 signal["result_price"] = stop
 
+                if not signal.get("tp1_hit"):
+                    signal["stat_result"] = "LOSS"
+                    signal["result_locked"] = True
+
+                else:
+                    signal["stat_result"] = "WIN"
+                    signal["result_locked"] = True
+
                 queue_event(signal, "SL")
-
                 changed = True
                 break
 
-            if reached_level is None:
-                continue
+            if tp1_hit and not signal.get("tp1_hit"):
+                signal["tp1_hit"] = True
+                signal["tp1_time"] = close_time
+                signal["result_stage"] = "TP1"
+                signal["stat_result"] = "WIN"
+                signal["result_locked"] = True
 
-            if reached_level == tp3:
+                queue_event(signal, "TP1")
+                changed = True
+
+            if tp2_hit:
+                # If price gaps through TP2,
+                # count TP1 as reached as well.
+
                 if not signal.get("tp1_hit"):
                     signal["tp1_hit"] = True
                     signal["tp1_time"] = close_time
-                    signal["result_stage"] = "TP1"
+                    signal["stat_result"] = "WIN"
+                    signal["result_locked"] = True
+
                     queue_event(signal, "TP1")
 
                 if not signal.get("tp2_hit"):
                     signal["tp2_hit"] = True
                     signal["tp2_time"] = close_time
                     signal["result_stage"] = "TP2"
+
                     queue_event(signal, "TP2")
 
-                if not signal.get("tp3_hit"):
-                    signal["tp3_hit"] = True
-                    signal["tp3_time"] = close_time
-                    signal["result_stage"] = "TP3"
-                    queue_event(signal, "TP3")
-
-                signal["status"] = "TP3"
+                signal["status"] = "TP2"
                 signal["result_time"] = close_time
-                signal["result_price"] = tp3
+                signal["result_price"] = tp2
 
                 changed = True
                 break
-
-            elif reached_level == tp2:
-                if not signal.get("tp1_hit"):
-                    signal["tp1_hit"] = True
-                    signal["tp1_time"] = close_time
-                    signal["result_stage"] = "TP1"
-                    queue_event(signal, "TP1")
-
-                if not signal.get("tp2_hit"):
-                    signal["tp2_hit"] = True
-                    signal["tp2_time"] = close_time
-                    signal["result_stage"] = "TP2"
-                    queue_event(signal, "TP2")
-
-                changed = True
-
-            elif reached_level == tp1:
-                if not signal.get("tp1_hit"):
-                    signal["tp1_hit"] = True
-                    signal["tp1_time"] = close_time
-                    signal["result_stage"] = "TP1"
-                    queue_event(signal, "TP1")
-
-                changed = True
 
         signal["last_checked_time"] = int(
             candles.iloc[-1]["close_time"]
@@ -1538,75 +1824,81 @@ def create_daily_report(state):
         if signal_created_date(signal) == today
     ]
 
+    wins = sum(
+        signal.get("stat_result") == "WIN"
+        for signal in today_signals
+    )
+
+    losses = sum(
+        signal.get("stat_result") == "LOSS"
+        for signal in today_signals
+    )
+
+    decided = wins + losses
+
+    win_rate = (
+        wins / decided * 100.0
+        if decided
+        else 0.0
+    )
+
     tp1_count = sum(
-        bool(s.get("tp1_hit"))
-        for s in today_signals
+        bool(signal.get("tp1_hit"))
+        for signal in today_signals
     )
 
     tp2_count = sum(
-        bool(s.get("tp2_hit"))
-        for s in today_signals
-    )
-
-    tp3_count = sum(
-        bool(s.get("tp3_hit"))
-        for s in today_signals
-    )
-
-    sl_before_tp1 = sum(
-        s.get("status") == "SL"
-        and not s.get("tp1_hit", False)
-        for s in today_signals
-    )
-
-    sl_after_tp1 = sum(
-        s.get("status") == "SL"
-        and s.get("tp1_hit", False)
-        and not s.get("tp2_hit", False)
-        for s in today_signals
-    )
-
-    sl_after_tp2 = sum(
-        s.get("status") == "SL"
-        and s.get("tp2_hit", False)
-        for s in today_signals
+        bool(signal.get("tp2_hit"))
+        for signal in today_signals
     )
 
     open_count = sum(
-        s.get("status") == "OPEN"
-        for s in today_signals
+        signal.get("status") == "OPEN"
+        for signal in today_signals
     )
 
-    record = state.get("daily", {}).get(
+    closed_sl = sum(
+        signal.get("status") == "SL"
+        for signal in today_signals
+    )
+
+    closed_tp2 = sum(
+        signal.get("status") == "TP2"
+        for signal in today_signals
+    )
+
+    record = state.get(
+        "daily",
+        {}
+    ).get(
         today,
         {
             "scans": 0,
-            "signals": 0,
-            "diagnostics": {}
+            "signals": 0
         }
     )
 
-    message = (
+    return (
         "📊 DAILY PERFORMANCE REPORT\n"
         "━━━━━━━━━━━━━━━━━━\n"
         f"Date: {today}\n\n"
         f"Scans completed: {record.get('scans', 0)}\n"
         f"New signals: {record.get('signals', 0)}\n\n"
-        "TARGET MILESTONES\n"
+        "STATISTICAL RESULTS (one result per signal)\n"
+        f"Wins: {wins}\n"
+        f"Losses: {losses}\n"
+        f"Win rate: {win_rate:.1f}%\n\n"
+        "TRADE STATUS\n"
         f"TP1 reached: {tp1_count}\n"
-        f"TP2 reached: {tp2_count}\n"
-        f"TP3 completed: {tp3_count}\n\n"
-        "FINAL RESULTS\n"
-        f"SL before TP1: {sl_before_tp1}\n"
-        f"SL after TP1: {sl_after_tp1}\n"
-        f"SL after TP2: {sl_after_tp2}\n"
+        f"TP2 closed: {closed_tp2}\n"
+        f"SL closed: {closed_sl}\n"
         f"Still open: {open_count}\n\n"
-        "TP1/TP2 are milestone counts, "
-        "not separate completed trades.\n"
+        "Rule: first TP1 touch = one WIN; "
+        "SL before TP1 = one LOSS.\n"
+        "After TP1, later SL does not add a loss. "
+        "TP2 or SL closes tracking.\n"
         "━━━━━━━━━━━━━━━━━━"
     )
-
-    return message
 
 
 # =========================================================
@@ -1618,36 +1910,129 @@ def run_scanner():
     global STRUCTURE_DEBUG
     global REJECTION_DEBUG
 
-    DIAGNOSTICS = {key: 0 for key in DIAGNOSTICS}
+    DIAGNOSTICS = {
+        key: 0 for key in DIAGNOSTICS
+    }
+
     STRUCTURE_DEBUG = []
     REJECTION_DEBUG = []
 
-    print("=" * 45)
-    print(f"SMART MONEY CRYPTO SIGNAL BOT v{VERSION}")
+    print("=" * 48)
+    print(
+        f"SMART MONEY CRYPTO SIGNAL BOT v{VERSION}"
+    )
     print("Iran time:", current_time_string())
-    print("=" * 45)
-
-    if not is_trading_time():
-        print("Outside trading hours.")
-        return
+    print("=" * 48)
 
     state = load_state()
 
+    # Open trades are monitored even during news windows.
     update_signal_results(state)
     save_state(state)
 
     process_pending_events(state)
 
-    coins = get_market_coins()
+    news_active, news_event, calendar_ok = (
+        active_high_impact_news()
+    )
 
-    print(f"Scanning {len(coins)} coins...")
+    news_warning = (
+        format_news_event(news_event)
+        if news_active
+        else None
+    )
+
+    if not calendar_ok:
+        DIAGNOSTICS["news_calendar_errors"] += 1
+
+        print(
+            "NEWS WARNING: calendar unavailable; "
+            "signals will continue normally."
+        )
+
+    elif news_active:
+        DIAGNOSTICS["news_warning_active"] += 1
+
+        print(
+            "HIGH-IMPACT NEWS WARNING "
+            "(signals are NOT blocked):",
+            news_warning
+        )
+
+        news_state = state.setdefault(
+            "news_filter",
+            {}
+        )
+
+        event_key = str(
+            news_event.get("id")
+            or news_event.get("ts")
+        )
+
+        if news_state.get("last_alert_key") != event_key:
+            send_telegram_text(
+                "📰 HIGH-IMPACT ECONOMIC NEWS WARNING\n"
+                "⚠️ The bot WILL continue sending signals.\n"
+                f"{news_warning}\n"
+                f"Warning window: "
+                f"{NEWS_PAUSE_BEFORE_MINUTES} min before / "
+                f"{NEWS_PAUSE_AFTER_MINUTES} min after.\n"
+                "Please review the news and decide manually "
+                "whether to enter.\n"
+                "Open trades continue to be monitored."
+            )
+
+            news_state["last_alert_key"] = event_key
+
+        save_state(state)
+
+    if not is_trading_time():
+        print(
+            "Outside entry hours. "
+            "Open-trade tracking completed."
+        )
+        return
+
+    try:
+        coins = get_market_coins()
+
+    except Exception as error:
+        DIAGNOSTICS["errors"] += 1
+
+        print("MARKET UNIVERSE ERROR:", error)
+        coins = []
+
+    print(
+        f"Market universe: {len(coins)} active Nobitex "
+        f"assets with liquid Binance USDT markets "
+        f"(max {TOP_COINS})."
+    )
 
     new_signals = 0
 
-    for symbol in coins:
+    # News is warning-only. It never suppresses signals.
+    coins_to_scan = coins
+
+    print(
+        f"Scanning {len(coins_to_scan)} coins "
+        "for new entries..."
+    )
+
+    for symbol in coins_to_scan:
         try:
-            df5 = get_candles(symbol, TIMEFRAME)
-            df15 = get_candles(symbol, TREND_TIMEFRAME)
+            if has_open_trade_for_symbol(state, symbol):
+                DIAGNOSTICS["open_trade_locked"] += 1
+                continue
+
+            df5 = get_candles(
+                symbol,
+                TIMEFRAME
+            )
+
+            df15 = get_candles(
+                symbol,
+                TREND_TIMEFRAME
+            )
 
             signal = generate_signal(
                 symbol,
@@ -1658,21 +2043,39 @@ def run_scanner():
             if signal is None:
                 continue
 
-            duplicate = any(
+            if news_warning:
+                signal["news_warning"] = news_warning
+
+            # Re-check before appending.
+            if has_open_trade_for_symbol(state, symbol):
+                DIAGNOSTICS["duplicate_signals"] += 1
+                continue
+
+            same_signal = any(
                 old.get("symbol") == symbol
-                and int(old.get("signal_time", 0))
-                == signal["signal_time"]
-                and old.get("status") in ("OPEN", "TP3", "SL")
+                and (
+                    int(old.get("signal_time", 0))
+                    == int(signal["signal_time"])
+                    or (
+                        old.get("sweep_time")
+                        == signal.get("sweep_time")
+                        and old.get("structure_time")
+                        == signal.get("structure_time")
+                    )
+                )
                 for old in state["signals"]
             )
 
-            if duplicate:
+            if same_signal:
                 DIAGNOSTICS["duplicate_signals"] += 1
                 continue
 
             state["signals"].append(signal)
 
-            queue_event(signal, "ENTRY")
+            queue_event(
+                signal,
+                "ENTRY"
+            )
 
             new_signals += 1
 
@@ -1680,7 +2083,7 @@ def run_scanner():
                 f"NEW SIGNAL: {symbol} "
                 f"{signal['direction']} "
                 f"{signal['confirmations']}/7 "
-                f"RISK={signal['risk_atr']:.2f} ATR (no risk filter)"
+                f"RISK={signal['risk_atr']:.2f} ATR"
             )
 
             save_state(state)
@@ -1696,34 +2099,35 @@ def run_scanner():
 
     for key, value in DIAGNOSTICS.items():
         record["diagnostics"][key] = (
-            record["diagnostics"].get(key, 0) + value
+            record["diagnostics"].get(key, 0)
+            + value
         )
 
     save_state(state)
 
     process_pending_events(state)
-
     save_state(state)
 
-    print("=" * 45)
+    print("=" * 48)
     print("SCAN FINISHED")
-    print("Coins scanned:", len(coins))
+    print("Coins in market universe:", len(coins))
+    print("Coins scanned for entries:", len(coins_to_scan))
     print("Signals found:", new_signals)
     print("Diagnostics:", DIAGNOSTICS)
+    print("=" * 48)
 
-    print("=" * 45)
     print("STRUCTURE DEBUG DETAILS")
 
     for item in STRUCTURE_DEBUG:
         print(item)
 
-    print("=" * 45)
+    print("=" * 48)
     print("REJECTION DEBUG DETAILS")
 
     for item in REJECTION_DEBUG:
         print(item)
 
-    print("=" * 45)
+    print("=" * 48)
 
 
 # =========================================================
@@ -1758,6 +2162,7 @@ if __name__ == "__main__":
             and sys.argv[1].lower() == "report"
         ):
             run_report()
+
         else:
             run_scanner()
 
