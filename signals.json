@@ -23,10 +23,15 @@
       "result_time": 1794161699999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 0.0015794438012262885
+      "result_stage": "TP1",
+      "tp3": 0.0015794438012262885,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "ENAUSDT",
@@ -51,10 +56,15 @@
       "tp2_hit": true,
       "result_time": 1794157799999,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 0.15170877507203362
+      "result_stage": "TP2",
+      "tp3": 0.15170877507203362,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "ZECUSDT",
@@ -79,10 +89,15 @@
       "result_time": 1794161699999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 1226.241329162408
+      "result_stage": "TP1",
+      "tp3": 1226.241329162408,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "SOLUSDT",
@@ -106,10 +121,16 @@
       "result_time": 1794157499999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 88.31857805109644
+      "tp3": 88.31857805109644,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "XRPUSDT",
@@ -133,10 +154,16 @@
       "result_time": 1794157799999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 1.1434803487966012
+      "tp3": 1.1434803487966012,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "ONEUSDT",
@@ -160,10 +187,16 @@
       "result_time": 1794158699999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 0.0015243622581259855
+      "tp3": 0.0015243622581259855,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "ENAUSDT",
@@ -187,10 +220,16 @@
       "result_time": 1794157199999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 0.15053537236766584
+      "tp3": 0.15053537236766584,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "BMTUSDT",
@@ -215,10 +254,15 @@
       "tp2_hit": true,
       "result_time": 1794162299999,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 0.02375580780890602
+      "result_stage": "TP2",
+      "tp3": 0.02375580780890602,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "PUMPUSDT",
@@ -242,10 +286,16 @@
       "result_time": 1794159899999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 0.003569878879962001
+      "tp3": 0.003569878879962001,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "XRPUSDT",
@@ -269,10 +319,16 @@
       "result_time": 1794161699999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 1.143510086054795
+      "tp3": 1.143510086054795,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "UNIUSDT",
@@ -296,10 +352,16 @@
       "result_time": 1794160499999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 6.879428066378472
+      "tp3": 6.879428066378472,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "DOGEUSDT",
@@ -323,10 +385,16 @@
       "result_time": 1794161699999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 0.07032643160697043
+      "tp3": 0.07032643160697043,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     },
     {
       "symbol": "ZECUSDT",
@@ -351,10 +419,15 @@
       "result_price": 1256.85909784687,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
       "result_stage": "NONE",
-      "tp3": 1288.6227064593895
+      "tp3": 1288.6227064593895,
+      "tp1_time": null,
+      "tp2_time": null,
+      "tp3_time": null
     },
     {
       "symbol": "SOLUSDT",
@@ -379,10 +452,15 @@
       "result_time": 1794164999999,
       "tp2_hit": false,
       "tp3_hit": false,
-      "telegram_events": {},
+      "telegram_events": {
+        "ENTRY": true
+      },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 90.31699372466105
+      "result_stage": "TP1",
+      "tp3": 90.31699372466105,
+      "tp2_time": null,
+      "tp3_time": null,
+      "result_price": null
     }
   ],
   "daily": {
@@ -428,22 +506,22 @@
       }
     },
     "2026-11-10": {
-      "scans": 5,
+      "scans": 6,
       "signals": 0,
       "diagnostics": {
         "insufficient_data": 0,
         "invalid_values": 0,
-        "adx_rejected": 11,
-        "volatility_rejected": 10,
+        "adx_rejected": 14,
+        "volatility_rejected": 12,
         "volume_rejected": 0,
         "confirmations_rejected": 0,
         "direction_rejected": 0,
-        "sweep_rejected": 27,
-        "sweep_detected": 52,
-        "structure_rejected": 51,
+        "sweep_rejected": 31,
+        "sweep_detected": 63,
+        "structure_rejected": 62,
         "structure_detected": 1,
         "structure_no_pivot": 0,
-        "structure_no_break": 76,
+        "structure_no_break": 79,
         "structure_pivots_found": 2041,
         "structure_bars_checked": 268,
         "fvg_rejected": 1,
@@ -451,7 +529,10 @@
         "fvg_retest_detected": 0,
         "order_block_detected": 0,
         "risk_rejected": 0,
-        "errors": 0
+        "errors": 0,
+        "structure_waiting": 13,
+        "structure_expired": 3,
+        "structure_confirmed": 0
       }
     }
   }
