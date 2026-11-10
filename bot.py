@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.7.1
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.8.0
 # =========================================================
 
-VERSION = "5.7.1"
+VERSION = "5.8.0"
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -22,7 +22,7 @@ TIMEFRAME = "5m"
 TREND_TIMEFRAME = "15m"
 
 TOP_COINS = 20
-MIN_CONFIRMATIONS = 3
+MIN_CONFIRMATIONS = 5
 
 VOLUME_MULTIPLIER = 0.90
 ADX_MINIMUM = 14
@@ -40,18 +40,7 @@ FVG_LOOKBACK = 25
 FVG_MIN_ATR = 0.05
 ORDER_BLOCK_LOOKBACK = 10
 
-MIN_RISK_ATR = 0.75
-MAX_RISK_ATR = 3.0
-
 SWEEP_STOP_BUFFER = 0.12
-
-# Pullback settings
-PULLBACK_LOOKBACK = 12
-PULLBACK_TOLERANCE_ATR = 0.30
-PULLBACK_STOP_BUFFER_ATR = 0.15
-MAX_ENTRY_DISTANCE_ATR = 0.50
-
-MAX_STRUCTURE_AGE_MINUTES = 120
 
 STATE_FILE = "signals.json"
 
@@ -195,7 +184,7 @@ def send_signal(signal):
         f"💎 Symbol: {signal['symbol']}\n"
         f"📍 Direction: {label}\n"
         "⏱ Timeframe: 5m\n"
-        f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
+        f"⭐ Confirmations: {signal['confirmations']}/7 (minimum 5)\n\n"
         "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
@@ -1006,156 +995,6 @@ def find_sweep_structure(df15, symbol):
 
 
 # =========================================================
-# PULLBACK ENTRY
-# =========================================================
-
-def detect_pullback_entry(
-    df5,
-    direction,
-    structure,
-    sweep,
-    atr
-):
-    """
-    Entry only after:
-    1. Confirmed BOS/CHoCH.
-    2. Price returns to the broken structure level.
-    3. A closed 5m candle confirms rejection.
-    """
-
-    reference = float(structure["reference"])
-    structure_time = int(structure["time"])
-
-    age_minutes = (
-        int(df5.iloc[-1]["close_time"]) - structure_time
-    ) / 60000
-
-    if age_minutes < 0 or age_minutes > MAX_STRUCTURE_AGE_MINUTES:
-        DIAGNOSTICS["pullback_rejected"] += 1
-        return None
-
-    after = df5[
-        df5["time"] >= structure_time
-    ].copy()
-
-    if len(after) < 2:
-        DIAGNOSTICS["pullback_waiting"] += 1
-        return None
-
-    after = after.tail(PULLBACK_LOOKBACK)
-
-    last = after.iloc[-1]
-
-    tolerance = atr * PULLBACK_TOLERANCE_ATR
-
-    entry = float(last["close"])
-
-    if direction == "BUY":
-        touched = (
-            float(last["low"]) <= reference + tolerance
-            and float(last["low"]) >= reference - tolerance
-        )
-
-        rejection = (
-            float(last["close"]) > float(last["open"])
-            and float(last["close"]) > reference
-        )
-
-        stop_anchor = min(
-            float(after["low"].min()),
-            float(sweep["sweep_low"])
-        )
-
-        structural_stop = (
-            stop_anchor - atr * PULLBACK_STOP_BUFFER_ATR
-        )
-
-        stop_loss = min(
-            structural_stop,
-            entry - atr * MIN_RISK_ATR
-        )
-
-        risk = entry - stop_loss
-
-        distance = max(0, entry - reference)
-
-    else:
-        touched = (
-            float(last["high"]) >= reference - tolerance
-            and float(last["high"]) <= reference + tolerance
-        )
-
-        rejection = (
-            float(last["close"]) < float(last["open"])
-            and float(last["close"]) < reference
-        )
-
-        stop_anchor = max(
-            float(after["high"].max()),
-            float(sweep["sweep_high"])
-        )
-
-        structural_stop = (
-            stop_anchor + atr * PULLBACK_STOP_BUFFER_ATR
-        )
-
-        stop_loss = max(
-            structural_stop,
-            entry + atr * MIN_RISK_ATR
-        )
-
-        risk = stop_loss - entry
-
-        distance = max(0, reference - entry)
-
-    if not touched or not rejection:
-        DIAGNOSTICS["pullback_waiting"] += 1
-        return None
-
-    if distance > atr * MAX_ENTRY_DISTANCE_ATR:
-        DIAGNOSTICS["entry_distance_rejected"] += 1
-
-        REJECTION_DEBUG.append({
-            "stage": "PULLBACK",
-            "reason": "ENTRY_TOO_FAR_FROM_STRUCTURE",
-            "distance_atr": distance / atr
-        })
-
-        return None
-
-    if not np.isfinite(risk) or risk <= 0:
-        DIAGNOSTICS["risk_rejected"] += 1
-        DIAGNOSTICS["risk_rejected_invalid"] += 1
-        return None
-
-    if risk > atr * MAX_RISK_ATR:
-        DIAGNOSTICS["risk_rejected"] += 1
-        DIAGNOSTICS["risk_rejected_too_wide"] += 1
-
-        REJECTION_DEBUG.append({
-            "stage": "RISK",
-            "reason": "SL_TOO_WIDE",
-            "entry": entry,
-            "stop_loss": stop_loss,
-            "risk_atr": risk / atr,
-            "maximum_risk_atr": MAX_RISK_ATR
-        })
-
-        return None
-
-    DIAGNOSTICS["pullback_confirmed"] += 1
-
-    return {
-        "entry": entry,
-        "stop_loss": float(stop_loss),
-        "risk": float(risk),
-        "risk_atr": float(risk / atr),
-        "reference": reference,
-        "pullback_time": int(last["close_time"])
-    }
-
-
-# =========================================================
 # FAIR VALUE GAP
 # =========================================================
 
@@ -1374,21 +1213,36 @@ def generate_signal(symbol, df5, df15):
 
         return None
 
-    # Pullback entry
-    pullback = detect_pullback_entry(
-        df5,
-        direction,
-        structure,
-        sweep,
-        atr
-    )
+    # Direct entry: no pullback wait and no maximum-risk rejection.
+    # Entry is the latest fully closed 5m candle close.
+    entry = float(row["close"])
 
-    if pullback is None:
-        return None
+    # Keep a structural stop beyond the liquidity-sweep extreme.
+    # If price has already crossed that level, use a fallback stop
+    # 0.75 ATR away so that TP calculations remain valid.
+    if direction == "BUY":
+        structural_stop = (
+            float(sweep["sweep_low"]) - atr * SWEEP_STOP_BUFFER
+        )
+        stop_loss = (
+            structural_stop
+            if structural_stop < entry
+            else entry - atr * 0.75
+        )
+        risk = entry - stop_loss
+    else:
+        structural_stop = (
+            float(sweep["sweep_high"]) + atr * SWEEP_STOP_BUFFER
+        )
+        stop_loss = (
+            structural_stop
+            if structural_stop > entry
+            else entry + atr * 0.75
+        )
+        risk = stop_loss - entry
 
-    entry = pullback["entry"]
-    stop_loss = pullback["stop_loss"]
-    risk = pullback["risk"]
+    # No risk-size filter in this test version: large stop distances
+    # are allowed and are reported transparently in the signal.
 
     if direction == "BUY":
         tp1 = entry + risk
@@ -1442,10 +1296,7 @@ def generate_signal(symbol, df5, df15):
         "fvg_retest": bool(fvg),
         "fvg_required": False,
 
-        "entry_model": "BOS_CHOCH_PULLBACK",
-
-        "pullback_reference": pullback["reference"],
-        "pullback_time": pullback["pullback_time"],
+        "entry_model": "DIRECT_AFTER_BOS_CHOCH",
 
         "order_block": order_block,
 
@@ -1829,7 +1680,7 @@ def run_scanner():
                 f"NEW SIGNAL: {symbol} "
                 f"{signal['direction']} "
                 f"{signal['confirmations']}/7 "
-                f"RISK={signal['risk_atr']:.2f} ATR"
+                f"RISK={signal['risk_atr']:.2f} ATR (no risk filter)"
             )
 
             save_state(state)
