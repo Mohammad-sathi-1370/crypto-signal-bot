@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.7.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.7.1
 # =========================================================
 
-VERSION = "5.7.0"
+VERSION = "5.7.1"
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -22,7 +22,7 @@ TIMEFRAME = "5m"
 TREND_TIMEFRAME = "15m"
 
 TOP_COINS = 20
-MIN_CONFIRMATIONS = 5
+MIN_CONFIRMATIONS = 3
 
 VOLUME_MULTIPLIER = 0.90
 ADX_MINIMUM = 14
