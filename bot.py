@@ -3,21 +3,20 @@ import sys
 import json
 import time
 import requests
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from datetime import datetime, timezone, timedelta
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# =====================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.3 DEBUG
-# =====================================================
+# =========================================================
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.4
+# =========================================================
 
-VERSION = "5.3-DEBUG"
+VERSION = "5.4"
 
 BASE_URL = "https://data-api.binance.vision"
-
 TIMEFRAME = "5m"
 TREND_TIMEFRAME = "15m"
 
@@ -25,75 +24,67 @@ TOP_COINS = 20
 MIN_CONFIRMATIONS = 5
 
 VOLUME_MULTIPLIER = 0.90
-
 ADX_MINIMUM = 14
 ADX_CONFIRMATION = 18
-
 MIN_ATR_RATIO = 0.0004
 
 SWEEP_LOOKBACK = 8
 LIQUIDITY_LOOKBACK = 12
-STRUCTURE_LOOKBACK = 5
 MAX_STRUCTURE_BARS = 8
+
+PIVOT_LEFT = 2
+PIVOT_RIGHT = 2
 
 FVG_LOOKBACK = 25
 FVG_MIN_ATR = 0.05
-
 ORDER_BLOCK_LOOKBACK = 10
 
 MIN_RISK_ATR = 0.75
 MAX_RISK_ATR = 3.0
 SWEEP_STOP_BUFFER = 0.12
 
-PIVOT_LEFT = 2
-PIVOT_RIGHT = 2
-
 STATE_FILE = "signals.json"
 
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
-# =====================================================
+# =========================================================
 # HTTP SESSION
-# =====================================================
+# =========================================================
 
 session = requests.Session()
 
-retry_strategy = Retry(
-    total=3,
-    connect=3,
-    read=3,
+retry = Retry(
+    total=4,
+    connect=4,
+    read=4,
     backoff_factor=0.7,
     status_forcelist=[429, 500, 502, 503, 504],
-    allowed_methods=["GET"]
+    allowed_methods=["GET", "POST"]
 )
 
-adapter = HTTPAdapter(max_retries=retry_strategy)
-session.mount("https://", adapter)
+adapter = HTTPAdapter(max_retries=retry)
 
+session.mount("https://", adapter)
 session.headers.update({
-    "User-Agent": f"CryptoSignalBot/{VERSION}"
+    "User-Agent": "CryptoSignalBot/5.4"
 })
 
-# =====================================================
+# =========================================================
 # DIAGNOSTICS
-# =====================================================
+# =========================================================
 
 DIAGNOSTICS = {
     "insufficient_data": 0,
     "invalid_values": 0,
     "adx_rejected": 0,
     "volatility_rejected": 0,
-    "volume_rejected": 0,
     "confirmations_rejected": 0,
-    "direction_rejected": 0,
     "sweep_rejected": 0,
     "sweep_detected": 0,
     "structure_rejected": 0,
     "structure_detected": 0,
     "structure_no_pivot": 0,
     "structure_no_break": 0,
-    "structure_pivots_found": 0,
-    "structure_bars_checked": 0,
     "fvg_rejected": 0,
     "fvg_detected": 0,
     "fvg_retest_detected": 0,
@@ -104,9 +95,9 @@ DIAGNOSTICS = {
 
 STRUCTURE_DEBUG = []
 
-# =====================================================
+# =========================================================
 # TIME
-# =====================================================
+# =========================================================
 
 def iran_now():
     return datetime.now(IRAN_TZ)
@@ -121,15 +112,22 @@ def today_string():
 
 
 def is_trading_time():
-    return 8 <= iran_now().hour < 22
+    now = iran_now()
+    return 8 <= now.hour < 22
 
 
-# =====================================================
+def timestamp_string(timestamp):
+    return datetime.fromtimestamp(
+        timestamp / 1000,
+        tz=IRAN_TZ
+    ).strftime("%Y-%m-%d %H:%M")
+
+
+# =========================================================
 # TELEGRAM
-# =====================================================
+# =========================================================
 
 def send_telegram_text(message):
-
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -140,7 +138,7 @@ def send_telegram_text(message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
     try:
-        response = requests.post(
+        response = session.post(
             url,
             data={
                 "chat_id": chat_id,
@@ -166,40 +164,75 @@ def send_telegram_text(message):
 
 
 def send_signal(signal):
+    direction = signal["direction"]
 
-    ob_text = "YES" if signal["order_block"] else "NO"
+    label = "🟢 LONG" if direction == "BUY" else "🔴 SHORT"
 
     message = (
-        "🚨 SMART MONEY SIGNAL 🚨\n\n"
-        f"Coin: {signal['symbol']}\n"
-        f"Direction: {signal['direction']}\n"
-        f"Confirmations: {signal['confirmations']}/7\n\n"
-        "SMC CONFIRMATIONS:\n"
-        "Liquidity Sweep: YES\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        f"🚨 SMART MONEY SIGNAL {VERSION}\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+        f"💎 Symbol: {signal['symbol']}\n"
+        f"📍 Direction: {label}\n"
+        f"⏱ Timeframe: 5m\n"
+        f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
+        "📊 SMC ANALYSIS\n"
+        f"Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
         "FVG Retest: YES\n"
-        f"Order Block: {ob_text}\n\n"
-        f"FVG Zone: {signal['fvg_lower']:.8g}"
-        f" - {signal['fvg_upper']:.8g}\n\n"
+        f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n\n"
+        "💰 TRADE LEVELS\n"
         f"Entry: {signal['entry']:.8g}\n"
         f"Stop Loss: {signal['stop_loss']:.8g}\n"
-        f"TP1: {signal['tp1']:.8g}\n"
-        f"TP2: {signal['tp2']:.8g}\n\n"
+        f"TP1: {signal['tp1']:.8g} (1R)\n"
+        f"TP2: {signal['tp2']:.8g} (2R)\n"
+        f"TP3: {signal['tp3']:.8g} (3R)\n\n"
+        "📈 INDICATORS\n"
         f"RSI: {signal['rsi']:.2f}\n"
         f"ADX: {signal['adx']:.2f}\n"
         f"Volume Ratio: {signal['volume_ratio']:.2f}\n\n"
-        f"Bot Version: {VERSION}"
+        f"🕒 {signal['created_at']}\n"
+        "━━━━━━━━━━━━━━━━━━"
     )
 
     return send_telegram_text(message)
 
 
-# =====================================================
+def send_event_message(signal, event):
+    symbol = signal["symbol"]
+
+    messages = {
+        "TP1": (
+            f"✅ TP1 HIT\n{symbol}\n"
+            f"Price: {signal['tp1']:.8g}\n"
+            "Milestone: 1R"
+        ),
+        "TP2": (
+            f"🔥 TP2 HIT\n{symbol}\n"
+            f"Price: {signal['tp2']:.8g}\n"
+            "Milestone: 2R"
+        ),
+        "TP3": (
+            f"🏆 TP3 HIT\n{symbol}\n"
+            f"Price: {signal['tp3']:.8g}\n"
+            "Milestone: 3R\n"
+            "Signal completed."
+        ),
+        "SL": (
+            f"🛑 STOP LOSS HIT\n{symbol}\n"
+            f"Price: {signal['stop_loss']:.8g}\n"
+            f"Previous milestone: {signal.get('result_stage', 'NONE')}"
+        )
+    }
+
+    return send_telegram_text(messages[event])
+
+
+# =========================================================
 # STATE STORAGE
-# =====================================================
+# =========================================================
 
 def load_state():
-
     if not os.path.exists(STATE_FILE):
         return {
             "signals": [],
@@ -210,10 +243,9 @@ def load_state():
         with open(STATE_FILE, "r", encoding="utf-8") as file:
             state = json.load(file)
 
-    except (json.JSONDecodeError, OSError) as error:
-        print("CRITICAL: State file could not be read:", error)
+    except Exception as error:
         raise RuntimeError(
-            "State file is damaged. Refusing to overwrite signal history."
+            f"Cannot safely load {STATE_FILE}: {error}"
         )
 
     if not isinstance(state, dict):
@@ -226,13 +258,30 @@ def load_state():
         raise RuntimeError("Invalid signals history.")
 
     if not isinstance(state["daily"], dict):
-        raise RuntimeError("Invalid daily history.")
+        state["daily"] = {}
+
+    for signal in state["signals"]:
+        signal.setdefault("tp1_hit", False)
+        signal.setdefault("tp2_hit", False)
+        signal.setdefault("tp3_hit", False)
+        signal.setdefault("telegram_events", {})
+        signal.setdefault("pending_events", [])
+        signal.setdefault("result_stage", "NONE")
+
+        if "tp3" not in signal and "entry" in signal:
+            entry = float(signal["entry"])
+            stop = float(signal["stop_loss"])
+            risk = abs(entry - stop)
+
+            if signal.get("direction") == "BUY":
+                signal["tp3"] = entry + 3 * risk
+            else:
+                signal["tp3"] = entry - 3 * risk
 
     return state
 
 
 def save_state(state):
-
     temp_file = STATE_FILE + ".tmp"
 
     with open(temp_file, "w", encoding="utf-8") as file:
@@ -247,7 +296,6 @@ def save_state(state):
 
 
 def get_daily_record(state):
-
     today = today_string()
 
     if today not in state["daily"]:
@@ -263,18 +311,14 @@ def get_daily_record(state):
     record.setdefault("signals", 0)
     record.setdefault("diagnostics", {})
 
-    for key in DIAGNOSTICS:
-        record["diagnostics"].setdefault(key, 0)
-
     return record
 
 
-# =====================================================
+# =========================================================
 # MARKET DATA
-# =====================================================
+# =========================================================
 
 def get_market_coins():
-
     response = session.get(
         f"{BASE_URL}/api/v3/ticker/24hr",
         timeout=20
@@ -284,34 +328,28 @@ def get_market_coins():
 
     excluded = {
         "USDC", "FDUSD", "TUSD", "USDP",
-        "DAI", "USDE", "BUSD", "EUR",
-        "AEUR", "UST", "USTC"
+        "DAI", "USDE", "BUSD"
     }
-
-    leveraged_suffixes = (
-        "UP", "DOWN", "BULL", "BEAR"
-    )
 
     coins = []
 
     for item in response.json():
-
-        symbol = item.get("symbol", "")
+        symbol = item["symbol"]
 
         if not symbol.endswith("USDT"):
             continue
 
-        base_asset = symbol[:-4]
+        base = symbol[:-4]
 
-        if base_asset in excluded:
+        if base in excluded:
             continue
 
-        if base_asset.endswith(leveraged_suffixes):
+        if base.endswith(("UP", "DOWN", "BULL", "BEAR")):
             continue
 
         try:
             volume = float(item["quoteVolume"])
-        except (ValueError, TypeError, KeyError):
+        except (ValueError, TypeError):
             continue
 
         if volume > 0:
@@ -326,7 +364,6 @@ def get_market_coins():
 
 
 def candles_to_dataframe(data):
-
     columns = [
         "time", "open", "high", "low", "close",
         "volume", "close_time", "quote_volume",
@@ -355,7 +392,6 @@ def candles_to_dataframe(data):
 
 
 def get_candles(symbol, timeframe):
-
     response = session.get(
         f"{BASE_URL}/api/v3/klines",
         params={
@@ -381,13 +417,12 @@ def get_candles(symbol, timeframe):
 
 
 def get_tracking_candles(symbol, start_time):
-
     cursor = int(start_time)
     now_ms = int(time.time() * 1000)
+
     all_candles = []
 
     while cursor < now_ms:
-
         response = session.get(
             f"{BASE_URL}/api/v3/klines",
             params={
@@ -418,17 +453,18 @@ def get_tracking_candles(symbol, start_time):
         if not closed.empty:
             all_candles.append(closed)
 
-        last_time = int(df.iloc[-1]["close_time"])
+        last_time = int(df.iloc[-1]["time"])
 
-        if len(data) < 1000:
-            break
-
-        next_cursor = last_time + 1
+        next_cursor = last_time + 300001
 
         if next_cursor <= cursor:
             break
 
         cursor = next_cursor
+
+        if len(data) < 1000:
+            break
+
         time.sleep(0.1)
 
     if not all_candles:
@@ -440,20 +476,19 @@ def get_tracking_candles(symbol, start_time):
     )
 
     return (
-        result
-        .drop_duplicates(subset=["time"])
+        result.drop_duplicates(subset=["time"])
         .sort_values("time")
         .reset_index(drop=True)
     )
 
 
-# =====================================================
+# =========================================================
 # INDICATORS
-# =====================================================
+# =========================================================
 
 def calculate_indicators(df):
-
     df = df.copy()
+
     close = df["close"]
 
     df["ema20"] = close.ewm(
@@ -503,14 +538,11 @@ def calculate_indicators(df):
 
     prev_close = close.shift(1)
 
-    tr = pd.concat(
-        [
-            df["high"] - df["low"],
-            (df["high"] - prev_close).abs(),
-            (df["low"] - prev_close).abs()
-        ],
-        axis=1
-    ).max(axis=1)
+    tr = pd.concat([
+        df["high"] - df["low"],
+        (df["high"] - prev_close).abs(),
+        (df["low"] - prev_close).abs()
+    ], axis=1).max(axis=1)
 
     df["atr"] = tr.ewm(
         alpha=1 / 14,
@@ -546,13 +578,11 @@ def calculate_indicators(df):
     ).mean()
 
     df["plus_di"] = (
-        100 * plus_smoothed /
-        atr_adx.replace(0, np.nan)
+        100 * plus_smoothed / atr_adx.replace(0, np.nan)
     )
 
     df["minus_di"] = (
-        100 * minus_smoothed /
-        atr_adx.replace(0, np.nan)
+        100 * minus_smoothed / atr_adx.replace(0, np.nan)
     )
 
     dx = (
@@ -568,27 +598,25 @@ def calculate_indicators(df):
     return df
 
 
-# =====================================================
-# CONFIRMED SWING POINTS
-# =====================================================
+# =========================================================
+# CONFIRMED PIVOTS
+# =========================================================
 
 def find_confirmed_swings(df, end_index):
-
     highs = []
     lows = []
 
-    last_pivot = end_index - PIVOT_RIGHT
+    last_pivot = min(
+        end_index - PIVOT_RIGHT,
+        len(df) - PIVOT_RIGHT - 1
+    )
 
     for i in range(
         PIVOT_LEFT,
         last_pivot + 1
     ):
-
         left = df.iloc[i - PIVOT_LEFT:i]
         right = df.iloc[i + 1:i + PIVOT_RIGHT + 1]
-
-        if len(right) < PIVOT_RIGHT:
-            continue
 
         high = float(df.iloc[i]["high"])
         low = float(df.iloc[i]["low"])
@@ -614,12 +642,11 @@ def find_confirmed_swings(df, end_index):
     return highs, lows
 
 
-# =====================================================
+# =========================================================
 # LIQUIDITY SWEEP
-# =====================================================
+# =========================================================
 
 def detect_sweep_candidates(df):
-
     if len(df) < LIQUIDITY_LOOKBACK + 5:
         return []
 
@@ -632,12 +659,12 @@ def detect_sweep_candidates(df):
 
     candidates = []
 
+    # The newest CLOSED candle is included.
     for i in range(
-        last_index - 1,
+        last_index,
         first_index - 1,
         -1
     ):
-
         prior = df.iloc[
             i - LIQUIDITY_LOOKBACK:i
         ]
@@ -654,7 +681,6 @@ def detect_sweep_candidates(df):
             float(candle["low"]) < liq_low
             and float(candle["close"]) > liq_low
         ):
-
             candidates.append({
                 "direction": "BUY",
                 "index": i,
@@ -668,7 +694,6 @@ def detect_sweep_candidates(df):
             float(candle["high"]) > liq_high
             and float(candle["close"]) < liq_high
         ):
-
             candidates.append({
                 "direction": "SELL",
                 "index": i,
@@ -681,65 +706,60 @@ def detect_sweep_candidates(df):
     return candidates
 
 
-# =====================================================
-# MARKET STRUCTURE - DEBUG VERSION
-# =====================================================
+# =========================================================
+# BOS / CHoCH STRUCTURE
+# =========================================================
 
-def detect_structure(df, sweep):
-
+def detect_structure(df, sweep, symbol="UNKNOWN"):
     sweep_index = sweep["index"]
     direction = sweep["direction"]
 
     highs, lows = find_confirmed_swings(
         df,
-        sweep_index
+        sweep_index - 1
     )
 
     if direction == "BUY":
         valid = [
-            item for item in highs
-            if item["index"] < sweep_index
+            pivot for pivot in highs
+            if pivot["index"] < sweep_index
         ]
+        reference_type = "SWING_HIGH"
+
     else:
         valid = [
-            item for item in lows
-            if item["index"] < sweep_index
+            pivot for pivot in lows
+            if pivot["index"] < sweep_index
         ]
-
-    DIAGNOSTICS["structure_pivots_found"] += len(valid)
+        reference_type = "SWING_LOW"
 
     if not valid:
-
         DIAGNOSTICS["structure_no_pivot"] += 1
 
         STRUCTURE_DEBUG.append({
+            "symbol": symbol,
             "direction": direction,
-            "sweep_time": sweep["time"],
-            "reason": "NO_CONFIRMED_PIVOT",
-            "pivot_count": 0,
-            "reference": None,
-            "bars_checked": 0,
-            "best_close": None
+            "reason": "NO_PIVOT",
+            "sweep_time": sweep["time"]
         })
 
         return None
 
-    reference = valid[-1]
+    pivot = valid[-1]
+
+    reference = float(pivot["price"])
 
     end_index = min(
         len(df) - 1,
         sweep_index + MAX_STRUCTURE_BARS
     )
 
-    bars_checked = 0
     best_close = None
+    bars_checked = 0
 
-    for j in range(
-        sweep_index + 1,
-        end_index + 1
-    ):
-
+    for j in range(sweep_index + 1, end_index + 1):
         candle = df.iloc[j]
+
         close = float(candle["close"])
 
         bars_checked += 1
@@ -747,81 +767,79 @@ def detect_structure(df, sweep):
         if best_close is None:
             best_close = close
 
-        elif direction == "BUY" and close > best_close:
-            best_close = close
-
-        elif direction == "SELL" and close < best_close:
-            best_close = close
-
-        DIAGNOSTICS["structure_bars_checked"] += 1
-
-        if direction == "BUY":
-
-            if close > reference["price"]:
-
-                STRUCTURE_DEBUG.append({
-                    "direction": direction,
-                    "sweep_time": sweep["time"],
-                    "reason": "STRUCTURE_CONFIRMED",
-                    "pivot_count": len(valid),
-                    "reference": reference["price"],
-                    "bars_checked": bars_checked,
-                    "best_close": best_close
-                })
-
-                return {
-                    "name": "BOS/CHoCH",
-                    "time": int(candle["close_time"]),
-                    "index": j
-                }
+        elif direction == "BUY":
+            best_close = max(best_close, close)
 
         else:
+            best_close = min(best_close, close)
 
-            if close < reference["price"]:
+        broken = (
+            close > reference
+            if direction == "BUY"
+            else close < reference
+        )
 
-                STRUCTURE_DEBUG.append({
-                    "direction": direction,
-                    "sweep_time": sweep["time"],
-                    "reason": "STRUCTURE_CONFIRMED",
-                    "pivot_count": len(valid),
-                    "reference": reference["price"],
-                    "bars_checked": bars_checked,
-                    "best_close": best_close
-                })
+        if broken:
+            name = "BOS"
 
-                return {
-                    "name": "BOS/CHoCH",
-                    "time": int(candle["close_time"]),
-                    "index": j
-                }
+            # Structure classification is deliberately
+            # conservative when no reliable prior trend exists.
+            if direction == "BUY":
+                previous_lows = [
+                    p["price"] for p in lows
+                    if p["index"] < pivot["index"]
+                ]
+
+                if previous_lows and reference < max(previous_lows):
+                    name = "CHoCH"
+
+            else:
+                previous_highs = [
+                    p["price"] for p in highs
+                    if p["index"] < pivot["index"]
+                ]
+
+                if previous_highs and reference > min(previous_highs):
+                    name = "CHoCH"
+
+            return {
+                "name": name,
+                "time": int(candle["close_time"]),
+                "index": j,
+                "reference": reference,
+                "pivot_index": pivot["index"],
+                "bars_checked": bars_checked
+            }
 
     DIAGNOSTICS["structure_no_break"] += 1
 
+    atr_value = float(df.iloc[sweep_index]["close"])
+
     STRUCTURE_DEBUG.append({
+        "symbol": symbol,
         "direction": direction,
-        "sweep_time": sweep["time"],
         "reason": "NO_STRUCTURE_BREAK",
-        "pivot_count": len(valid),
-        "reference": reference["price"],
+        "reference": reference,
+        "reference_type": reference_type,
+        "best_close": best_close,
         "bars_checked": bars_checked,
-        "best_close": best_close
+        "sweep_time": sweep["time"]
     })
 
     return None
 
 
-def find_sweep_structure(df15):
-
+def find_sweep_structure(df15, symbol):
     candidates = detect_sweep_candidates(df15)
 
     if not candidates:
         return None, None, 0, False
 
     for sweep in candidates:
-
         structure = detect_structure(
             df15,
-            sweep
+            sweep,
+            symbol
         )
 
         if structure is not None:
@@ -832,20 +850,14 @@ def find_sweep_structure(df15):
                 True
             )
 
-    return (
-        candidates[0],
-        None,
-        len(candidates),
-        False
-    )
+    return candidates[0], None, len(candidates), False
 
 
-# =====================================================
+# =========================================================
 # FAIR VALUE GAP + RETEST
-# =====================================================
+# =========================================================
 
-def detect_fvg_retest(df, direction, after_time):
-
+def detect_fvg_retest(df, direction, after_time, atr):
     if len(df) < 30:
         return None
 
@@ -857,120 +869,84 @@ def detect_fvg_retest(df, direction, after_time):
     )
 
     last = df.iloc[last_index]
-    counted_fvg = False
+
+    counted = False
 
     for i in range(
         last_index - 1,
         start - 1,
         -1
     ):
-
         first = df.iloc[i - 2]
         third = df.iloc[i]
 
         if int(third["close_time"]) <= after_time:
             continue
 
-        atr_value = float(third["atr"])
-
-        if not np.isfinite(atr_value) or atr_value <= 0:
-            continue
-
         if direction == "BUY":
-
             if float(third["low"]) <= float(first["high"]):
                 continue
 
             zone_low = float(first["high"])
             zone_high = float(third["low"])
 
-            gap_size = zone_high - zone_low
-
-            if gap_size < atr_value * FVG_MIN_ATR:
-                continue
-
-            later = df.iloc[i + 1:last_index]
-
-            if (
-                not later.empty
-                and (later["close"] < zone_low).any()
-            ):
-                continue
-
-            if not counted_fvg:
-                DIAGNOSTICS["fvg_detected"] += 1
-                counted_fvg = True
-
-            touched = (
-                float(last["low"]) <= zone_high
-                and float(last["high"]) >= zone_low
-            )
-
-            if (
-                touched
-                and float(last["close"]) > float(last["open"])
-            ):
-
-                DIAGNOSTICS["fvg_retest_detected"] += 1
-
-                return {
-                    "lower": zone_low,
-                    "upper": zone_high,
-                    "time": int(third["close_time"])
-                }
-
         else:
-
             if float(third["high"]) >= float(first["low"]):
                 continue
 
             zone_low = float(third["high"])
             zone_high = float(first["low"])
 
-            gap_size = zone_high - zone_low
+        if zone_high - zone_low < atr * FVG_MIN_ATR:
+            continue
 
-            if gap_size < atr_value * FVG_MIN_ATR:
-                continue
+        later = df.iloc[i + 1:last_index]
 
-            later = df.iloc[i + 1:last_index]
-
-            if (
+        if direction == "BUY":
+            invalidated = (
+                not later.empty
+                and (later["close"] < zone_low).any()
+            )
+        else:
+            invalidated = (
                 not later.empty
                 and (later["close"] > zone_high).any()
-            ):
-                continue
-
-            if not counted_fvg:
-                DIAGNOSTICS["fvg_detected"] += 1
-                counted_fvg = True
-
-            touched = (
-                float(last["high"]) >= zone_low
-                and float(last["low"]) <= zone_high
             )
 
-            if (
-                touched
-                and float(last["close"]) < float(last["open"])
-            ):
+        if invalidated:
+            continue
 
-                DIAGNOSTICS["fvg_retest_detected"] += 1
+        if not counted:
+            DIAGNOSTICS["fvg_detected"] += 1
+            counted = True
 
-                return {
-                    "lower": zone_low,
-                    "upper": zone_high,
-                    "time": int(third["close_time"])
-                }
+        touched = (
+            float(last["low"]) <= zone_high
+            and float(last["high"]) >= zone_low
+        )
+
+        if direction == "BUY":
+            confirmed = float(last["close"]) > float(last["open"])
+        else:
+            confirmed = float(last["close"]) < float(last["open"])
+
+        if touched and confirmed:
+            DIAGNOSTICS["fvg_retest_detected"] += 1
+
+            return {
+                "lower": zone_low,
+                "upper": zone_high,
+                "time": int(third["close_time"])
+            }
 
     return None
 
 
-# =====================================================
-# ORDER BLOCK
-# =====================================================
+# =========================================================
+# ORDER BLOCK - SUPPORTING ONLY
+# =========================================================
 
 def detect_order_block(df, direction):
-
     if len(df) < ORDER_BLOCK_LOOKBACK + 2:
         return False
 
@@ -988,12 +964,11 @@ def detect_order_block(df, direction):
     )
 
 
-# =====================================================
+# =========================================================
 # SIGNAL GENERATION
-# =====================================================
+# =========================================================
 
 def generate_signal(symbol, df5, df15):
-
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
@@ -1025,7 +1000,7 @@ def generate_signal(symbol, df5, df15):
     price = float(row["close"])
     atr = float(row["atr"])
 
-    if atr <= 0 or float(row["volume_avg"]) <= 0:
+    if price <= 0 or atr <= 0 or row["volume_avg"] <= 0:
         DIAGNOSTICS["invalid_values"] += 1
         return None
 
@@ -1041,8 +1016,9 @@ def generate_signal(symbol, df5, df15):
         row["volume"] / row["volume_avg"]
     )
 
-    sweep, structure, sweep_count, paired = (
-        find_sweep_structure(df15)
+    sweep, structure, sweep_count, paired = find_sweep_structure(
+        df15,
+        symbol
     )
 
     if sweep_count == 0:
@@ -1062,7 +1038,8 @@ def generate_signal(symbol, df5, df15):
     fvg = detect_fvg_retest(
         df5,
         direction,
-        structure["time"]
+        structure["time"],
+        atr
     )
 
     if fvg is None:
@@ -1078,7 +1055,6 @@ def generate_signal(symbol, df5, df15):
         DIAGNOSTICS["order_block_detected"] += 1
 
     if direction == "BUY":
-
         checks = [
             row["rsi"] > 50,
             row["close"] > row["bb_mid"],
@@ -1090,7 +1066,6 @@ def generate_signal(symbol, df5, df15):
         ]
 
     else:
-
         checks = [
             row["rsi"] < 50,
             row["close"] < row["bb_mid"],
@@ -1101,16 +1076,13 @@ def generate_signal(symbol, df5, df15):
             row["minus_di"] > row["plus_di"]
         ]
 
-    confirmations = sum(
-        bool(check) for check in checks
-    )
+    confirmations = sum(bool(x) for x in checks)
 
     if confirmations < MIN_CONFIRMATIONS:
         DIAGNOSTICS["confirmations_rejected"] += 1
         return None
 
     if direction == "BUY":
-
         stop_loss = min(
             price - atr * MIN_RISK_ATR,
             sweep["sweep_low"] - atr * SWEEP_STOP_BUFFER
@@ -1119,7 +1091,6 @@ def generate_signal(symbol, df5, df15):
         risk = price - stop_loss
 
     else:
-
         stop_loss = max(
             price + atr * MIN_RISK_ATR,
             sweep["sweep_high"] + atr * SWEEP_STOP_BUFFER
@@ -1127,22 +1098,19 @@ def generate_signal(symbol, df5, df15):
 
         risk = stop_loss - price
 
-    if (
-        risk <= 0
-        or risk > atr * MAX_RISK_ATR
-    ):
+    if risk <= 0 or risk > atr * MAX_RISK_ATR:
         DIAGNOSTICS["risk_rejected"] += 1
         return None
 
     if direction == "BUY":
-
         tp1 = price + risk
         tp2 = price + risk * 2
+        tp3 = price + risk * 3
 
     else:
-
         tp1 = price - risk
         tp2 = price - risk * 2
+        tp3 = price - risk * 3
 
     signal_time = int(row["close_time"])
 
@@ -1153,6 +1121,9 @@ def generate_signal(symbol, df5, df15):
         "stop_loss": float(stop_loss),
         "tp1": float(tp1),
         "tp2": float(tp2),
+        "tp3": float(tp3),
+        "risk": float(risk),
+        "risk_atr": float(risk / atr),
         "confirmations": int(confirmations),
         "rsi": float(row["rsi"]),
         "adx": float(row["adx"]),
@@ -1162,27 +1133,68 @@ def generate_signal(symbol, df5, df15):
         "fvg_upper": fvg["upper"],
         "order_block": order_block,
         "structure": structure["name"],
+        "structure_time": structure["time"],
         "sweep_time": sweep["time"],
         "signal_time": signal_time,
         "last_checked_time": signal_time,
         "tp1_hit": False,
+        "tp2_hit": False,
+        "tp3_hit": False,
+        "result_stage": "NONE",
         "status": "OPEN",
+        "telegram_events": {},
+        "pending_events": [],
         "created_at": current_time_string(),
         "created_date": today_string()
     }
 
 
-# =====================================================
-# SIGNAL TRACKING
-# =====================================================
+# =========================================================
+# EVENT QUEUE
+# =========================================================
 
-def update_signal_results(state):
+def queue_event(signal, event):
+    sent = signal.setdefault("telegram_events", {})
 
+    if sent.get(event):
+        return
+
+    pending = signal.setdefault("pending_events", [])
+
+    if event not in pending:
+        pending.append(event)
+
+
+def process_pending_events(state):
     changed = False
 
     for signal in state["signals"]:
+        pending = signal.setdefault("pending_events", [])
 
-        if signal.get("status") not in ("OPEN", None):
+        for event in list(pending):
+            if send_event_message(signal, event):
+                signal.setdefault(
+                    "telegram_events", {}
+                )[event] = True
+
+                pending.remove(event)
+                changed = True
+            else:
+                # Keep failed notifications for a later run.
+                break
+
+    return changed
+
+
+# =========================================================
+# SIGNAL TRACKING
+# =========================================================
+
+def update_signal_results(state):
+    changed = False
+
+    for signal in state["signals"]:
+        if signal.get("status") != "OPEN":
             continue
 
         symbol = signal.get("symbol")
@@ -1190,15 +1202,17 @@ def update_signal_results(state):
         if not symbol:
             continue
 
-        last_checked = signal.get(
-            "last_checked_time",
-            signal.get("signal_time", 0)
+        last_checked = int(
+            signal.get(
+                "last_checked_time",
+                signal.get("signal_time", 0)
+            )
         )
 
         try:
             candles = get_tracking_candles(
                 symbol,
-                int(last_checked) + 1
+                last_checked + 1
             )
 
         except Exception as error:
@@ -1213,63 +1227,74 @@ def update_signal_results(state):
         stop = float(signal["stop_loss"])
         tp1 = float(signal["tp1"])
         tp2 = float(signal["tp2"])
-
-        tp1_hit = bool(signal.get("tp1_hit", False))
+        tp3 = float(signal["tp3"])
 
         for _, candle in candles.iterrows():
-
             high = float(candle["high"])
             low = float(candle["low"])
             close_time = int(candle["close_time"])
 
             if direction == "BUY":
-
                 stop_hit = low <= stop
-                first_hit = high >= tp1
-                second_hit = high >= tp2
+                tp1_hit = high >= tp1
+                tp2_hit = high >= tp2
+                tp3_hit = high >= tp3
 
             else:
-
                 stop_hit = high >= stop
-                first_hit = low <= tp1
-                second_hit = low <= tp2
+                tp1_hit = low <= tp1
+                tp2_hit = low <= tp2
+                tp3_hit = low <= tp3
 
-            if not tp1_hit:
+            # Conservative intrabar rule:
+            # If stop and any target are both touched in
+            # the same candle, stop takes priority.
+            if stop_hit:
+                signal["status"] = "SL"
+                signal["result_time"] = close_time
+                signal["result_price"] = stop
 
-                if stop_hit:
+                queue_event(signal, "SL")
 
-                    signal["status"] = "SL"
-                    signal["result_time"] = close_time
-                    signal["result_price"] = stop
+                changed = True
+                break
 
-                    changed = True
-                    break
+            # Process only the highest newly reached
+            # milestone in this candle. Do not award
+            # multiple targets in the same candle.
 
-                if first_hit:
-
-                    tp1_hit = True
+            if not signal.get("tp1_hit", False):
+                if tp1_hit:
                     signal["tp1_hit"] = True
                     signal["tp1_time"] = close_time
+                    signal["result_stage"] = "TP1"
+
+                    queue_event(signal, "TP1")
 
                     changed = True
                     continue
 
-            else:
+            elif not signal.get("tp2_hit", False):
+                if tp2_hit:
+                    signal["tp2_hit"] = True
+                    signal["tp2_time"] = close_time
+                    signal["result_stage"] = "TP2"
 
-                if stop_hit:
-
-                    signal["status"] = "TP1"
-                    signal["result_time"] = close_time
-                    signal["result_price"] = stop
+                    queue_event(signal, "TP2")
 
                     changed = True
-                    break
+                    continue
 
-                if second_hit:
-
-                    signal["status"] = "TP2"
+            elif not signal.get("tp3_hit", False):
+                if tp3_hit:
+                    signal["tp3_hit"] = True
+                    signal["tp3_time"] = close_time
+                    signal["result_stage"] = "TP3"
+                    signal["status"] = "TP3"
                     signal["result_time"] = close_time
-                    signal["result_price"] = tp2
+                    signal["result_price"] = tp3
+
+                    queue_event(signal, "TP3")
 
                     changed = True
                     break
@@ -1283,12 +1308,11 @@ def update_signal_results(state):
     return changed
 
 
-# =====================================================
+# =========================================================
 # DAILY REPORT
-# =====================================================
+# =========================================================
 
 def signal_created_date(signal):
-
     value = signal.get("created_date")
 
     if value:
@@ -1300,48 +1324,46 @@ def signal_created_date(signal):
 
 
 def create_daily_report(state):
-
     today = today_string()
 
     today_signals = [
-        s for s in state["signals"]
-        if signal_created_date(s) == today
+        signal for signal in state["signals"]
+        if signal_created_date(signal) == today
     ]
 
-    tp1_then_sl = sum(
-        s.get("status") == "TP1"
+    tp1_count = sum(
+        bool(s.get("tp1_hit"))
         for s in today_signals
     )
 
     tp2_count = sum(
-        s.get("status") == "TP2"
+        bool(s.get("tp2_hit"))
         for s in today_signals
     )
 
-    sl_count = sum(
+    tp3_count = sum(
+        bool(s.get("tp3_hit"))
+        for s in today_signals
+    )
+
+    sl_before_tp1 = sum(
         s.get("status") == "SL"
+        and not s.get("tp1_hit", False)
+        for s in today_signals
+    )
+
+    sl_after_tp1 = sum(
+        s.get("status") == "SL"
+        and s.get("tp1_hit", False)
         for s in today_signals
     )
 
     open_count = sum(
-        s.get("status", "OPEN") == "OPEN"
+        s.get("status") == "OPEN"
         for s in today_signals
     )
 
-    tp1_reached = tp1_then_sl + tp2_count
-
-    total_closed = (
-        tp1_then_sl + tp2_count + sl_count
-    )
-
-    tp1_hit_rate = (
-        tp1_reached / total_closed * 100
-        if total_closed else 0
-    )
-
-    record = state.get(
-        "daily", {}
-    ).get(
+    record = state.get("daily", {}).get(
         today,
         {
             "scans": 0,
@@ -1350,137 +1372,59 @@ def create_daily_report(state):
         }
     )
 
-    diagnostics = record.get(
-        "diagnostics", {}
-    )
+    closed = sl_before_tp1 + sl_after_tp1 + tp3_count
 
     message = (
         "📊 DAILY PERFORMANCE REPORT\n"
+        "━━━━━━━━━━━━━━━━━━\n"
         f"Date: {today}\n\n"
         f"Scans completed: {record.get('scans', 0)}\n"
-        f"New signals today: {record.get('signals', 0)}\n\n"
-        "TODAY'S SIGNALS STATUS:\n"
-        f"TP1 reached (including TP1 then SL): {tp1_reached}\n"
-        f"TP1 then SL: {tp1_then_sl}\n"
+        f"New signals: {record.get('signals', 0)}\n\n"
+        "TARGET MILESTONES\n"
+        f"TP1 reached: {tp1_count}\n"
         f"TP2 reached: {tp2_count}\n"
-        f"Stop Loss before TP1: {sl_count}\n"
+        f"TP3 completed: {tp3_count}\n\n"
+        "FINAL RESULTS\n"
+        f"SL before TP1: {sl_before_tp1}\n"
+        f"SL after TP1: {sl_after_tp1}\n"
         f"Still open: {open_count}\n\n"
-        f"TP1 hit rate among closed signals: {tp1_hit_rate:.1f}%\n\n"
-        "SMART MONEY DIAGNOSTICS:\n"
-        f"Liquidity Sweep detected: {diagnostics.get('sweep_detected', 0)}\n"
-        f"Liquidity Sweep rejected: {diagnostics.get('sweep_rejected', 0)}\n"
-        f"BOS / CHoCH detected: {diagnostics.get('structure_detected', 0)}\n"
-        f"Structure rejected: {diagnostics.get('structure_rejected', 0)}\n"
-        f"Structure no pivot: {diagnostics.get('structure_no_pivot', 0)}\n"
-        f"Structure no break: {diagnostics.get('structure_no_break', 0)}\n"
-        f"Structure pivots found: {diagnostics.get('structure_pivots_found', 0)}\n"
-        f"Structure bars checked: {diagnostics.get('structure_bars_checked', 0)}\n"
-        f"FVG detected: {diagnostics.get('fvg_detected', 0)}\n"
-        f"FVG Retest confirmed: {diagnostics.get('fvg_retest_detected', 0)}\n"
-        f"FVG rejected: {diagnostics.get('fvg_rejected', 0)}\n"
-        f"Order Block detected: {diagnostics.get('order_block_detected', 0)}\n\n"
-        "OTHER FILTERS:\n"
+        "Note: TP1/TP2 counts are milestone counts, "
+        "not independent completed trades.\n"
+        "━━━━━━━━━━━━━━━━━━"
     )
 
-    for key in [
-        "insufficient_data",
-        "invalid_values",
-        "adx_rejected",
-        "volatility_rejected",
-        "volume_rejected",
-        "confirmations_rejected",
-        "direction_rejected",
-        "risk_rejected",
-        "errors"
-    ]:
-
-        message += (
-            f"{key}: {diagnostics.get(key, 0)}\n"
-        )
-
-    return message + (
-        f"\nReport time: {current_time_string()}"
-    )
+    return message
 
 
-# =====================================================
-# MAIN SCANNER
-# =====================================================
+# =========================================================
+# SCANNER
+# =========================================================
 
 def run_scanner():
+    print("=" * 45)
+    print(f"SMART MONEY CRYPTO SIGNAL BOT v{VERSION}")
+    print("Iran time:", current_time_string())
+    print("=" * 45)
 
     if not is_trading_time():
-
-        print(
-            "Outside trading hours: 08:00-22:00 Iran."
-        )
-
+        print("Outside trading hours.")
         return
 
     state = load_state()
-    record = get_daily_record(state)
-
-    print("=" * 45)
-
-    print(
-        f"SMART MONEY CRYPTO SIGNAL BOT v{VERSION}"
-    )
-
-    print(
-        "Iran time:",
-        current_time_string()
-    )
-
-    print("=" * 45)
-
-    for key in DIAGNOSTICS:
-        DIAGNOSTICS[key] = 0
-
-    STRUCTURE_DEBUG.clear()
 
     update_signal_results(state)
+    process_pending_events(state)
 
-    try:
-
-        coins = get_market_coins()
-
-    except Exception as error:
-
-        print("Market coins ERROR:", error)
-
-        DIAGNOSTICS["errors"] += 1
-
-        for key, value in DIAGNOSTICS.items():
-
-            record["diagnostics"][key] = (
-                record["diagnostics"].get(key, 0) + value
-            )
-
-        save_state(state)
-        return
+    coins = get_market_coins()
 
     print(f"Scanning {len(coins)} coins...")
 
-    found = 0
+    new_signals = 0
 
     for symbol in coins:
-
         try:
-
-            df5 = get_candles(
-                symbol,
-                TIMEFRAME
-            )
-
-            df15 = get_candles(
-                symbol,
-                TREND_TIMEFRAME
-            )
-
-            if df5.empty or df15.empty:
-
-                DIAGNOSTICS["insufficient_data"] += 1
-                continue
+            df5 = get_candles(symbol, TIMEFRAME)
+            df15 = get_candles(symbol, TREND_TIMEFRAME)
 
             signal = generate_signal(
                 symbol,
@@ -1489,14 +1433,13 @@ def run_scanner():
             )
 
             if signal is None:
-
-                time.sleep(0.15)
                 continue
 
             duplicate = any(
-                item.get("symbol") == symbol
-                and item.get("signal_time") == signal["signal_time"]
-                for item in state["signals"]
+                old.get("symbol") == symbol
+                and int(old.get("signal_time", 0))
+                == signal["signal_time"]
+                for old in state["signals"]
             )
 
             if duplicate:
@@ -1504,30 +1447,29 @@ def run_scanner():
 
             state["signals"].append(signal)
 
-            found += 1
-            record["signals"] += 1
+            new_signals += 1
 
             print(
-                f"{symbol} {signal['direction']} "
+                f"NEW SIGNAL: {symbol} "
+                f"{signal['direction']} "
                 f"{signal['confirmations']}/7"
             )
 
-            send_signal(signal)
-
-            time.sleep(0.2)
+            if not send_signal(signal):
+                print(
+                    f"Initial Telegram alert failed: {symbol}"
+                )
 
         except Exception as error:
-
             DIAGNOSTICS["errors"] += 1
+            print(f"ERROR {symbol}: {error}")
 
-            print(
-                f"ERROR {symbol}: {error}"
-            )
+    record = get_daily_record(state)
 
     record["scans"] += 1
+    record["signals"] += new_signals
 
     for key, value in DIAGNOSTICS.items():
-
         record["diagnostics"][key] = (
             record["diagnostics"].get(key, 0) + value
         )
@@ -1537,68 +1479,48 @@ def run_scanner():
     print("=" * 45)
     print("SCAN FINISHED")
     print("Coins scanned:", len(coins))
-    print("Signals found:", found)
+    print("Signals found:", new_signals)
     print("Diagnostics:", DIAGNOSTICS)
 
     print("=" * 45)
     print("STRUCTURE DEBUG DETAILS")
 
-    if not STRUCTURE_DEBUG:
-        print("No structure debug records generated.")
-
     for item in STRUCTURE_DEBUG:
-
-        print(
-            f"Direction: {item['direction']} | "
-            f"Reason: {item['reason']} | "
-            f"Pivot count: {item['pivot_count']} | "
-            f"Reference: {item['reference']} | "
-            f"Bars checked: {item['bars_checked']} | "
-            f"Best close: {item['best_close']}"
-        )
+        print(item)
 
     print("=" * 45)
 
 
-# =====================================================
-# REPORT MODE
-# =====================================================
+# =========================================================
+# DAILY REPORT RUNNER
+# =========================================================
 
 def run_report():
-
     state = load_state()
 
     update_signal_results(state)
+    process_pending_events(state)
 
     message = create_daily_report(state)
-
-    print(message)
 
     send_telegram_text(message)
 
     save_state(state)
 
+    print(message)
 
-# =====================================================
-# ENTRY POINT
-# =====================================================
+
+# =========================================================
+# MAIN
+# =========================================================
 
 if __name__ == "__main__":
-
     try:
-
-        if (
-            len(sys.argv) > 1
-            and sys.argv[1] == "report"
-        ):
-
+        if len(sys.argv) > 1 and sys.argv[1].lower() == "report":
             run_report()
-
         else:
-
             run_scanner()
 
     except Exception as error:
-
         print("FATAL ERROR:", error)
         raise
