@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.4
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.4.1
 # =========================================================
 
-VERSION = "5.4"
+VERSION = "5.4.1"
 
 BASE_URL = "https://data-api.binance.vision"
 TIMEFRAME = "5m"
@@ -63,10 +63,10 @@ retry = Retry(
 )
 
 adapter = HTTPAdapter(max_retries=retry)
-
 session.mount("https://", adapter)
+
 session.headers.update({
-    "User-Agent": "CryptoSignalBot/5.4"
+    "User-Agent": f"CryptoSignalBot/{VERSION}"
 })
 
 # =========================================================
@@ -85,6 +85,9 @@ DIAGNOSTICS = {
     "structure_detected": 0,
     "structure_no_pivot": 0,
     "structure_no_break": 0,
+    "structure_waiting": 0,
+    "structure_expired": 0,
+    "structure_confirmed": 0,
     "fvg_rejected": 0,
     "fvg_detected": 0,
     "fvg_retest_detected": 0,
@@ -112,8 +115,7 @@ def today_string():
 
 
 def is_trading_time():
-    now = iran_now()
-    return 8 <= now.hour < 22
+    return 8 <= iran_now().hour < 22
 
 
 def timestamp_string(timestamp):
@@ -177,7 +179,7 @@ def send_signal(signal):
         f"⏱ Timeframe: 5m\n"
         f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
         "📊 SMC ANALYSIS\n"
-        f"Liquidity Sweep: YES\n"
+        "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
         "FVG Retest: YES\n"
         f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n\n"
@@ -200,6 +202,9 @@ def send_signal(signal):
 
 def send_event_message(signal, event):
     symbol = signal["symbol"]
+
+    if event == "ENTRY":
+        return send_signal(signal)
 
     messages = {
         "TP1": (
@@ -224,6 +229,9 @@ def send_event_message(signal, event):
             f"Previous milestone: {signal.get('result_stage', 'NONE')}"
         )
     }
+
+    if event not in messages:
+        return False
 
     return send_telegram_text(messages[event])
 
@@ -268,6 +276,13 @@ def load_state():
         signal.setdefault("pending_events", [])
         signal.setdefault("result_stage", "NONE")
 
+        signal.setdefault("tp1_time", None)
+        signal.setdefault("tp2_time", None)
+        signal.setdefault("tp3_time", None)
+
+        signal.setdefault("result_time", None)
+        signal.setdefault("result_price", None)
+
         if "tp3" not in signal and "entry" in signal:
             entry = float(signal["entry"])
             stop = float(signal["stop_loss"])
@@ -277,6 +292,25 @@ def load_state():
                 signal["tp3"] = entry + 3 * risk
             else:
                 signal["tp3"] = entry - 3 * risk
+
+        # Preserve previous TP milestones.
+        if signal.get("tp3_hit"):
+            signal["tp2_hit"] = True
+            signal["tp1_hit"] = True
+            signal["result_stage"] = "TP3"
+
+        elif signal.get("tp2_hit"):
+            signal["tp1_hit"] = True
+            signal["result_stage"] = "TP2"
+
+        elif signal.get("tp1_hit"):
+            signal["result_stage"] = "TP1"
+
+        # Old signals already sent their initial alert.
+        signal.setdefault(
+            "telegram_events",
+            {}
+        ).setdefault("ENTRY", True)
 
     return state
 
@@ -387,6 +421,19 @@ def candles_to_dataframe(data):
         )
 
     df = df.dropna(subset=numeric)
+
+    # Reject impossible OHLC data.
+    df = df[
+        (df["high"] >= df["low"])
+        & (df["high"] >= df["open"])
+        & (df["high"] >= df["close"])
+        & (df["low"] <= df["open"])
+        & (df["low"] <= df["close"])
+        & (df["volume"] >= 0)
+    ]
+
+    df = df.drop_duplicates(subset=["time"])
+    df = df.sort_values("time")
 
     return df.reset_index(drop=True)
 
@@ -525,7 +572,22 @@ def calculate_indicators(df):
 
     df["rsi"] = (
         100 - 100 / (1 + rs)
-    ).fillna(100)
+    )
+
+    df.loc[
+        (avg_loss == 0) & (avg_gain > 0),
+        "rsi"
+    ] = 100
+
+    df.loc[
+        (avg_gain == 0) & (avg_loss > 0),
+        "rsi"
+    ] = 0
+
+    df.loc[
+        (avg_gain == 0) & (avg_loss == 0),
+        "rsi"
+    ] = 50
 
     df["bb_mid"] = close.rolling(20).mean()
 
@@ -643,6 +705,42 @@ def find_confirmed_swings(df, end_index):
 
 
 # =========================================================
+# STRUCTURE TREND CLASSIFICATION
+# =========================================================
+
+def get_structure_trend(highs, lows, before_index):
+    prior_highs = [
+        p for p in highs
+        if p["index"] < before_index
+    ]
+
+    prior_lows = [
+        p for p in lows
+        if p["index"] < before_index
+    ]
+
+    if len(prior_highs) < 2 or len(prior_lows) < 2:
+        return "NEUTRAL"
+
+    h1, h2 = prior_highs[-2], prior_highs[-1]
+    l1, l2 = prior_lows[-2], prior_lows[-1]
+
+    higher_high = h2["price"] > h1["price"]
+    lower_high = h2["price"] < h1["price"]
+
+    higher_low = l2["price"] > l1["price"]
+    lower_low = l2["price"] < l1["price"]
+
+    if higher_high and higher_low:
+        return "UPTREND"
+
+    if lower_high and lower_low:
+        return "DOWNTREND"
+
+    return "NEUTRAL"
+
+
+# =========================================================
 # LIQUIDITY SWEEP
 # =========================================================
 
@@ -659,7 +757,6 @@ def detect_sweep_candidates(df):
 
     candidates = []
 
-    # The newest CLOSED candle is included.
     for i in range(
         last_index,
         first_index - 1,
@@ -739,30 +836,30 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         STRUCTURE_DEBUG.append({
             "symbol": symbol,
             "direction": direction,
-            "reason": "NO_PIVOT",
+            "state": "NO_PIVOT",
             "sweep_time": sweep["time"]
         })
 
         return None
 
     pivot = valid[-1]
-
     reference = float(pivot["price"])
 
-    end_index = min(
-        len(df) - 1,
-        sweep_index + MAX_STRUCTURE_BARS
+    available_bars = len(df) - 1 - sweep_index
+
+    bars_checked = min(
+        available_bars,
+        MAX_STRUCTURE_BARS
     )
 
     best_close = None
-    bars_checked = 0
 
-    for j in range(sweep_index + 1, end_index + 1):
+    for j in range(
+        sweep_index + 1,
+        sweep_index + bars_checked + 1
+    ):
         candle = df.iloc[j]
-
         close = float(candle["close"])
-
-        bars_checked += 1
 
         if best_close is None:
             best_close = close
@@ -779,49 +876,111 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             else close < reference
         )
 
-        if broken:
+        if not broken:
+            continue
+
+        trend = get_structure_trend(
+            highs,
+            lows,
+            pivot["index"]
+        )
+
+        if direction == "BUY" and trend == "DOWNTREND":
+            name = "CHoCH"
+
+        elif direction == "SELL" and trend == "UPTREND":
+            name = "CHoCH"
+
+        else:
             name = "BOS"
 
-            # Structure classification is deliberately
-            # conservative when no reliable prior trend exists.
-            if direction == "BUY":
-                previous_lows = [
-                    p["price"] for p in lows
-                    if p["index"] < pivot["index"]
-                ]
+        atr_value = float(
+            df.iloc[sweep_index]["atr"]
+            if "atr" in df.columns
+            else 0
+        )
 
-                if previous_lows and reference < max(previous_lows):
-                    name = "CHoCH"
+        distance = abs(close - reference)
 
-            else:
-                previous_highs = [
-                    p["price"] for p in highs
-                    if p["index"] < pivot["index"]
-                ]
+        distance_atr = (
+            distance / atr_value
+            if atr_value > 0
+            else None
+        )
 
-                if previous_highs and reference > min(previous_highs):
-                    name = "CHoCH"
+        DIAGNOSTICS["structure_confirmed"] += 1
 
-            return {
-                "name": name,
-                "time": int(candle["close_time"]),
-                "index": j,
-                "reference": reference,
-                "pivot_index": pivot["index"],
-                "bars_checked": bars_checked
-            }
+        STRUCTURE_DEBUG.append({
+            "symbol": symbol,
+            "direction": direction,
+            "state": "CONFIRMED",
+            "structure": name,
+            "reference": reference,
+            "reference_type": reference_type,
+            "bars_checked": j - sweep_index,
+            "distance": distance,
+            "distance_atr": distance_atr,
+            "sweep_time": sweep["time"]
+        })
+
+        return {
+            "name": name,
+            "trend_context": trend,
+            "time": int(candle["close_time"]),
+            "index": j,
+            "reference": reference,
+            "pivot_index": pivot["index"],
+            "bars_checked": j - sweep_index
+        }
+
+    # Not enough candles have formed yet.
+    if available_bars < MAX_STRUCTURE_BARS:
+        DIAGNOSTICS["structure_waiting"] += 1
+
+        STRUCTURE_DEBUG.append({
+            "symbol": symbol,
+            "direction": direction,
+            "state": "WAITING_FOR_CONFIRMATION",
+            "reference": reference,
+            "reference_type": reference_type,
+            "best_close": best_close,
+            "bars_checked": bars_checked,
+            "bars_required": MAX_STRUCTURE_BARS,
+            "sweep_time": sweep["time"]
+        })
+
+        return None
 
     DIAGNOSTICS["structure_no_break"] += 1
+    DIAGNOSTICS["structure_expired"] += 1
 
-    atr_value = float(df.iloc[sweep_index]["close"])
+    atr_value = (
+        float(df.iloc[sweep_index]["atr"])
+        if "atr" in df.columns
+        else 0
+    )
+
+    distance = (
+        abs(best_close - reference)
+        if best_close is not None
+        else None
+    )
+
+    distance_atr = (
+        distance / atr_value
+        if distance is not None and atr_value > 0
+        else None
+    )
 
     STRUCTURE_DEBUG.append({
         "symbol": symbol,
         "direction": direction,
-        "reason": "NO_STRUCTURE_BREAK",
+        "state": "EXPIRED_NO_BREAK",
         "reference": reference,
         "reference_type": reference_type,
         "best_close": best_close,
+        "distance": distance,
+        "distance_atr": distance_atr,
         "bars_checked": bars_checked,
         "sweep_time": sweep["time"]
     })
@@ -834,6 +993,8 @@ def find_sweep_structure(df15, symbol):
 
     if not candidates:
         return None, None, 0, False
+
+    waiting_candidate = None
 
     for sweep in candidates:
         structure = detect_structure(
@@ -849,6 +1010,21 @@ def find_sweep_structure(df15, symbol):
                 len(candidates),
                 True
             )
+
+        if (
+            waiting_candidate is None
+            and len(df15) - 1 - sweep["index"] < MAX_STRUCTURE_BARS
+        ):
+            waiting_candidate = sweep
+
+    # Return the newest waiting sweep for diagnostics.
+    if waiting_candidate is not None:
+        return (
+            waiting_candidate,
+            None,
+            len(candidates),
+            False
+        )
 
     return candidates[0], None, len(candidates), False
 
@@ -1016,6 +1192,9 @@ def generate_signal(symbol, df5, df15):
         row["volume"] / row["volume_avg"]
     )
 
+    # Calculate ATR for structure diagnostics.
+    df15 = calculate_indicators(df15)
+
     sweep, structure, sweep_count, paired = find_sweep_structure(
         df15,
         symbol
@@ -1133,6 +1312,7 @@ def generate_signal(symbol, df5, df15):
         "fvg_upper": fvg["upper"],
         "order_block": order_block,
         "structure": structure["name"],
+        "structure_trend": structure.get("trend_context", "NEUTRAL"),
         "structure_time": structure["time"],
         "sweep_time": sweep["time"],
         "signal_time": signal_time,
@@ -1140,8 +1320,13 @@ def generate_signal(symbol, df5, df15):
         "tp1_hit": False,
         "tp2_hit": False,
         "tp3_hit": False,
+        "tp1_time": None,
+        "tp2_time": None,
+        "tp3_time": None,
         "result_stage": "NONE",
         "status": "OPEN",
+        "result_time": None,
+        "result_price": None,
         "telegram_events": {},
         "pending_events": [],
         "created_at": current_time_string(),
@@ -1179,6 +1364,10 @@ def process_pending_events(state):
 
                 pending.remove(event)
                 changed = True
+
+                # Save immediately after each successful send.
+                save_state(state)
+
             else:
                 # Keep failed notifications for a later run.
                 break
@@ -1236,69 +1425,92 @@ def update_signal_results(state):
 
             if direction == "BUY":
                 stop_hit = low <= stop
-                tp1_hit = high >= tp1
-                tp2_hit = high >= tp2
-                tp3_hit = high >= tp3
+                reached_level = (
+                    tp3 if high >= tp3
+                    else tp2 if high >= tp2
+                    else tp1 if high >= tp1
+                    else None
+                )
 
             else:
                 stop_hit = high >= stop
-                tp1_hit = low <= tp1
-                tp2_hit = low <= tp2
-                tp3_hit = low <= tp3
+                reached_level = (
+                    tp3 if low <= tp3
+                    else tp2 if low <= tp2
+                    else tp1 if low <= tp1
+                    else None
+                )
 
-            # Conservative intrabar rule:
-            # If stop and any target are both touched in
-            # the same candle, stop takes priority.
+            # Conservative rule:
+            # Stop has priority if stop and target occur
+            # inside the same candle.
             if stop_hit:
                 signal["status"] = "SL"
                 signal["result_time"] = close_time
                 signal["result_price"] = stop
 
+                # Do not erase an already reached milestone.
                 queue_event(signal, "SL")
 
                 changed = True
                 break
 
-            # Process only the highest newly reached
-            # milestone in this candle. Do not award
-            # multiple targets in the same candle.
+            if reached_level is None:
+                continue
 
-            if not signal.get("tp1_hit", False):
-                if tp1_hit:
+            # Price reaching TP3 necessarily passes TP1 and TP2.
+            # Register every newly reached milestone.
+            if reached_level == tp3:
+                if not signal.get("tp1_hit"):
                     signal["tp1_hit"] = True
                     signal["tp1_time"] = close_time
                     signal["result_stage"] = "TP1"
-
                     queue_event(signal, "TP1")
 
-                    changed = True
-                    continue
-
-            elif not signal.get("tp2_hit", False):
-                if tp2_hit:
+                if not signal.get("tp2_hit"):
                     signal["tp2_hit"] = True
                     signal["tp2_time"] = close_time
                     signal["result_stage"] = "TP2"
-
                     queue_event(signal, "TP2")
 
-                    changed = True
-                    continue
-
-            elif not signal.get("tp3_hit", False):
-                if tp3_hit:
+                if not signal.get("tp3_hit"):
                     signal["tp3_hit"] = True
                     signal["tp3_time"] = close_time
                     signal["result_stage"] = "TP3"
-                    signal["status"] = "TP3"
-                    signal["result_time"] = close_time
-                    signal["result_price"] = tp3
-
                     queue_event(signal, "TP3")
 
-                    changed = True
-                    break
+                signal["status"] = "TP3"
+                signal["result_time"] = close_time
+                signal["result_price"] = tp3
 
+                changed = True
+                break
+
+            elif reached_level == tp2:
+                if not signal.get("tp1_hit"):
+                    signal["tp1_hit"] = True
+                    signal["tp1_time"] = close_time
+                    signal["result_stage"] = "TP1"
+                    queue_event(signal, "TP1")
+
+                if not signal.get("tp2_hit"):
+                    signal["tp2_hit"] = True
+                    signal["tp2_time"] = close_time
+                    signal["result_stage"] = "TP2"
+                    queue_event(signal, "TP2")
+
+                changed = True
+
+            elif reached_level == tp1:
+                if not signal.get("tp1_hit"):
+                    signal["tp1_hit"] = True
+                    signal["tp1_time"] = close_time
+                    signal["result_stage"] = "TP1"
+                    queue_event(signal, "TP1")
+
+                changed = True
+
+        # Advance cursor only after processing the candles.
         signal["last_checked_time"] = int(
             candles.iloc[-1]["close_time"]
         )
@@ -1355,6 +1567,13 @@ def create_daily_report(state):
     sl_after_tp1 = sum(
         s.get("status") == "SL"
         and s.get("tp1_hit", False)
+        and not s.get("tp2_hit", False)
+        for s in today_signals
+    )
+
+    sl_after_tp2 = sum(
+        s.get("status") == "SL"
+        and s.get("tp2_hit", False)
         for s in today_signals
     )
 
@@ -1372,8 +1591,6 @@ def create_daily_report(state):
         }
     )
 
-    closed = sl_before_tp1 + sl_after_tp1 + tp3_count
-
     message = (
         "📊 DAILY PERFORMANCE REPORT\n"
         "━━━━━━━━━━━━━━━━━━\n"
@@ -1387,9 +1604,10 @@ def create_daily_report(state):
         "FINAL RESULTS\n"
         f"SL before TP1: {sl_before_tp1}\n"
         f"SL after TP1: {sl_after_tp1}\n"
+        f"SL after TP2: {sl_after_tp2}\n"
         f"Still open: {open_count}\n\n"
-        "Note: TP1/TP2 counts are milestone counts, "
-        "not independent completed trades.\n"
+        "TP1/TP2 are milestone counts, "
+        "not separate completed trades.\n"
         "━━━━━━━━━━━━━━━━━━"
     )
 
@@ -1413,6 +1631,10 @@ def run_scanner():
     state = load_state()
 
     update_signal_results(state)
+
+    # Persist tracking changes before sending notifications.
+    save_state(state)
+
     process_pending_events(state)
 
     coins = get_market_coins()
@@ -1447,6 +1669,9 @@ def run_scanner():
 
             state["signals"].append(signal)
 
+            # Queue initial alert instead of sending directly.
+            queue_event(signal, "ENTRY")
+
             new_signals += 1
 
             print(
@@ -1455,10 +1680,8 @@ def run_scanner():
                 f"{signal['confirmations']}/7"
             )
 
-            if not send_signal(signal):
-                print(
-                    f"Initial Telegram alert failed: {symbol}"
-                )
+            # Persist signal before Telegram attempt.
+            save_state(state)
 
         except Exception as error:
             DIAGNOSTICS["errors"] += 1
@@ -1473,6 +1696,11 @@ def run_scanner():
         record["diagnostics"][key] = (
             record["diagnostics"].get(key, 0) + value
         )
+
+    save_state(state)
+
+    # Process ENTRY and other pending events.
+    process_pending_events(state)
 
     save_state(state)
 
@@ -1499,6 +1727,8 @@ def run_report():
     state = load_state()
 
     update_signal_results(state)
+    save_state(state)
+
     process_pending_events(state)
 
     message = create_daily_report(state)
@@ -1516,7 +1746,10 @@ def run_report():
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) > 1 and sys.argv[1].lower() == "report":
+        if (
+            len(sys.argv) > 1
+            and sys.argv[1].lower() == "report"
+        ):
             run_report()
         else:
             run_scanner()
