@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.4.1
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 5.5
 # =========================================================
 
-VERSION = "5.4.1"
+VERSION = "5.5"
 
 BASE_URL = "https://data-api.binance.vision"
 TIMEFRAME = "5m"
@@ -35,8 +35,6 @@ MAX_STRUCTURE_BARS = 8
 PIVOT_LEFT = 2
 PIVOT_RIGHT = 2
 
-FVG_LOOKBACK = 25
-FVG_MIN_ATR = 0.05
 ORDER_BLOCK_LOOKBACK = 10
 
 MIN_RISK_ATR = 0.75
@@ -88,9 +86,6 @@ DIAGNOSTICS = {
     "structure_waiting": 0,
     "structure_expired": 0,
     "structure_confirmed": 0,
-    "fvg_rejected": 0,
-    "fvg_detected": 0,
-    "fvg_retest_detected": 0,
     "order_block_detected": 0,
     "risk_rejected": 0,
     "errors": 0
@@ -181,7 +176,7 @@ def send_signal(signal):
         "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
-        "FVG Retest: YES\n"
+        "FVG Filter: DISABLED (NOT REQUIRED)\n"
         f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n\n"
         "💰 TRADE LEVELS\n"
         f"Entry: {signal['entry']:.8g}\n"
@@ -433,6 +428,8 @@ def candles_to_dataframe(data):
     ]
 
     df = df.drop_duplicates(subset=["time"])
+
+
     df = df.sort_values("time")
 
     return df.reset_index(drop=True)
@@ -1030,95 +1027,6 @@ def find_sweep_structure(df15, symbol):
 
 
 # =========================================================
-# FAIR VALUE GAP + RETEST
-# =========================================================
-
-def detect_fvg_retest(df, direction, after_time, atr):
-    if len(df) < 30:
-        return None
-
-    last_index = len(df) - 1
-
-    start = max(
-        2,
-        last_index - FVG_LOOKBACK
-    )
-
-    last = df.iloc[last_index]
-
-    counted = False
-
-    for i in range(
-        last_index - 1,
-        start - 1,
-        -1
-    ):
-        first = df.iloc[i - 2]
-        third = df.iloc[i]
-
-        if int(third["close_time"]) <= after_time:
-            continue
-
-        if direction == "BUY":
-            if float(third["low"]) <= float(first["high"]):
-                continue
-
-            zone_low = float(first["high"])
-            zone_high = float(third["low"])
-
-        else:
-            if float(third["high"]) >= float(first["low"]):
-                continue
-
-            zone_low = float(third["high"])
-            zone_high = float(first["low"])
-
-        if zone_high - zone_low < atr * FVG_MIN_ATR:
-            continue
-
-        later = df.iloc[i + 1:last_index]
-
-        if direction == "BUY":
-            invalidated = (
-                not later.empty
-                and (later["close"] < zone_low).any()
-            )
-        else:
-            invalidated = (
-                not later.empty
-                and (later["close"] > zone_high).any()
-            )
-
-        if invalidated:
-            continue
-
-        if not counted:
-            DIAGNOSTICS["fvg_detected"] += 1
-            counted = True
-
-        touched = (
-            float(last["low"]) <= zone_high
-            and float(last["high"]) >= zone_low
-        )
-
-        if direction == "BUY":
-            confirmed = float(last["close"]) > float(last["open"])
-        else:
-            confirmed = float(last["close"]) < float(last["open"])
-
-        if touched and confirmed:
-            DIAGNOSTICS["fvg_retest_detected"] += 1
-
-            return {
-                "lower": zone_low,
-                "upper": zone_high,
-                "time": int(third["close_time"])
-            }
-
-    return None
-
-
-# =========================================================
 # ORDER BLOCK - SUPPORTING ONLY
 # =========================================================
 
@@ -1214,17 +1122,6 @@ def generate_signal(symbol, df5, df15):
 
     direction = sweep["direction"]
 
-    fvg = detect_fvg_retest(
-        df5,
-        direction,
-        structure["time"],
-        atr
-    )
-
-    if fvg is None:
-        DIAGNOSTICS["fvg_rejected"] += 1
-        return None
-
     order_block = detect_order_block(
         df5,
         direction
@@ -1308,8 +1205,6 @@ def generate_signal(symbol, df5, df15):
         "adx": float(row["adx"]),
         "volume_ratio": volume_ratio,
         "atr": atr,
-        "fvg_lower": fvg["lower"],
-        "fvg_upper": fvg["upper"],
         "order_block": order_block,
         "structure": structure["name"],
         "structure_trend": structure.get("trend_context", "NEUTRAL"),
@@ -1329,6 +1224,8 @@ def generate_signal(symbol, df5, df15):
         "result_price": None,
         "telegram_events": {},
         "pending_events": [],
+        "entry_model": "SWEEP_STRUCTURE_NO_FVG",
+        "fvg_required": False,
         "created_at": current_time_string(),
         "created_date": today_string()
     }
