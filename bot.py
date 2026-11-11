@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.1.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.2.0
 # =========================================================
 
-VERSION = "6.1.0"
+VERSION = "6.2.0"
 MAX_RISK_ATR = 4.0
 
 BASE_URL = "https://data-api.binance.vision"
@@ -32,7 +32,8 @@ MIN_ATR_RATIO = 0.0004
 
 SWEEP_LOOKBACK = 8
 LIQUIDITY_LOOKBACK = 12
-MAX_STRUCTURE_BARS = 8
+MAX_STRUCTURE_BARS = 4  # 4 closed 15m candles = 60 minutes after the sweep candle
+WAITING_SETUP_MAX_AGE_MS = (MAX_STRUCTURE_BARS + 1) * 15 * 60 * 1000
 
 PIVOT_LEFT = 2
 PIVOT_RIGHT = 2
@@ -96,6 +97,9 @@ DIAGNOSTICS = {
     "structure_waiting": 0,
     "structure_expired": 0,
     "structure_confirmed": 0,
+    "waiting_queue_active": 0,
+    "waiting_queue_expired": 0,
+    "waiting_queue_replaced": 0,
     "fvg_rejected": 0,
     "fvg_detected": 0,
     "fvg_retest_detected": 0,
@@ -268,12 +272,6 @@ def send_event_message(signal, event):
             "Milestone: 2R\n"
             "Trade tracking closed."
         ),
-        "TP3": (
-            f"🏆 TP3 HIT\n{symbol}\n"
-            f"Price: {signal['tp3']:.8g}\n"
-            "Milestone: 3R\n"
-            "Signal completed."
-        ),
         "SL": (
             f"🛑 STOP LOSS HIT\n{symbol}\n"
             f"Price: {signal['stop_loss']:.8g}\n"
@@ -298,7 +296,8 @@ def load_state():
             "signals": [],
             "daily": {},
             "weekly_reports": {},
-            "news_filter": {}
+            "news_filter": {},
+            "pending_setups": {}
         }
 
     try:
@@ -317,6 +316,7 @@ def load_state():
     state.setdefault("daily", {})
     state.setdefault("weekly_reports", {})
     state.setdefault("news_filter", {})
+    state.setdefault("pending_setups", {})
 
     if not isinstance(state["signals"], list):
         raise RuntimeError("Invalid signals history.")
@@ -326,6 +326,9 @@ def load_state():
 
     if not isinstance(state["weekly_reports"], dict):
         state["weekly_reports"] = {}
+
+    if not isinstance(state["pending_setups"], dict):
+        state["pending_setups"] = {}
 
     for signal in state["signals"]:
         signal.setdefault("tp1_hit", False)
@@ -339,6 +342,7 @@ def load_state():
         signal.setdefault("tp3_time", None)
         signal.setdefault("result_time", None)
         signal.setdefault("result_price", None)
+        signal.setdefault("sl_after_tp1", False)
 
         if (
             "tp3" not in signal
@@ -378,15 +382,22 @@ def load_state():
             if signal.get("result_stage") == "NONE":
                 signal["result_stage"] = "TP2"
 
-        # SL before TP1 = LOSS; SL after TP1 preserves WIN.
-        if signal.get("status") == "SL":
-            if signal.get("tp1_hit"):
-                signal["stat_result"] = "WIN"
-            else:
-                signal["stat_result"] = (
-                    signal.get("stat_result") or "LOSS"
-                )
+        # Migrate legacy TP1-then-SL records: keep the WIN, close tracking,
+        # and remove any unsent SL alert queued by the older version.
+        if signal.get("status") == "SL" and signal.get("tp1_hit"):
+            signal["status"] = "SL_AFTER_TP1"
+            signal["sl_after_tp1"] = True
+            signal["stat_result"] = "WIN"
+            signal["result_locked"] = True
+            signal["pending_events"] = [
+                event for event in signal.get("pending_events", [])
+                if event != "SL"
+            ]
 
+        elif signal.get("status") == "SL":
+            signal["stat_result"] = (
+                signal.get("stat_result") or "LOSS"
+            )
             signal["result_locked"] = True
 
         signal.setdefault(
@@ -1927,7 +1938,6 @@ def update_signal_results(state):
             continue
 
         symbol = signal.get("symbol")
-
         if not symbol:
             continue
 
@@ -1939,11 +1949,7 @@ def update_signal_results(state):
         )
 
         try:
-            candles = get_tracking_candles(
-                symbol,
-                last_checked + 1
-            )
-
+            candles = get_tracking_candles(symbol, last_checked + 1)
         except Exception as error:
             print(f"Tracking error {symbol}: {error}")
             continue
@@ -1952,7 +1958,6 @@ def update_signal_results(state):
             continue
 
         direction = signal["direction"]
-
         stop = float(signal["stop_loss"])
         tp1 = float(signal["tp1"])
         tp2 = float(signal["tp2"])
@@ -1966,30 +1971,34 @@ def update_signal_results(state):
                 stop_hit = low <= stop
                 tp1_hit = high >= tp1
                 tp2_hit = high >= tp2
-
             else:
                 stop_hit = high >= stop
                 tp1_hit = low <= tp1
                 tp2_hit = low <= tp2
 
-            # Conservative rule:
-            # If SL and target are in the same candle,
-            # assume SL happened first.
-
+            # Conservative same-candle rule: if stop and target overlap,
+            # assume the stop was reached first.
             if stop_hit:
-                signal["status"] = "SL"
                 signal["result_time"] = close_time
                 signal["result_price"] = stop
 
-                if not signal.get("tp1_hit"):
-                    signal["stat_result"] = "LOSS"
-                    signal["result_locked"] = True
-
-                else:
+                if signal.get("tp1_hit"):
+                    # TP1 already locked the sole statistical WIN. Close
+                    # tracking and release the symbol, but NEVER send SL.
+                    signal["status"] = "SL_AFTER_TP1"
+                    signal["sl_after_tp1"] = True
                     signal["stat_result"] = "WIN"
                     signal["result_locked"] = True
+                    signal.setdefault("pending_events", [])[:] = [
+                        event for event in signal.get("pending_events", [])
+                        if event != "SL"
+                    ]
+                else:
+                    signal["status"] = "SL"
+                    signal["stat_result"] = "LOSS"
+                    signal["result_locked"] = True
+                    queue_event(signal, "SL")
 
-                queue_event(signal, "SL")
                 changed = True
                 break
 
@@ -1999,40 +2008,32 @@ def update_signal_results(state):
                 signal["result_stage"] = "TP1"
                 signal["stat_result"] = "WIN"
                 signal["result_locked"] = True
-
                 queue_event(signal, "TP1")
                 changed = True
 
             if tp2_hit:
-                # If price gaps through TP2,
-                # count TP1 as reached as well.
-
+                # TP2 closes tracking. TP3 is intentionally not monitored:
+                # the agreed lifecycle ends at TP2 or SL.
                 if not signal.get("tp1_hit"):
                     signal["tp1_hit"] = True
                     signal["tp1_time"] = close_time
                     signal["stat_result"] = "WIN"
                     signal["result_locked"] = True
-
                     queue_event(signal, "TP1")
 
                 if not signal.get("tp2_hit"):
                     signal["tp2_hit"] = True
                     signal["tp2_time"] = close_time
                     signal["result_stage"] = "TP2"
-
                     queue_event(signal, "TP2")
 
                 signal["status"] = "TP2"
                 signal["result_time"] = close_time
                 signal["result_price"] = tp2
-
                 changed = True
                 break
 
-        signal["last_checked_time"] = int(
-            candles.iloc[-1]["close_time"]
-        )
-
+        signal["last_checked_time"] = int(candles.iloc[-1]["close_time"])
         changed = True
 
     return changed
@@ -2070,86 +2071,84 @@ def signal_created_date(signal):
     return str(value)[:10] if value else None
 
 
+def event_in_week(timestamp_ms, week_start, week_end):
+    if timestamp_ms in (None, "", 0):
+        return False
+    try:
+        event_date = datetime.fromtimestamp(
+            int(timestamp_ms) / 1000,
+            tz=IRAN_TZ
+        ).date()
+    except (TypeError, ValueError, OSError):
+        return False
+    return week_start <= event_date <= week_end
+
+
 def create_weekly_report(state, week_start, week_end):
     start_text = week_start.strftime("%Y-%m-%d")
     end_text = week_end.strftime("%Y-%m-%d")
+    all_signals = state.get("signals", [])
 
-    # Strictly cohort by signal creation date. Older trades are never
-    # pulled into this week's report just because they resolved this week.
-    weekly_signals = []
-
-    for signal in state.get("signals", []):
+    weekly_new_signals = 0
+    for signal in all_signals:
         created = signal_created_date(signal)
-
         if not created:
             continue
-
         try:
-            created_date = datetime.strptime(
-                created,
-                "%Y-%m-%d"
-            ).date()
-
+            created_date = datetime.strptime(created, "%Y-%m-%d").date()
         except ValueError:
             continue
-
         if week_start <= created_date <= week_end:
-            weekly_signals.append(signal)
+            weekly_new_signals += 1
 
+    # Results and milestones are event-based: an older trade contributes
+    # when its TP1/TP2/SL event actually occurs during this report week.
     wins = sum(
         signal.get("stat_result") == "WIN"
-        for signal in weekly_signals
+        and event_in_week(signal.get("tp1_time"), week_start, week_end)
+        for signal in all_signals
     )
-
     losses = sum(
         signal.get("stat_result") == "LOSS"
-        for signal in weekly_signals
+        and signal.get("status") == "SL"
+        and event_in_week(signal.get("result_time"), week_start, week_end)
+        for signal in all_signals
+    )
+    tp1_count = sum(
+        event_in_week(signal.get("tp1_time"), week_start, week_end)
+        for signal in all_signals
+    )
+    tp2_count = sum(
+        event_in_week(signal.get("tp2_time"), week_start, week_end)
+        for signal in all_signals
+    )
+    sl_count = sum(
+        signal.get("status") == "SL"
+        and not signal.get("tp1_hit")
+        and event_in_week(signal.get("result_time"), week_start, week_end)
+        for signal in all_signals
+    )
+    sl_after_tp1_count = sum(
+        signal.get("sl_after_tp1")
+        and event_in_week(signal.get("result_time"), week_start, week_end)
+        for signal in all_signals
     )
 
     decided = wins + losses
+    win_rate = wins / decided * 100.0 if decided else 0.0
 
-    win_rate = (
-        wins / decided * 100.0
-        if decided
-        else 0.0
-    )
-
-    tp1_count = sum(
-        bool(signal.get("tp1_hit"))
-        for signal in weekly_signals
-    )
-
-    tp2_count = sum(
-        bool(signal.get("tp2_hit"))
-        or signal.get("status") == "TP2"
-        for signal in weekly_signals
-    )
-
-    sl_count = sum(
-        signal.get("status") == "SL"
-        for signal in weekly_signals
-    )
-
+    # Current snapshot, not restricted to trades created this week.
     open_count = sum(
         signal.get("status") == "OPEN"
-        for signal in weekly_signals
+        for signal in all_signals
     )
 
     scans = 0
-    new_signals = len(weekly_signals)
-
-    daily_records = state.get("daily", {})
-
     day = week_start
-
+    daily_records = state.get("daily", {})
     while day <= week_end:
-        record = daily_records.get(
-            day.strftime("%Y-%m-%d"),
-            {}
-        )
-
+        record = daily_records.get(day.strftime("%Y-%m-%d"), {})
         scans += int(record.get("scans", 0) or 0)
-
         day += timedelta(days=1)
 
     return (
@@ -2157,20 +2156,19 @@ def create_weekly_report(state, week_start, week_end):
         "━━━━━━━━━━━━━━━━━━\n"
         f"Week: {start_text} to {end_text} (Iran time)\n\n"
         f"Scans completed: {scans}\n"
-        f"Signals created this week: {new_signals}\n\n"
-        "STATISTICAL RESULTS (one result per signal)\n"
-        f"Wins: {wins}\n"
-        f"Losses: {losses}\n"
+        f"New signals created: {weekly_new_signals}\n\n"
+        "STATISTICAL RESULTS (first TP1 or SL only)\n"
+        f"Wins (TP1 first): {wins}\n"
+        f"Losses (SL before TP1): {losses}\n"
         f"Win rate: {win_rate:.1f}%\n\n"
-        "TRADE MILESTONES / STATUS\n"
+        "EVENTS DURING THIS WEEK\n"
         f"TP1 reached: {tp1_count}\n"
         f"TP2 reached: {tp2_count}\n"
-        f"SL closed: {sl_count}\n"
-        f"Still open: {open_count}\n\n"
-        "Cohort rule: only signals created during this week are counted.\n"
-        "Older signals are excluded, even if they reached TP1/TP2/SL this week.\n"
-        "TP1 is one WIN; SL before TP1 is one LOSS.\n"
-        "After TP1, a later SL does not add a LOSS.\n"
+        f"SL before TP1: {sl_count}\n"
+        f"SL after TP1 (WIN preserved, no SL alert): {sl_after_tp1_count}\n\n"
+        f"Currently open trades (snapshot): {open_count}\n\n"
+        "Older trades are included when their events occur this week.\n"
+        "TP1 locks one WIN; a later SL never creates a LOSS.\n"
         "━━━━━━━━━━━━━━━━━━"
     )
 
@@ -2232,6 +2230,87 @@ def maybe_send_weekly_report(state):
     return False
 
 
+def prune_pending_setups(state):
+    """Expire persisted waiting setups after their 60-minute confirmation window."""
+    pending = state.setdefault("pending_setups", {})
+    now_ms = int(time.time() * 1000)
+    expired = 0
+
+    for symbol, setup in list(pending.items()):
+        try:
+            expires_at = int(setup.get("expires_at", 0))
+        except (TypeError, ValueError):
+            expires_at = 0
+
+        if not expires_at or now_ms >= expires_at:
+            pending.pop(symbol, None)
+            expired += 1
+
+    DIAGNOSTICS["waiting_queue_expired"] += expired
+    DIAGNOSTICS["waiting_queue_active"] = len(pending)
+    return expired
+
+
+def sync_pending_setups(state):
+    """Keep at most one active waiting setup per symbol in persistent state."""
+    pending = state.setdefault("pending_setups", {})
+    now_ms = int(time.time() * 1000)
+    replaced = 0
+
+    # A confirmed or explicitly expired setup is no longer waiting.
+    for item in STRUCTURE_DEBUG:
+        symbol = item.get("symbol")
+        direction = item.get("direction")
+        if not symbol:
+            continue
+
+        state_name = item.get("state")
+        existing = pending.get(symbol)
+        if existing and (not direction or existing.get("direction") == direction):
+            if state_name in ("CONFIRMED", "EXPIRED_NO_BREAK", "NO_FRESH_UNBROKEN_PIVOT"):
+                pending.pop(symbol, None)
+
+        if state_name != "WAITING_FOR_CONFIRMATION":
+            continue
+
+        try:
+            sweep_time = int(item.get("sweep_time", 0))
+        except (TypeError, ValueError):
+            continue
+
+        # Sweep timestamp is the candle open. Add its 15m close plus four
+        # subsequent 15m candles: exactly 60 minutes of post-sweep waiting.
+        expires_at = sweep_time + WAITING_SETUP_MAX_AGE_MS
+        if not sweep_time or now_ms >= expires_at:
+            continue
+
+        new_setup = {
+            "symbol": symbol,
+            "direction": direction,
+            "sweep_time": sweep_time,
+            "reference": item.get("reference"),
+            "reference_type": item.get("reference_type"),
+            "bars_checked": item.get("bars_checked"),
+            "bars_required": MAX_STRUCTURE_BARS,
+            "expires_at": expires_at,
+            "updated_at": current_time_string()
+        }
+
+        old = pending.get(symbol)
+        if old and int(old.get("sweep_time", 0) or 0) > sweep_time:
+            continue
+        if old and (
+            old.get("direction") != direction
+            or int(old.get("sweep_time", 0) or 0) != sweep_time
+        ):
+            replaced += 1
+        pending[symbol] = new_setup
+
+    DIAGNOSTICS["waiting_queue_replaced"] += replaced
+    DIAGNOSTICS["waiting_queue_active"] = len(pending)
+    return len(pending)
+
+
 # =========================================================
 # SCANNER
 # =========================================================
@@ -2259,6 +2338,8 @@ def run_scanner():
     print("=" * 48)
 
     state = load_state()
+    prune_pending_setups(state)
+    save_state(state)
 
     # Open trades are monitored even during news windows.
     update_signal_results(state)
@@ -2329,7 +2410,7 @@ def run_scanner():
             "Outside entry hours. "
             "Open-trade tracking completed."
         )
-
+        save_state(state)
         return
 
     try:
@@ -2440,6 +2521,8 @@ def run_scanner():
 
             print(f"ERROR {symbol}: {error}")
 
+    sync_pending_setups(state)
+
     record = get_daily_record(state)
 
     record["scans"] += 1
@@ -2462,6 +2545,7 @@ def run_scanner():
     print("Coins in market universe:", len(coins))
     print("Coins scanned for entries:", len(coins_to_scan))
     print("Signals found:", new_signals)
+    print("Pending structure setups:", len(state.get("pending_setups", {})))
     print("Diagnostics:", DIAGNOSTICS)
     print("=" * 48)
 
@@ -2487,6 +2571,7 @@ def run_report():
     """Manually send a report for the current Iranian calendar week-to-date."""
 
     state = load_state()
+    prune_pending_setups(state)
 
     update_signal_results(state)
 
