@@ -11,11 +11,17 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.2.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.3.0
 # =========================================================
 
-VERSION = "6.2.0"
+VERSION = "6.3.0"
 MAX_RISK_ATR = 4.0
+
+# Entry freshness controls (experimental, conservative defaults).
+# Reject a confirmed structure if it is already too old or price has
+# extended too far from the broken structure reference.
+MAX_BARS_SINCE_STRUCTURE = 2
+MAX_ENTRY_EXTENSION_ATR = 0.80
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -97,6 +103,8 @@ DIAGNOSTICS = {
     "structure_waiting": 0,
     "structure_expired": 0,
     "structure_confirmed": 0,
+    "late_entry_rejected": 0,
+    "entry_extension_rejected": 0,
     "waiting_queue_active": 0,
     "waiting_queue_expired": 0,
     "waiting_queue_replaced": 0,
@@ -224,7 +232,9 @@ def send_signal(signal):
         "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
-        f"Entry Model: {signal.get('entry_model', 'DIRECT_CLOSED_5M_AFTER_BOS_CHOCH')}\n"
+        f"Entry Model: {signal.get('entry_model', 'FRESH_STRUCTURE_DIRECT_CLOSED_5M')}\n"
+        f"Structure Age: {signal.get('bars_since_structure', 0)} closed 15m bars\n"
+        f"Entry Extension: {signal.get('entry_extension_atr', 0.0):.2f} ATR\n"
         f"FVG Context: {'YES' if signal.get('fvg_retest') else 'NO'}\n"
         f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n"
         f"{ob_zone_text}\n"
@@ -1718,6 +1728,46 @@ def generate_signal(symbol, df5, df15):
 
     direction = sweep["direction"]
 
+    # -----------------------------------------------------
+    # ENTRY FRESHNESS FILTER
+    # Do not chase a move after the structure break is old
+    # or price has already extended far from the break level.
+    # -----------------------------------------------------
+    structure_index = int(structure.get("index", len(df15) - 1))
+    bars_since_structure = max(
+        0,
+        (len(df15) - 1) - structure_index
+    )
+    structure_reference = float(structure.get("reference", price))
+    entry_extension_atr = abs(price - structure_reference) / atr
+
+    if bars_since_structure > MAX_BARS_SINCE_STRUCTURE:
+        DIAGNOSTICS["late_entry_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol,
+            "stage": "ENTRY_FRESHNESS",
+            "reason": "STRUCTURE_TOO_OLD",
+            "bars_since_structure": int(bars_since_structure),
+            "max_bars": MAX_BARS_SINCE_STRUCTURE,
+            "entry_extension_atr": round(float(entry_extension_atr), 3),
+            "direction": direction
+        })
+        return None
+
+    if entry_extension_atr > MAX_ENTRY_EXTENSION_ATR:
+        DIAGNOSTICS["entry_extension_rejected"] += 1
+        DIAGNOSTICS["entry_distance_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol,
+            "stage": "ENTRY_FRESHNESS",
+            "reason": "PRICE_EXTENDED_FROM_STRUCTURE",
+            "bars_since_structure": int(bars_since_structure),
+            "entry_extension_atr": round(float(entry_extension_atr), 3),
+            "max_extension_atr": MAX_ENTRY_EXTENSION_ATR,
+            "direction": direction
+        })
+        return None
+
     if direction == "BUY":
         checks = [
             row["rsi"] > 50,
@@ -1846,7 +1896,10 @@ def generate_signal(symbol, df5, df15):
         "fvg_upper": fvg["upper"] if fvg else None,
         "fvg_retest": bool(fvg),
         "fvg_required": False,
-        "entry_model": "DIRECT_CLOSED_5M_AFTER_BOS_CHOCH",
+        "entry_model": "FRESH_STRUCTURE_DIRECT_CLOSED_5M",
+        "bars_since_structure": int(bars_since_structure),
+        "entry_extension_atr": float(entry_extension_atr),
+        "structure_reference": float(structure_reference),
         "order_block": order_block,
         "order_block_zone": order_block_zone,
         "structure": structure["name"],
