@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.0.2
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.1.0
 # =========================================================
 
-VERSION = "6.0.2"
+VERSION = "6.1.0"
 MAX_RISK_ATR = 4.0
 
 BASE_URL = "https://data-api.binance.vision"
@@ -36,16 +36,23 @@ MAX_STRUCTURE_BARS = 8
 
 PIVOT_LEFT = 2
 PIVOT_RIGHT = 2
+MAX_PIVOT_AGE = 32
 
 FVG_LOOKBACK = 25
 FVG_MIN_ATR = 0.05
-ORDER_BLOCK_LOOKBACK = 10
+
+ORDER_BLOCK_LOOKBACK = 24
+ORDER_BLOCK_MAX_OPPOSING_CANDLES = 5
+ORDER_BLOCK_DISPLACEMENT_ATR = 0.65
+ORDER_BLOCK_MIN_RANGE_ATR = 0.90
+ORDER_BLOCK_CLOSE_EXTREME = 0.30
 
 FALLBACK_STOP_ATR = 0.75
 SWEEP_STOP_BUFFER = 0.12
 
 STATE_FILE = "signals.json"
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
+
 
 # =========================================================
 # HTTP SESSION
@@ -68,6 +75,7 @@ session.mount("https://", adapter)
 session.headers.update({
     "User-Agent": f"CryptoSignalBot/{VERSION}"
 })
+
 
 # =========================================================
 # DIAGNOSTICS
@@ -108,6 +116,7 @@ DIAGNOSTICS = {
 
 STRUCTURE_DEBUG = []
 REJECTION_DEBUG = []
+
 
 # =========================================================
 # TIME
@@ -182,6 +191,14 @@ def send_signal(signal):
     risk_atr = float(signal.get("risk_atr", 0))
     high_risk = risk_atr > MAX_RISK_ATR
 
+    ob_zone = signal.get("order_block_zone") or {}
+
+    ob_zone_text = (
+        f"Order Block Zone: {float(ob_zone['lower']):.8g} - "
+        f"{float(ob_zone['upper']):.8g}\n"
+        if ob_zone else ""
+    )
+
     risk_warning = ""
 
     if high_risk:
@@ -205,7 +222,8 @@ def send_signal(signal):
         f"Structure: {signal['structure']}\n"
         f"Entry Model: {signal.get('entry_model', 'DIRECT_CLOSED_5M_AFTER_BOS_CHOCH')}\n"
         f"FVG Context: {'YES' if signal.get('fvg_retest') else 'NO'}\n"
-        f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n\n"
+        f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n"
+        f"{ob_zone_text}\n"
         "💰 TRADE LEVELS\n"
         f"Entry: {signal['entry']:.8g}\n"
         f"Stop Loss: {signal['stop_loss']:.8g}\n"
@@ -279,12 +297,14 @@ def load_state():
         return {
             "signals": [],
             "daily": {},
+            "weekly_reports": {},
             "news_filter": {}
         }
 
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as file:
             state = json.load(file)
+
     except Exception as error:
         raise RuntimeError(
             f"Cannot safely load {STATE_FILE}: {error}"
@@ -295,6 +315,7 @@ def load_state():
 
     state.setdefault("signals", [])
     state.setdefault("daily", {})
+    state.setdefault("weekly_reports", {})
     state.setdefault("news_filter", {})
 
     if not isinstance(state["signals"], list):
@@ -302,6 +323,9 @@ def load_state():
 
     if not isinstance(state["daily"], dict):
         state["daily"] = {}
+
+    if not isinstance(state["weekly_reports"], dict):
+        state["weekly_reports"] = {}
 
     for signal in state["signals"]:
         signal.setdefault("tp1_hit", False)
@@ -342,6 +366,17 @@ def load_state():
 
             if signal.get("result_stage") == "NONE":
                 signal["result_stage"] = "TP1"
+
+        # TP2 necessarily means TP1 was reached first (or both targets
+        # were crossed in one candle); preserve the agreed single WIN.
+        if signal.get("status") == "TP2":
+            signal["tp1_hit"] = True
+            signal["tp2_hit"] = True
+            signal["stat_result"] = "WIN"
+            signal["result_locked"] = True
+
+            if signal.get("result_stage") == "NONE":
+                signal["result_stage"] = "TP2"
 
         # SL before TP1 = LOSS; SL after TP1 preserves WIN.
         if signal.get("status") == "SL":
@@ -408,6 +443,7 @@ def get_market_coins():
         NOBITEX_STATS_URL,
         timeout=15
     )
+
     nobitex_response.raise_for_status()
 
     nobitex_payload = nobitex_response.json()
@@ -445,6 +481,7 @@ def get_market_coins():
         f"{BASE_URL}/api/v3/ticker/24hr",
         timeout=20
     )
+
     response.raise_for_status()
 
     excluded = {
@@ -1119,7 +1156,7 @@ def detect_sweep_candidates(df):
 # =========================================================
 
 def detect_structure(df, sweep, symbol="UNKNOWN"):
-    sweep_index = sweep["index"]
+    sweep_index = int(sweep["index"])
     direction = sweep["direction"]
 
     highs, lows = find_confirmed_swings(
@@ -1127,19 +1164,42 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         sweep_index - 1
     )
 
-    if direction == "BUY":
-        valid = [
-            pivot for pivot in highs
-            if pivot["index"] < sweep_index
-        ]
-        reference_type = "SWING_HIGH"
+    pivot_pool = highs if direction == "BUY" else lows
 
-    else:
-        valid = [
-            pivot for pivot in lows
-            if pivot["index"] < sweep_index
+    reference_type = (
+        "SWING_HIGH"
+        if direction == "BUY"
+        else "SWING_LOW"
+    )
+
+    # A structure level must be recent and must not already have been
+    # broken by a candle close before the liquidity sweep.
+    valid = []
+
+    for candidate in pivot_pool:
+        pivot_index = int(candidate["index"])
+        age = sweep_index - pivot_index
+
+        if age <= 0 or age > MAX_PIVOT_AGE:
+            continue
+
+        reference = float(candidate["price"])
+
+        between = df.iloc[
+            pivot_index + 1:sweep_index
         ]
-        reference_type = "SWING_LOW"
+
+        if between.empty:
+            continue
+
+        already_broken = (
+            (between["close"] > reference).any()
+            if direction == "BUY"
+            else (between["close"] < reference).any()
+        )
+
+        if not already_broken:
+            valid.append(candidate)
 
     if not valid:
         DIAGNOSTICS["structure_no_pivot"] += 1
@@ -1147,13 +1207,19 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         STRUCTURE_DEBUG.append({
             "symbol": symbol,
             "direction": direction,
-            "state": "NO_PIVOT",
+            "state": "NO_FRESH_UNBROKEN_PIVOT",
+            "max_pivot_age": MAX_PIVOT_AGE,
             "sweep_time": sweep["time"]
         })
 
         return None
 
-    pivot = valid[-1]
+    # The nearest valid pivot is the most relevant liquidity structure.
+    pivot = max(
+        valid,
+        key=lambda item: int(item["index"])
+    )
+
     reference = float(pivot["price"])
 
     available_bars = len(df) - 1 - sweep_index
@@ -1195,9 +1261,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             name = "BOS"
 
         atr_value = float(
-            df.iloc[sweep_index]["atr"]
-            if "atr" in df.columns
-            else 0
+            df.iloc[sweep_index].get("atr", 0) or 0
         )
 
         distance = abs(close - reference)
@@ -1217,6 +1281,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             "structure": name,
             "reference": reference,
             "reference_type": reference_type,
+            "pivot_age": sweep_index - int(pivot["index"]),
             "bars_checked": j - sweep_index,
             "distance": distance,
             "distance_atr": distance_atr,
@@ -1229,7 +1294,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             "time": int(candle["close_time"]),
             "index": j,
             "reference": reference,
-            "pivot_index": pivot["index"],
+            "pivot_index": int(pivot["index"]),
             "bars_checked": j - sweep_index
         }
 
@@ -1242,6 +1307,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             "state": "WAITING_FOR_CONFIRMATION",
             "reference": reference,
             "reference_type": reference_type,
+            "pivot_age": sweep_index - int(pivot["index"]),
             "bars_checked": bars_checked,
             "bars_required": MAX_STRUCTURE_BARS,
             "sweep_time": sweep["time"]
@@ -1362,6 +1428,7 @@ def detect_fvg_retest(df, direction, after_time, atr):
                 not later.empty
                 and (later["close"] < zone_low).any()
             )
+
         else:
             invalidated = (
                 not later.empty
@@ -1384,6 +1451,7 @@ def detect_fvg_retest(df, direction, after_time, atr):
             confirmed = (
                 float(last["close"]) > float(last["open"])
             )
+
         else:
             confirmed = (
                 float(last["close"]) < float(last["open"])
@@ -1405,22 +1473,164 @@ def detect_fvg_retest(df, direction, after_time, atr):
 # ORDER BLOCK
 # =========================================================
 
-def detect_order_block(df, direction):
-    if len(df) < ORDER_BLOCK_LOOKBACK + 2:
-        return False
+def detect_order_block(df, direction, structure_time, structure_reference):
+    """
+    Find the last opposing candle before a qualifying displacement.
 
-    recent = df.iloc[
-        -(ORDER_BLOCK_LOOKBACK + 1):-1
+    The displacement must close through the confirmed 15m structure level.
+    The candidate zone is rejected if price closes through its far edge.
+    Returns zone metadata or None.
+    """
+
+    if len(df) < ORDER_BLOCK_LOOKBACK + 5:
+        return None
+
+    work = df.copy()
+
+    if "atr" not in work.columns:
+        work = calculate_indicators(work)
+
+    eligible = work[
+        work["close_time"].astype("int64") <= int(structure_time)
     ]
 
-    if direction == "BUY":
-        return bool(
-            (recent["close"] < recent["open"]).any()
+    if len(eligible) < 6:
+        return None
+
+    end_index = int(eligible.index[-1])
+    start_index = max(
+        1,
+        end_index - ORDER_BLOCK_LOOKBACK
+    )
+
+    ref = float(structure_reference)
+
+    # Search backwards for the most recent directional displacement
+    # that actually closes beyond the confirmed structure reference.
+    for displacement_index in range(
+        end_index,
+        start_index,
+        -1
+    ):
+        displacement = work.iloc[displacement_index]
+
+        op = float(displacement["open"])
+        cl = float(displacement["close"])
+        hi = float(displacement["high"])
+        lo = float(displacement["low"])
+
+        atr_value = float(
+            displacement.get("atr", 0) or 0
         )
 
-    return bool(
-        (recent["close"] > recent["open"]).any()
-    )
+        if not np.isfinite(atr_value) or atr_value <= 0:
+            continue
+
+        body = abs(cl - op)
+        candle_range = hi - lo
+
+        if candle_range <= 0:
+            continue
+
+        if direction == "BUY":
+            directional = cl > op and cl > ref
+
+            close_near_extreme = (
+                (hi - cl) / candle_range
+                <= ORDER_BLOCK_CLOSE_EXTREME
+            )
+
+        else:
+            directional = cl < op and cl < ref
+
+            close_near_extreme = (
+                (cl - lo) / candle_range
+                <= ORDER_BLOCK_CLOSE_EXTREME
+            )
+
+        if not directional:
+            continue
+
+        if body < atr_value * ORDER_BLOCK_DISPLACEMENT_ATR:
+            continue
+
+        if candle_range < atr_value * ORDER_BLOCK_MIN_RANGE_ATR:
+            continue
+
+        if not close_near_extreme:
+            continue
+
+        # Find the nearest opposite-colour candle immediately preceding
+        # the displacement, with a short maximum gap.
+        ob_index = None
+
+        lower_search = max(
+            start_index,
+            displacement_index - ORDER_BLOCK_MAX_OPPOSING_CANDLES
+        )
+
+        for candidate_index in range(
+            displacement_index - 1,
+            lower_search - 1,
+            -1
+        ):
+            candidate = work.iloc[candidate_index]
+
+            cop = float(candidate["open"])
+            ccl = float(candidate["close"])
+
+            if (
+                direction == "BUY"
+                and ccl < cop
+            ) or (
+                direction == "SELL"
+                and ccl > cop
+            ):
+                ob_index = candidate_index
+                break
+
+        if ob_index is None:
+            continue
+
+        ob = work.iloc[ob_index]
+
+        zone_low = float(ob["low"])
+        zone_high = float(ob["high"])
+
+        if (
+            not np.isfinite([zone_low, zone_high]).all()
+            or zone_high <= zone_low
+        ):
+            continue
+
+        # A close through the distal edge after displacement
+        # invalidates the candidate order block.
+        mitigation = work.iloc[
+            displacement_index + 1:
+        ]
+
+        if not mitigation.empty:
+            invalidated = (
+                (mitigation["close"] < zone_low).any()
+                if direction == "BUY"
+                else (mitigation["close"] > zone_high).any()
+            )
+
+            if invalidated:
+                continue
+
+        return {
+            "lower": zone_low,
+            "upper": zone_high,
+            "candle_time": int(ob["time"]),
+            "displacement_time": int(displacement["time"]),
+            "displacement_atr": round(
+                body / atr_value,
+                3
+            )
+        }
+
+    return None
 
 
 # =========================================================
@@ -1590,10 +1800,14 @@ def generate_signal(symbol, df5, df15):
         atr
     )
 
-    order_block = detect_order_block(
+    order_block_zone = detect_order_block(
         df5,
-        direction
+        direction,
+        structure["time"],
+        structure["reference"]
     )
+
+    order_block = bool(order_block_zone)
 
     if order_block:
         DIAGNOSTICS["order_block_detected"] += 1
@@ -1623,6 +1837,7 @@ def generate_signal(symbol, df5, df15):
         "fvg_required": False,
         "entry_model": "DIRECT_CLOSED_5M_AFTER_BOS_CHOCH",
         "order_block": order_block,
+        "order_block_zone": order_block_zone,
         "structure": structure["name"],
         "structure_trend": structure.get(
             "trend_context",
@@ -1728,6 +1943,7 @@ def update_signal_results(state):
                 symbol,
                 last_checked + 1
             )
+
         except Exception as error:
             print(f"Tracking error {symbol}: {error}")
             continue
@@ -1823,8 +2039,25 @@ def update_signal_results(state):
 
 
 # =========================================================
-# DAILY REPORT
+# WEEKLY REPORT
 # =========================================================
+
+def week_bounds_for_date(value):
+    """Iranian calendar week: Saturday 00:00 through Friday 23:59."""
+
+    if isinstance(value, str):
+        value = datetime.strptime(
+            value[:10],
+            "%Y-%m-%d"
+        ).date()
+
+    # Python weekday: Monday=0, Saturday=5.
+    days_since_saturday = (value.weekday() - 5) % 7
+
+    start = value - timedelta(days=days_since_saturday)
+
+    return start, start + timedelta(days=6)
+
 
 def signal_created_date(signal):
     value = signal.get("created_date")
@@ -1837,22 +2070,40 @@ def signal_created_date(signal):
     return str(value)[:10] if value else None
 
 
-def create_daily_report(state):
-    today = today_string()
+def create_weekly_report(state, week_start, week_end):
+    start_text = week_start.strftime("%Y-%m-%d")
+    end_text = week_end.strftime("%Y-%m-%d")
 
-    today_signals = [
-        signal for signal in state["signals"]
-        if signal_created_date(signal) == today
-    ]
+    # Strictly cohort by signal creation date. Older trades are never
+    # pulled into this week's report just because they resolved this week.
+    weekly_signals = []
+
+    for signal in state.get("signals", []):
+        created = signal_created_date(signal)
+
+        if not created:
+            continue
+
+        try:
+            created_date = datetime.strptime(
+                created,
+                "%Y-%m-%d"
+            ).date()
+
+        except ValueError:
+            continue
+
+        if week_start <= created_date <= week_end:
+            weekly_signals.append(signal)
 
     wins = sum(
         signal.get("stat_result") == "WIN"
-        for signal in today_signals
+        for signal in weekly_signals
     )
 
     losses = sum(
         signal.get("stat_result") == "LOSS"
-        for signal in today_signals
+        for signal in weekly_signals
     )
 
     decided = wins + losses
@@ -1865,61 +2116,120 @@ def create_daily_report(state):
 
     tp1_count = sum(
         bool(signal.get("tp1_hit"))
-        for signal in today_signals
+        for signal in weekly_signals
     )
 
     tp2_count = sum(
         bool(signal.get("tp2_hit"))
-        for signal in today_signals
+        or signal.get("status") == "TP2"
+        for signal in weekly_signals
+    )
+
+    sl_count = sum(
+        signal.get("status") == "SL"
+        for signal in weekly_signals
     )
 
     open_count = sum(
         signal.get("status") == "OPEN"
-        for signal in today_signals
+        for signal in weekly_signals
     )
 
-    closed_sl = sum(
-        signal.get("status") == "SL"
-        for signal in today_signals
-    )
+    scans = 0
+    new_signals = len(weekly_signals)
 
-    closed_tp2 = sum(
-        signal.get("status") == "TP2"
-        for signal in today_signals
-    )
+    daily_records = state.get("daily", {})
 
-    record = state.get(
-        "daily",
-        {}
-    ).get(
-        today,
-        {
-            "scans": 0,
-            "signals": 0
-        }
-    )
+    day = week_start
+
+    while day <= week_end:
+        record = daily_records.get(
+            day.strftime("%Y-%m-%d"),
+            {}
+        )
+
+        scans += int(record.get("scans", 0) or 0)
+
+        day += timedelta(days=1)
 
     return (
-        "📊 DAILY PERFORMANCE REPORT\n"
+        "📊 WEEKLY PERFORMANCE REPORT\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        f"Date: {today}\n\n"
-        f"Scans completed: {record.get('scans', 0)}\n"
-        f"New signals: {record.get('signals', 0)}\n\n"
+        f"Week: {start_text} to {end_text} (Iran time)\n\n"
+        f"Scans completed: {scans}\n"
+        f"Signals created this week: {new_signals}\n\n"
         "STATISTICAL RESULTS (one result per signal)\n"
         f"Wins: {wins}\n"
         f"Losses: {losses}\n"
         f"Win rate: {win_rate:.1f}%\n\n"
-        "TRADE STATUS\n"
+        "TRADE MILESTONES / STATUS\n"
         f"TP1 reached: {tp1_count}\n"
-        f"TP2 closed: {closed_tp2}\n"
-        f"SL closed: {closed_sl}\n"
+        f"TP2 reached: {tp2_count}\n"
+        f"SL closed: {sl_count}\n"
         f"Still open: {open_count}\n\n"
-        "Rule: first TP1 touch = one WIN; "
-        "SL before TP1 = one LOSS.\n"
-        "After TP1, later SL does not add a loss. "
-        "TP2 or SL closes tracking.\n"
+        "Cohort rule: only signals created during this week are counted.\n"
+        "Older signals are excluded, even if they reached TP1/TP2/SL this week.\n"
+        "TP1 is one WIN; SL before TP1 is one LOSS.\n"
+        "After TP1, a later SL does not add a LOSS.\n"
         "━━━━━━━━━━━━━━━━━━"
     )
+
+
+def maybe_send_weekly_report(state):
+    """Send once Friday night after entry hours; Saturday is a retry window."""
+
+    now = iran_now()
+
+    is_friday_night = (
+        now.weekday() == 4
+        and now.hour >= 22
+    )
+
+    is_saturday_retry = now.weekday() == 5
+
+    if not (is_friday_night or is_saturday_retry):
+        return False
+
+    if is_friday_night:
+        week_start, week_end = week_bounds_for_date(
+            now.date()
+        )
+
+    else:
+        week_start, week_end = week_bounds_for_date(
+            now.date() - timedelta(days=1)
+        )
+
+    week_key = week_start.strftime("%Y-%m-%d")
+
+    sent_reports = state.setdefault(
+        "weekly_reports",
+        {}
+    )
+
+    if sent_reports.get(week_key, {}).get("sent"):
+        return False
+
+    message = create_weekly_report(
+        state,
+        week_start,
+        week_end
+    )
+
+    if send_telegram_text(message):
+        sent_reports[week_key] = {
+            "sent": True,
+            "sent_at": current_time_string(),
+            "week_end": week_end.strftime("%Y-%m-%d")
+        }
+
+        save_state(state)
+
+        print(message)
+
+        return True
+
+    return False
 
 
 # =========================================================
@@ -1939,19 +2249,26 @@ def run_scanner():
     REJECTION_DEBUG = []
 
     print("=" * 48)
+
     print(
         f"SMART MONEY CRYPTO SIGNAL BOT v{VERSION}"
     )
+
     print("Iran time:", current_time_string())
+
     print("=" * 48)
 
     state = load_state()
 
     # Open trades are monitored even during news windows.
     update_signal_results(state)
+
     save_state(state)
 
     process_pending_events(state)
+
+    # Weekly report is sent after Friday's entry window; Saturday is a retry.
+    maybe_send_weekly_report(state)
 
     news_active, news_event, calendar_ok = (
         active_high_impact_news()
@@ -2012,6 +2329,7 @@ def run_scanner():
             "Outside entry hours. "
             "Open-trade tracking completed."
         )
+
         return
 
     try:
@@ -2021,6 +2339,7 @@ def run_scanner():
         DIAGNOSTICS["errors"] += 1
 
         print("MARKET UNIVERSE ERROR:", error)
+
         coins = []
 
     print(
@@ -2118,6 +2437,7 @@ def run_scanner():
 
         except Exception as error:
             DIAGNOSTICS["errors"] += 1
+
             print(f"ERROR {symbol}: {error}")
 
     record = get_daily_record(state)
@@ -2134,6 +2454,7 @@ def run_scanner():
     save_state(state)
 
     process_pending_events(state)
+
     save_state(state)
 
     print("=" * 48)
@@ -2159,18 +2480,29 @@ def run_scanner():
 
 
 # =========================================================
-# DAILY REPORT RUNNER
+# WEEKLY REPORT RUNNER
 # =========================================================
 
 def run_report():
+    """Manually send a report for the current Iranian calendar week-to-date."""
+
     state = load_state()
 
     update_signal_results(state)
+
     save_state(state)
 
     process_pending_events(state)
 
-    message = create_daily_report(state)
+    week_start, _ = week_bounds_for_date(
+        iran_now().date()
+    )
+
+    message = create_weekly_report(
+        state,
+        week_start,
+        iran_now().date()
+    )
 
     send_telegram_text(message)
 
