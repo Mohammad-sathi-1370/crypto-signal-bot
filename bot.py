@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.2
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.3
 # =========================================================
 
-VERSION = "6.6.2"
+VERSION = "6.6.3"
 MAX_RISK_ATR = 4.0
 
 MAX_BARS_SINCE_STRUCTURE = 4  # Keep a confirmed structure eligible for up to 60 minutes.
@@ -2508,12 +2508,12 @@ def _generate_smc_signal(symbol, df5, df15, state=None):
 
 
 def generate_momentum_signal(symbol, df5, df15):
-    """
-    Momentum continuation model for BUY and SELL.
-    Checks the latest three CLOSED 5m candles so a breakout is not missed
-    merely because the scan runs one or two candles after the trigger.
-    The current price must still hold beyond the breakout level and remain
-    close enough to avoid chasing an exhausted move.
+    """Momentum continuation model for BUY and SELL.
+
+    Evaluate every recent breakout from newest to oldest. A rejected newest
+    candidate must not hide an otherwise valid opposite-direction candidate.
+    All existing quality, trend, extension and stop-distance filters remain
+    mandatory; this change fixes candidate selection rather than loosening them.
     """
     if len(df5) < 30 or len(df15) < 50:
         return None
@@ -2546,8 +2546,6 @@ def generate_momentum_signal(symbol, df5, df15):
     trend_plus_di = float(trend["plus_di"])
     trend_minus_di = float(trend["minus_di"])
 
-    # Early trend alignment: price must be on the correct side of EMA20,
-    # plus either EMA20 slope or 15m directional pressure must agree.
     bullish_trend = (
         trend_close > trend_ema20
         and (trend_ema20 > trend_ema20_prev or trend_plus_di > trend_minus_di)
@@ -2580,173 +2578,168 @@ def generate_momentum_signal(symbol, df5, df15):
         if candle_atr <= 0 or candle_range <= 0 or vol_avg <= 0:
             continue
 
-        prior_high, prior_low = float(prior["high"].max()), float(prior["low"].min())
+        prior_high = float(prior["high"].max())
+        prior_low = float(prior["low"].min())
         close_position = (close - low) / candle_range
         body_ratio = abs(close - opn) / candle_range
 
+        common = {
+            "idx": idx,
+            "body_ratio": body_ratio,
+            "candle_range_atr": candle_range / candle_atr,
+            "volume_ratio": float(candle["volume"] / vol_avg),
+            "adx": float(candle["adx"]),
+            "rsi": float(candle["rsi"]),
+            "plus_di": float(candle["plus_di"]),
+            "minus_di": float(candle["minus_di"])
+        }
         if (
             close > prior_high + 0.05 * candle_atr
             and close > opn and close_position >= 0.72
         ):
             candidates.append({
-                "idx": idx, "direction": "BUY", "level": prior_high,
-                "body_ratio": body_ratio,
-                "candle_range_atr": candle_range / candle_atr,
-                "volume_ratio": float(candle["volume"] / vol_avg),
-                "adx": float(candle["adx"]), "rsi": float(candle["rsi"]),
-                "plus_di": float(candle["plus_di"]),
-                "minus_di": float(candle["minus_di"])
+                **common, "direction": "BUY", "level": prior_high
             })
         elif (
             close < prior_low - 0.05 * candle_atr
             and close < opn and close_position <= 0.28
         ):
             candidates.append({
-                "idx": idx, "direction": "SELL", "level": prior_low,
-                "body_ratio": body_ratio,
-                "candle_range_atr": candle_range / candle_atr,
-                "volume_ratio": float(candle["volume"] / vol_avg),
-                "adx": float(candle["adx"]), "rsi": float(candle["rsi"]),
-                "plus_di": float(candle["plus_di"]),
-                "minus_di": float(candle["minus_di"])
+                **common, "direction": "SELL", "level": prior_low
             })
 
     if not candidates:
         DIAGNOSTICS["momentum_reject_breakout"] += 1
         return None
 
-    candidate = candidates[-1]
-    direction = candidate["direction"]
-    breakout_level = float(candidate["level"])
-    breakout_idx = int(candidate["idx"])
-    breakout_age = len(df5) - 1 - breakout_idx
-    DIAGNOSTICS["momentum_candidates"] += 1
+    # Count all found setups, not just the last candidate in the list.
+    DIAGNOSTICS["momentum_candidates"] += len(candidates)
+    stop_window = df5.iloc[max(0, len(df5) - 6):]
 
-    if direction == "BUY":
-        trend_ok = bullish_trend
-        di_ok, rsi_ok = candidate["plus_di"] > candidate["minus_di"], 52 <= candidate["rsi"] <= 76
-        still_holding = price > breakout_level
-        breakout_extension = (price - breakout_level) / atr
-        ema_extension = (price - float(current["ema20"])) / atr
-        stop_window = df5.iloc[max(0, len(df5) - 6):]
-        stop_loss = min(float(stop_window["low"].min()), breakout_level - 0.25 * atr)
-        risk = price - stop_loss
-    else:
-        trend_ok = bearish_trend
-        di_ok, rsi_ok = candidate["minus_di"] > candidate["plus_di"], 24 <= candidate["rsi"] <= 48
-        still_holding = price < breakout_level
-        breakout_extension = (breakout_level - price) / atr
-        ema_extension = (float(current["ema20"]) - price) / atr
-        stop_window = df5.iloc[max(0, len(df5) - 6):]
-        stop_loss = max(float(stop_window["high"].max()), breakout_level + 0.25 * atr)
-        risk = stop_loss - price
+    # Newest candidate gets priority, but a failed candidate no longer masks
+    # an earlier candidate in the opposite direction.
+    for candidate in reversed(candidates):
+        direction = candidate["direction"]
+        breakout_level = float(candidate["level"])
+        breakout_idx = int(candidate["idx"])
+        breakout_age = len(df5) - 1 - breakout_idx
 
-    if not still_holding:
-        DIAGNOSTICS["momentum_reject_extension"] += 1
-        DIAGNOSTICS["momentum_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "MOMENTUM",
-            "reason": "BREAKOUT_LEVEL_RECLAIMED",
-            "direction": direction, "breakout_age_bars": breakout_age
-        })
-        return None
+        if direction == "BUY":
+            trend_ok = bullish_trend
+            di_ok = candidate["plus_di"] > candidate["minus_di"]
+            rsi_ok = 52 <= candidate["rsi"] <= 76
+            still_holding = price > breakout_level
+            breakout_extension = (price - breakout_level) / atr
+            ema_extension = (price - float(current["ema20"])) / atr
+            stop_loss = min(float(stop_window["low"].min()), breakout_level - 0.25 * atr)
+            risk = price - stop_loss
+        else:
+            trend_ok = bearish_trend
+            di_ok = candidate["minus_di"] > candidate["plus_di"]
+            rsi_ok = 24 <= candidate["rsi"] <= 48
+            still_holding = price < breakout_level
+            breakout_extension = (breakout_level - price) / atr
+            ema_extension = (float(current["ema20"]) - price) / atr
+            stop_loss = max(float(stop_window["high"].max()), breakout_level + 0.25 * atr)
+            risk = stop_loss - price
 
-    if not trend_ok:
-        DIAGNOSTICS["momentum_reject_trend"] += 1
-        DIAGNOSTICS["momentum_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "MOMENTUM",
-            "reason": "15M_TREND_NOT_ALIGNED", "direction": direction,
-            "trend_close_vs_ema20": round(trend_close - trend_ema20, 6),
-            "ema20_slope": round(trend_ema20 - trend_ema20_prev, 6),
-            "15m_di_aligned": (
-                trend_plus_di > trend_minus_di if direction == "BUY"
-                else trend_minus_di > trend_plus_di
+        def reject(counter, reason, **details):
+            DIAGNOSTICS[counter] += 1
+            DIAGNOSTICS["momentum_rejected"] += 1
+            REJECTION_DEBUG.append({
+                "symbol": symbol, "stage": "MOMENTUM", "reason": reason,
+                "direction": direction, "breakout_age_bars": breakout_age,
+                **details
+            })
+
+        if not still_holding:
+            reject("momentum_reject_extension", "BREAKOUT_LEVEL_RECLAIMED")
+            continue
+
+        if not trend_ok:
+            reject(
+                "momentum_reject_trend", "15M_TREND_NOT_ALIGNED",
+                trend_close_vs_ema20=round(trend_close - trend_ema20, 6),
+                ema20_slope=round(trend_ema20 - trend_ema20_prev, 6),
+                **{"15m_di_aligned": bool(
+                    trend_plus_di > trend_minus_di if direction == "BUY"
+                    else trend_minus_di > trend_plus_di
+                )}
             )
-        })
-        return None
+            continue
 
-    if candidate["volume_ratio"] < 1.15 or candidate["adx"] < 17 or not di_ok:
-        DIAGNOSTICS["momentum_reject_volume_adx"] += 1
-        DIAGNOSTICS["momentum_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "MOMENTUM",
-            "reason": "BREAKOUT_VOLUME_ADX_OR_DI_WEAK",
-            "direction": direction,
-            "volume_ratio": round(candidate["volume_ratio"], 3),
-            "adx": round(candidate["adx"], 2), "di_aligned": bool(di_ok),
-            "breakout_age_bars": breakout_age
-        })
-        return None
+        if candidate["volume_ratio"] < 1.15 or candidate["adx"] < 17 or not di_ok:
+            reject(
+                "momentum_reject_volume_adx", "BREAKOUT_VOLUME_ADX_OR_DI_WEAK",
+                volume_ratio=round(candidate["volume_ratio"], 3),
+                adx=round(candidate["adx"], 2), di_aligned=bool(di_ok)
+            )
+            continue
 
-    if (
-        candidate["body_ratio"] < 0.55
-        or candidate["candle_range_atr"] > 2.20
-        or breakout_extension > 0.65 or ema_extension > 1.50
-        or not rsi_ok or breakout_age > 2
-    ):
-        DIAGNOSTICS["momentum_reject_extension"] += 1
-        DIAGNOSTICS["momentum_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "MOMENTUM",
-            "reason": "WEAK_OR_LATE_BREAKOUT", "direction": direction,
-            "breakout_age_bars": breakout_age,
-            "body_ratio": round(candidate["body_ratio"], 3),
-            "breakout_extension_atr": round(breakout_extension, 3),
-            "ema_extension_atr": round(ema_extension, 3),
-            "breakout_range_atr": round(candidate["candle_range_atr"], 3),
-            "rsi": round(candidate["rsi"], 2)
-        })
-        return None
+        if (
+            candidate["body_ratio"] < 0.55
+            or candidate["candle_range_atr"] > 2.20
+            or breakout_extension > 0.65 or ema_extension > 1.50
+            or not rsi_ok or breakout_age > 2
+        ):
+            reject(
+                "momentum_reject_extension", "WEAK_OR_LATE_BREAKOUT",
+                body_ratio=round(candidate["body_ratio"], 3),
+                breakout_extension_atr=round(breakout_extension, 3),
+                ema_extension_atr=round(ema_extension, 3),
+                breakout_range_atr=round(candidate["candle_range_atr"], 3),
+                rsi=round(candidate["rsi"], 2)
+            )
+            continue
 
-    risk_atr = risk / atr
-    if not np.isfinite(risk) or risk <= 0 or risk_atr < 0.35 or risk_atr > 1.80:
-        DIAGNOSTICS["momentum_reject_risk"] += 1
-        DIAGNOSTICS["momentum_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "MOMENTUM",
-            "reason": "STOP_DISTANCE_OUTSIDE_VALID_RANGE",
-            "direction": direction, "risk_atr": round(float(risk_atr), 3)
-        })
-        return None
+        risk_atr = risk / atr
+        if not np.isfinite(risk) or risk <= 0 or risk_atr < 0.35 or risk_atr > 1.80:
+            reject(
+                "momentum_reject_risk", "STOP_DISTANCE_OUTSIDE_VALID_RANGE",
+                risk_atr=round(float(risk_atr), 3)
+            )
+            continue
 
-    if direction == "BUY":
-        tp1, tp2, tp3 = price + risk, price + 2 * risk, price + 3 * risk
-    else:
-        tp1, tp2, tp3 = price - risk, price - 2 * risk, price - 3 * risk
+        if direction == "BUY":
+            tp1, tp2, tp3 = price + risk, price + 2 * risk, price + 3 * risk
+        else:
+            tp1, tp2, tp3 = price - risk, price - 2 * risk, price - 3 * risk
 
-    signal_time = int(current["close_time"])
-    DIAGNOSTICS["momentum_confirmed"] += 1
-    return {
-        "symbol": symbol, "direction": direction, "entry": price,
-        "stop_loss": float(stop_loss), "tp1": float(tp1),
-        "tp2": float(tp2), "tp3": float(tp3), "risk": float(risk),
-        "risk_atr": float(risk_atr), "high_risk": risk_atr > MAX_RISK_ATR,
-        "risk_limit_atr": MAX_RISK_ATR, "confirmations": 6,
-        "confirmation_total": 7, "analysis_label": "MOMENTUM CONTINUATION ANALYSIS",
-        "liquidity_sweep": False, "rsi": float(current["rsi"]),
-        "adx": float(current["adx"]), "volume_ratio": candidate["volume_ratio"],
-        "atr": atr, "fvg_lower": None, "fvg_upper": None,
-        "fvg_retest": False, "fvg_required": False,
-        "entry_model": "MOMENTUM_CONTINUATION_RECENT_CLOSED_5M_BREAKOUT",
-        "retest_time": None, "retest_event_age_bars": breakout_age,
-        "retest_current_distance_atr": float(breakout_extension),
-        "retest_bars_after_structure": 0, "retest_tolerance": None,
-        "bars_since_structure": 0, "entry_extension_atr": float(breakout_extension),
-        "structure_reference": float(breakout_level), "order_block": False,
-        "order_block_zone": None, "structure": "MOMENTUM BREAKOUT",
-        "structure_trend": "CONTINUATION",
-        "structure_time": int(df5.iloc[breakout_idx]["close_time"]),
-        "sweep_time": int(df5.iloc[breakout_idx]["close_time"]),
-        "signal_time": signal_time, "last_checked_time": signal_time,
-        "tp1_hit": False, "tp2_hit": False, "tp3_hit": False,
-        "tp1_time": None, "tp2_time": None, "tp3_time": None,
-        "result_stage": "NONE", "status": "OPEN", "stat_result": None,
-        "result_locked": False, "result_time": None, "result_price": None,
-        "telegram_events": {}, "pending_events": [],
-        "result_notice_sent": False, "created_at": current_time_string(),
-        "created_date": today_string()
-    }
+        signal_time = int(current["close_time"])
+        DIAGNOSTICS["momentum_confirmed"] += 1
+        return {
+            "symbol": symbol, "direction": direction, "entry": price,
+            "stop_loss": float(stop_loss), "tp1": float(tp1),
+            "tp2": float(tp2), "tp3": float(tp3), "risk": float(risk),
+            "risk_atr": float(risk_atr), "high_risk": risk_atr > MAX_RISK_ATR,
+            "risk_limit_atr": MAX_RISK_ATR, "confirmations": 6,
+            "confirmation_total": 7, "analysis_label": "MOMENTUM CONTINUATION ANALYSIS",
+            "liquidity_sweep": False, "rsi": float(current["rsi"]),
+            "adx": float(current["adx"]), "volume_ratio": candidate["volume_ratio"],
+            "atr": atr, "fvg_lower": None, "fvg_upper": None,
+            "fvg_retest": False, "fvg_required": False,
+            "entry_model": "MOMENTUM_CONTINUATION_RECENT_CLOSED_5M_BREAKOUT",
+            "retest_time": None, "retest_event_age_bars": breakout_age,
+            "retest_current_distance_atr": float(breakout_extension),
+            "retest_bars_after_structure": 0, "retest_tolerance": None,
+            "bars_since_structure": 0, "entry_extension_atr": float(breakout_extension),
+            "structure_reference": float(breakout_level), "order_block": False,
+            "order_block_zone": None, "structure": "MOMENTUM BREAKOUT",
+            "structure_trend": "CONTINUATION",
+            "structure_time": int(df5.iloc[breakout_idx]["close_time"]),
+            "sweep_time": int(df5.iloc[breakout_idx]["close_time"]),
+            "signal_time": signal_time, "last_checked_time": signal_time,
+            "tp1_hit": False, "tp2_hit": False, "tp3_hit": False,
+            "tp1_time": None, "tp2_time": None, "tp3_time": None,
+            "result_stage": "NONE", "status": "OPEN", "stat_result": None,
+            "result_locked": False, "result_time": None, "result_price": None,
+            "telegram_events": {}, "pending_events": [],
+            "result_notice_sent": False, "created_at": current_time_string(),
+            "created_date": today_string()
+        }
+
+    return None
+
 
 def generate_signal(symbol, df5, df15, state=None):
     """SMC first; independent reversal and momentum models run if SMC has no signal."""
