@@ -11,17 +11,18 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.4.4
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.5.0
 # =========================================================
 
-VERSION = "6.4.4"
+VERSION = "6.5.0"
 MAX_RISK_ATR = 4.0
 
 MAX_BARS_SINCE_STRUCTURE = 4  # Keep a confirmed structure eligible for up to 60 minutes.
 MAX_ENTRY_EXTENSION_ATR = 0.80
 
-RETEST_MAX_BARS_AFTER_STRUCTURE = 9  # Nine closed 5m candles = 45 minutes.
+RETEST_MAX_BARS_AFTER_STRUCTURE = 12  # Twelve closed 5m candles = 60 minutes, aligned with the 15m structure-age limit.
 RETEST_TOLERANCE_ATR = 0.20
+RETEST_MAX_PENETRATION_ATR = 0.40
 RETEST_EVENT_MAX_AGE_BARS = 4
 RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR = 0.40
 
@@ -1838,16 +1839,22 @@ def evaluate_pending_retest(state, symbol, df5, df15):
         l = float(candle["low"])
         c = float(candle["close"])
 
+        # Permit a controlled wick-through of the level. The previous
+        # two-sided tolerance band rejected deeper liquidity probes even
+        # when the candle reclaimed the level and closed in the trade
+        # direction. Penetration remains capped at 0.40 ATR to avoid
+        # treating a broken structure as a valid retest.
+        max_penetration = current_atr * RETEST_MAX_PENETRATION_ATR
         if direction == "BUY":
             touched = (
                 l <= reference + tolerance
-                and l >= reference - tolerance
+                and l >= reference - max_penetration
             )
             reclaimed = c > reference and c > o
         else:
             touched = (
                 h >= reference - tolerance
-                and h <= reference + tolerance
+                and h <= reference + max_penetration
             )
             reclaimed = c < reference and c < o
 
