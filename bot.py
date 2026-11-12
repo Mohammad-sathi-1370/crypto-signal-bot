@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.5.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.0
 # =========================================================
 
-VERSION = "6.5.0"
+VERSION = "6.6.0"
 MAX_RISK_ATR = 4.0
 
 MAX_BARS_SINCE_STRUCTURE = 4  # Keep a confirmed structure eligible for up to 60 minutes.
@@ -25,6 +25,15 @@ RETEST_TOLERANCE_ATR = 0.20
 RETEST_MAX_PENETRATION_ATR = 0.40
 RETEST_EVENT_MAX_AGE_BARS = 4
 RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR = 0.40
+
+# Independent early-reversal model; it supplements rather than weakens SMC.
+EARLY_REVERSAL_LOOKBACK = 12
+EARLY_REVERSAL_MAX_AGE_BARS = 2
+EARLY_REVERSAL_MIN_WICK_RATIO = 0.35
+EARLY_REVERSAL_MIN_SCORE = 3
+EARLY_REVERSAL_MIN_VOLUME_RATIO = 1.00
+EARLY_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.35
+EARLY_REVERSAL_MIN_RISK_ATR = 0.15
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -106,6 +115,9 @@ DIAGNOSTICS = {
     "structure_waiting": 0,
     "structure_expired": 0,
     "structure_confirmed": 0,
+    "early_reversal_candidates": 0,
+    "early_reversal_confirmed": 0,
+    "early_reversal_rejected": 0,
     "late_entry_rejected": 0,
     "entry_extension_rejected": 0,
     "retest_waiting": 0,
@@ -240,12 +252,12 @@ def send_signal(signal):
         f"💎 Symbol: {signal['symbol']}\n"
         f"📍 Direction: {label}\n"
         "⏱ Timeframe: 5m\n"
-        f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
-        "📊 SMC ANALYSIS\n"
-        "Liquidity Sweep: YES\n"
+        f"⭐ Confirmations: {signal['confirmations']}/{signal.get('confirmation_total', 7)}\n\n"
+        f"📊 {signal.get('analysis_label', 'SMC ANALYSIS')}\n"
+        f"Liquidity Sweep: {'YES' if signal.get('liquidity_sweep', True) else 'NO'}\n"
         f"Structure: {signal['structure']}\n"
         f"Entry Model: {signal.get('entry_model', 'FRESH_STRUCTURE_DIRECT_CLOSED_5M')}\n"
-        f"Structure Age: {signal.get('bars_since_structure', 0)} closed 15m bars\n"
+        f"Structure Age: {signal.get('bars_since_structure', 0)} {'closed 5m bars' if signal.get('entry_model', '').startswith('EARLY_REVERSAL') else 'closed 15m bars'}\n"
         f"Entry Extension: {signal.get('entry_extension_atr', 0.0):.2f} ATR\n"
         f"FVG Context: {'YES' if signal.get('fvg_retest') else 'NO'}\n"
         f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n"
@@ -255,6 +267,7 @@ def send_signal(signal):
         f"Stop Loss: {signal['stop_loss']:.8g}\n"
         f"TP1: {signal['tp1']:.8g} (1R)\n"
         f"TP2: {signal['tp2']:.8g} (2R)\n"
+        f"TP3: {signal['tp3']:.8g} (3R)\n"
         "📈 INDICATORS\n"
         f"RSI: {signal['rsi']:.2f}\n"
         f"ADX: {signal['adx']:.2f}\n"
@@ -293,6 +306,11 @@ def send_event_message(signal, event):
             f"Price: {signal['tp2']:.8g}\n"
             "Milestone: 2R\n"
             "Trade tracking closed."
+        ),
+        "TP3": (
+            f"🚀 TP3 HIT\n{symbol}\n"
+            f"Price: {signal['tp3']:.8g}\n"
+            "Milestone: 3R. TP2 and TP3 were reached within the same 5m candle."
         ),
         "SL": (
             f"🛑 STOP LOSS HIT\n{symbol}\n"
@@ -1340,7 +1358,10 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             "pivot_age": sweep_index - int(pivot["index"]),
             "bars_checked": bars_checked,
             "bars_required": MAX_STRUCTURE_BARS,
-            "sweep_time": sweep["time"]
+            "sweep_time": sweep["time"],
+            "sweep_low": float(sweep["sweep_low"]),
+            "sweep_high": float(sweep["sweep_high"]),
+            "liquidity_level": float(sweep.get("liquidity_level", reference))
         })
 
         return None
@@ -1360,6 +1381,44 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
 
     return None
 
+
+
+def resume_pending_structure(df15, symbol, state):
+    """Resume a persisted sweep candidate instead of treating the queue as display-only."""
+    setup = state.setdefault("pending_setups", {}).get(symbol)
+    if not isinstance(setup, dict):
+        return None, None
+
+    try:
+        sweep_time = int(setup["sweep_time"])
+        direction = str(setup["direction"])
+        reference = float(setup["reference"])
+        sweep_low = float(setup["sweep_low"])
+        sweep_high = float(setup["sweep_high"])
+        liquidity_level = float(setup.get("liquidity_level", reference))
+    except (KeyError, TypeError, ValueError):
+        state["pending_setups"].pop(symbol, None)
+        return None, None
+
+    times = pd.to_numeric(df15["time"], errors="coerce")
+    matches = np.flatnonzero(times.to_numpy() == sweep_time)
+    if len(matches) == 0:
+        expires_at = int(setup.get("expires_at", 0) or 0)
+        if not expires_at or int(time.time() * 1000) >= expires_at:
+            state["pending_setups"].pop(symbol, None)
+        return None, None
+
+    sweep_index = int(matches[-1])
+    sweep = {
+        "direction": direction,
+        "index": sweep_index,
+        "sweep_low": sweep_low,
+        "sweep_high": sweep_high,
+        "liquidity_level": liquidity_level,
+        "time": sweep_time
+    }
+    structure = detect_structure(df15, sweep, symbol)
+    return sweep, structure
 
 def find_sweep_structure(df15, symbol):
     candidates = detect_sweep_candidates(df15)
@@ -1963,6 +2022,160 @@ def evaluate_pending_retest(state, symbol, df5, df15):
     return None
 
 
+
+def generate_early_reversal_signal(symbol, df5, df15):
+    """Fresh 5m liquidity-sweep reversal with wick, reclaim, RSI and volume checks."""
+    if len(df5) < EARLY_REVERSAL_LOOKBACK + 5 or len(df15) < 3:
+        return None
+
+    row, prev, prev2 = df5.iloc[-1], df5.iloc[-2], df5.iloc[-3]
+    trend, trend_prev = df15.iloc[-1], df15.iloc[-2]
+    price, atr = float(row["close"]), float(row["atr"])
+    volume_avg = float(row["volume_avg"])
+    if not np.isfinite([price, atr, volume_avg, float(row["rsi"])]).all() or price <= 0 or atr <= 0 or volume_avg <= 0:
+        return None
+    volume_ratio = float(row["volume"] / volume_avg)
+    current_index = len(df5) - 1
+    first_candidate = max(EARLY_REVERSAL_LOOKBACK, current_index - EARLY_REVERSAL_MAX_AGE_BARS)
+
+    for index in range(current_index, first_candidate - 1, -1):
+        candle = df5.iloc[index]
+        prior = df5.iloc[index - EARLY_REVERSAL_LOOKBACK:index]
+        if len(prior) < EARLY_REVERSAL_LOOKBACK:
+            continue
+        o, h, l, c = map(float, (candle["open"], candle["high"], candle["low"], candle["close"]))
+        candle_range = h - l
+        if candle_range <= 0:
+            continue
+        liq_low, liq_high = float(prior["low"].min()), float(prior["high"].max())
+        lower_wick, upper_wick = min(o, c) - l, h - max(o, c)
+        close_position = (c - l) / candle_range
+
+        if l < liq_low and c > liq_low:
+            direction = "BUY"
+            wick_ratio = lower_wick / candle_range
+            rejection_ok = wick_ratio >= EARLY_REVERSAL_MIN_WICK_RATIO and close_position >= 0.60 and c > o
+            sweep_extreme, liquidity_level = l, liq_low
+        elif h > liq_high and c < liq_high:
+            direction = "SELL"
+            wick_ratio = upper_wick / candle_range
+            rejection_ok = wick_ratio >= EARLY_REVERSAL_MIN_WICK_RATIO and close_position <= 0.40 and c < o
+            sweep_extreme, liquidity_level = h, liq_high
+        else:
+            continue
+
+        DIAGNOSTICS["early_reversal_candidates"] += 1
+        if not rejection_ok:
+            DIAGNOSTICS["early_reversal_rejected"] += 1
+            continue
+
+        event_age = current_index - index
+        current_distance_atr = abs(price - c) / atr
+        current_side_valid = (
+            price > liquidity_level if direction == "BUY"
+            else price < liquidity_level
+        )
+        if (
+            event_age > EARLY_REVERSAL_MAX_AGE_BARS
+            or current_distance_atr > EARLY_REVERSAL_MAX_ENTRY_DISTANCE_ATR
+            or not current_side_valid
+        ):
+            DIAGNOSTICS["early_reversal_rejected"] += 1
+            REJECTION_DEBUG.append({
+                "symbol": symbol,
+                "stage": "EARLY_REVERSAL",
+                "reason": "REVERSAL_STALE_OR_LEVEL_INVALIDATED",
+                "event_age_bars": int(event_age),
+                "current_distance_atr": round(float(current_distance_atr), 3),
+                "current_side_valid": bool(current_side_valid)
+            })
+            continue
+
+        rsi_now, rsi_prev, rsi_prev2 = float(row["rsi"]), float(prev["rsi"]), float(prev2["rsi"])
+        rsi_turn = (
+            rsi_now > rsi_prev and rsi_prev <= rsi_prev2
+            if direction == "BUY"
+            else rsi_now < rsi_prev and rsi_prev >= rsi_prev2
+        )
+        # RSI turn and above-average volume are mandatory; the remaining
+        # directional context must contribute at least one more confirmation.
+        if not rsi_turn or volume_ratio < EARLY_REVERSAL_MIN_VOLUME_RATIO:
+            DIAGNOSTICS["early_reversal_rejected"] += 1
+            REJECTION_DEBUG.append({
+                "symbol": symbol,
+                "stage": "EARLY_REVERSAL",
+                "reason": "RSI_TURN_OR_VOLUME_CONFIRMATION_MISSING",
+                "rsi_turn": bool(rsi_turn),
+                "volume_ratio": round(float(volume_ratio), 3),
+                "minimum_volume_ratio": EARLY_REVERSAL_MIN_VOLUME_RATIO
+            })
+            continue
+
+        if direction == "BUY":
+            checks = [
+                rsi_turn,
+                volume_ratio >= EARLY_REVERSAL_MIN_VOLUME_RATIO,
+                price > float(row["ema20"]),
+                float(trend["rsi"]) > float(trend_prev["rsi"]),
+                float(row["plus_di"]) > float(row["minus_di"])
+            ]
+            stop_loss = sweep_extreme - atr * SWEEP_STOP_BUFFER
+            risk = price - stop_loss
+        else:
+            checks = [
+                rsi_turn,
+                volume_ratio >= EARLY_REVERSAL_MIN_VOLUME_RATIO,
+                price < float(row["ema20"]),
+                float(trend["rsi"]) < float(trend_prev["rsi"]),
+                float(row["minus_di"]) > float(row["plus_di"])
+            ]
+            stop_loss = sweep_extreme + atr * SWEEP_STOP_BUFFER
+            risk = stop_loss - price
+
+        score = sum(bool(x) for x in checks)
+        if score < EARLY_REVERSAL_MIN_SCORE:
+            DIAGNOSTICS["early_reversal_rejected"] += 1
+            REJECTION_DEBUG.append({"symbol": symbol, "stage": "EARLY_REVERSAL", "reason": "REVERSAL_SCORE_TOO_LOW", "score": int(score), "required": EARLY_REVERSAL_MIN_SCORE, "direction": direction, "event_age_bars": int(event_age)})
+            continue
+        if not np.isfinite(risk) or risk < atr * EARLY_REVERSAL_MIN_RISK_ATR:
+            DIAGNOSTICS["early_reversal_rejected"] += 1
+            REJECTION_DEBUG.append({"symbol": symbol, "stage": "EARLY_REVERSAL", "reason": "STOP_DISTANCE_TOO_SMALL_OR_INVALID"})
+            continue
+
+        if direction == "BUY":
+            tp1, tp2, tp3 = price + risk, price + 2*risk, price + 3*risk
+        else:
+            tp1, tp2, tp3 = price - risk, price - 2*risk, price - 3*risk
+
+        signal_time = int(row["close_time"])
+        sweep_time = int(candle["time"])
+        structure_time = int(candle["close_time"])
+        risk_atr = float(risk / atr)
+        DIAGNOSTICS["early_reversal_confirmed"] += 1
+        return {
+            "symbol": symbol, "direction": direction, "entry": price,
+            "stop_loss": float(stop_loss), "tp1": float(tp1), "tp2": float(tp2), "tp3": float(tp3),
+            "risk": float(risk), "risk_atr": risk_atr, "high_risk": risk_atr > MAX_RISK_ATR,
+            "risk_limit_atr": MAX_RISK_ATR, "confirmations": int(score), "confirmation_total": 5,
+            "analysis_label": "EARLY REVERSAL ANALYSIS", "liquidity_sweep": True,
+            "rsi": float(row["rsi"]), "adx": float(row["adx"]), "volume_ratio": volume_ratio, "atr": atr,
+            "fvg_lower": None, "fvg_upper": None, "fvg_retest": False, "fvg_required": False,
+            "entry_model": "EARLY_REVERSAL_5M_SWEEP_REJECTION_RSI_VOLUME",
+            "retest_time": None, "retest_event_age_bars": int(event_age),
+            "retest_current_distance_atr": float(current_distance_atr), "retest_bars_after_structure": int(event_age),
+            "retest_tolerance": None, "bars_since_structure": int(event_age),
+            "entry_extension_atr": float(current_distance_atr), "structure_reference": float(liquidity_level),
+            "order_block": False, "order_block_zone": None, "structure": "EARLY REVERSAL",
+            "structure_trend": "REVERSAL", "structure_time": structure_time, "sweep_time": sweep_time,
+            "signal_time": signal_time, "last_checked_time": signal_time,
+            "tp1_hit": False, "tp2_hit": False, "tp3_hit": False,
+            "tp1_time": None, "tp2_time": None, "tp3_time": None, "result_stage": "NONE",
+            "status": "OPEN", "stat_result": None, "result_locked": False,
+            "result_time": None, "result_price": None, "telegram_events": {}, "pending_events": [],
+            "created_at": current_time_string(), "created_date": today_string()
+        }
+    return None
+
 def generate_signal(symbol, df5, df15, state=None):
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
@@ -2008,6 +2221,12 @@ def generate_signal(symbol, df5, df15, state=None):
     # existing persisted setup merely because the current scan cannot rediscover it.
     sweep, structure, sweep_count, paired = find_sweep_structure(df15, symbol)
 
+    if not paired:
+        resumed_sweep, resumed_structure = resume_pending_structure(df15, symbol, state)
+        if resumed_structure is not None:
+            sweep, structure, paired = resumed_sweep, resumed_structure, True
+            sweep_count = max(sweep_count, 1)
+
     if sweep_count:
         DIAGNOSTICS["sweep_detected"] += 1
     else:
@@ -2036,6 +2255,9 @@ def generate_signal(symbol, df5, df15, state=None):
         DIAGNOSTICS["pending_retest_active"] = len(
             state.get("pending_retests", {})
         )
+        early_signal = generate_early_reversal_signal(symbol, df5, df15)
+        if early_signal is not None:
+            return early_signal
         return None
 
     setup = state.get("pending_retests", {}).get(symbol)
@@ -2345,6 +2567,7 @@ def update_signal_results(state):
         stop = float(signal["stop_loss"])
         tp1 = float(signal["tp1"])
         tp2 = float(signal["tp2"])
+        tp3 = float(signal.get("tp3", tp2))
 
         for _, candle in candles.iterrows():
             high = float(candle["high"])
@@ -2355,10 +2578,12 @@ def update_signal_results(state):
                 stop_hit = low <= stop
                 tp1_hit = high >= tp1
                 tp2_hit = high >= tp2
+                tp3_hit = high >= tp3
             else:
                 stop_hit = high >= stop
                 tp1_hit = low <= tp1
                 tp2_hit = low <= tp2
+                tp3_hit = low <= tp3
 
             if stop_hit:
                 signal["result_time"] = close_time
@@ -2404,6 +2629,13 @@ def update_signal_results(state):
                     signal["tp2_time"] = close_time
                     signal["result_stage"] = "TP2"
                     queue_event(signal, "TP2")
+
+                # TP2 closes tracking as requested. If one candle gaps through TP3,
+                # emit the TP3 milestone too; later candles are not tracked past TP2.
+                if tp3_hit and not signal.get("tp3_hit"):
+                    signal["tp3_hit"] = True
+                    signal["tp3_time"] = close_time
+                    queue_event(signal, "TP3")
 
                 signal["status"] = "TP2"
                 signal["result_time"] = close_time
@@ -2662,6 +2894,9 @@ def sync_pending_setups(state):
             "reference": item.get("reference"),
             "reference_type": item.get("reference_type"),
             "bars_checked": item.get("bars_checked"),
+            "sweep_low": item.get("sweep_low"),
+            "sweep_high": item.get("sweep_high"),
+            "liquidity_level": item.get("liquidity_level", item.get("reference")),
             "bars_required": MAX_STRUCTURE_BARS,
             "expires_at": expires_at,
             "updated_at": current_time_string()
