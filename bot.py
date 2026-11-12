@@ -17,15 +17,10 @@ from urllib3.util.retry import Retry
 VERSION = "6.4.0"
 MAX_RISK_ATR = 4.0
 
-# Entry freshness controls (experimental, conservative defaults).
-# Reject a confirmed structure if it is already too old or price has
-# extended too far from the broken structure reference.
 MAX_BARS_SINCE_STRUCTURE = 2
 MAX_ENTRY_EXTENSION_ATR = 0.80
 
-# Retest entry controls. A signal is allowed only when the latest fully
-# closed 5m candle revisits the broken structure level and rejects it.
-RETEST_MAX_BARS_AFTER_STRUCTURE = 6  # 30 minutes on the 5m chart
+RETEST_MAX_BARS_AFTER_STRUCTURE = 6
 RETEST_TOLERANCE_ATR = 0.20
 
 BASE_URL = "https://data-api.binance.vision"
@@ -43,7 +38,7 @@ MIN_ATR_RATIO = 0.0004
 
 SWEEP_LOOKBACK = 8
 LIQUIDITY_LOOKBACK = 12
-MAX_STRUCTURE_BARS = 4  # 4 closed 15m candles = 60 minutes after the sweep candle
+MAX_STRUCTURE_BARS = 4
 WAITING_SETUP_MAX_AGE_MS = (MAX_STRUCTURE_BARS + 1) * 15 * 60 * 1000
 
 PIVOT_LEFT = 2
@@ -78,7 +73,7 @@ retry = Retry(
     read=4,
     backoff_factor=0.7,
     status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=["GET", "POST"]
+    allowed_methods=["GET", "POST"]
 )
 
 adapter = HTTPAdapter(max_retries=retry)
@@ -118,7 +113,7 @@ DIAGNOSTICS = {
     "waiting_queue_expired": 0,
     "waiting_queue_replaced": 0,
     "fvg_rejected": 0,
-        "fvg_detected": 0,
+    "fvg_detected": 0,
     "fvg_retest_detected": 0,
     "order_block_detected": 0,
     "pullback_waiting": 0,
@@ -160,7 +155,7 @@ def is_trading_time():
 
 
 def timestamp_string(timestamp):
-        return datetime.fromtimestamp(
+    return datetime.fromtimestamp(
         timestamp / 1000,
         tz=IRAN_TZ
     ).strftime("%Y-%m-%d %H:%M")
@@ -238,7 +233,7 @@ def send_signal(signal):
         f"📍 Direction: {label}\n"
         "⏱ Timeframe: 5m\n"
         f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
-                "📊 SMC ANALYSIS\n"
+        "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
         f"Entry Model: {signal.get('entry_model', 'FRESH_STRUCTURE_DIRECT_CLOSED_5M')}\n"
@@ -288,7 +283,7 @@ def send_event_message(signal, event):
         "TP2": (
             f"🔥 TP2 HIT\n{symbol}\n"
             f"Price: {signal['tp2']:.8g}\n"
-                        "Milestone: 2R\n"
+            "Milestone: 2R\n"
             "Trade tracking closed."
         ),
         "SL": (
@@ -330,7 +325,7 @@ def load_state():
 
     if not isinstance(state, dict):
         raise RuntimeError("Invalid state file format.")
-        
+
     state.setdefault("signals", [])
     state.setdefault("daily", {})
     state.setdefault("weekly_reports", {})
@@ -373,11 +368,10 @@ def load_state():
 
             signal["tp3"] = (
                 entry + 3 * risk
-                            if signal.get("direction") == "BUY"
+                if signal.get("direction") == "BUY"
                 else entry - 3 * risk
             )
 
-        # TP1 is one statistical WIN but the trade remains OPEN.
         if signal.get("tp1_hit"):
             signal["stat_result"] = (
                 signal.get("stat_result") or "WIN"
@@ -390,8 +384,6 @@ def load_state():
             if signal.get("result_stage") == "NONE":
                 signal["result_stage"] = "TP1"
 
-        # TP2 necessarily means TP1 was reached first (or both targets
-        # were crossed in one candle); preserve the agreed single WIN.
         if signal.get("status") == "TP2":
             signal["tp1_hit"] = True
             signal["tp2_hit"] = True
@@ -401,8 +393,6 @@ def load_state():
             if signal.get("result_stage") == "NONE":
                 signal["result_stage"] = "TP2"
 
-        # Migrate legacy TP1-then-SL records: keep the WIN, close tracking,
-        # and remove any unsent SL alert queued by the older version.
         if signal.get("status") == "SL" and signal.get("tp1_hit"):
             signal["status"] = "SL_AFTER_TP1"
             signal["sl_after_tp1"] = True
@@ -517,7 +507,7 @@ def get_market_coins():
     excluded = {
         "USDC", "FDUSD", "TUSD", "USDP", "DAI", "USDE",
         "BUSD", "USDS", "UST", "USTC", "EUR", "TRY",
-                "BRL", "BIDR", "IDRT", "UAH", "RUB", "AUD", "GBP"
+        "BRL", "BIDR", "IDRT", "UAH", "RUB", "AUD", "GBP"
     }
 
     coins = []
@@ -568,7 +558,7 @@ def candles_to_dataframe(data):
 
     if df.empty:
         return df
-        
+
     numeric = [
         "time", "open", "high", "low",
         "close", "volume", "close_time"
@@ -655,7 +645,7 @@ def get_tracking_candles(symbol, start_time):
         closed = df[
             df["close_time"] < now_ms
         ].copy()
-        
+
         if not closed.empty:
             all_candles.append(closed)
 
@@ -810,7 +800,7 @@ def refresh_news_calendar(force=False):
 
 
 def news_clock_now():
-        """
+    """
     Use calendar provider UTC clock,
     advanced by monotonic elapsed time.
     """
@@ -1093,7 +1083,7 @@ def get_structure_trend(highs, lows, before_index):
     ]
 
     prior_lows = [
-                p for p in lows
+        p for p in lows
         if p["index"] < before_index
     ]
 
@@ -1202,13 +1192,11 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         else "SWING_LOW"
     )
 
-    # A structure level must be recent and must not already have been
-    # broken by a candle close before the liquidity sweep.
     valid = []
 
     for candidate in pivot_pool:
         pivot_index = int(candidate["index"])
-                age = sweep_index - pivot_index
+        age = sweep_index - pivot_index
 
         if age <= 0 or age > MAX_PIVOT_AGE:
             continue
@@ -1244,7 +1232,6 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
 
         return None
 
-    # The nearest valid pivot is the most relevant liquidity structure.
     pivot = max(
         valid,
         key=lambda item: int(item["index"])
@@ -1332,7 +1319,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         DIAGNOSTICS["structure_waiting"] += 1
 
         STRUCTURE_DEBUG.append({
-                        "symbol": symbol,
+            "symbol": symbol,
             "direction": direction,
             "state": "WAITING_FOR_CONFIRMATION",
             "reference": reference,
@@ -1386,7 +1373,7 @@ def find_sweep_structure(df15, symbol):
 
         if (
             waiting_candidate is None
-                        and len(df15) - 1 - sweep["index"]
+            and len(df15) - 1 - sweep["index"]
             < MAX_STRUCTURE_BARS
         ):
             waiting_candidate = sweep
@@ -1535,8 +1522,6 @@ def detect_order_block(df, direction, structure_time, structure_reference):
 
     ref = float(structure_reference)
 
-    # Search backwards for the most recent directional displacement
-    # that actually closes beyond the confirmed structure reference.
     for displacement_index in range(
         end_index,
         start_index,
@@ -1590,8 +1575,6 @@ def detect_order_block(df, direction, structure_time, structure_reference):
         if not close_near_extreme:
             continue
 
-        # Find the nearest opposite-colour candle immediately preceding
-        # the displacement, with a short maximum gap.
         ob_index = None
 
         lower_search = max(
@@ -1633,8 +1616,6 @@ def detect_order_block(df, direction, structure_time, structure_reference):
         ):
             continue
 
-        # A close through the distal edge after displacement
-        # invalidates the candidate order block.
         mitigation = work.iloc[
             displacement_index + 1:
         ]
@@ -1658,7 +1639,7 @@ def detect_order_block(df, direction, structure_time, structure_reference):
                 body / atr_value,
                 3
             )
-                    }
+        }
 
     return None
 
@@ -1666,7 +1647,6 @@ def detect_order_block(df, direction, structure_time, structure_reference):
 # =========================================================
 # SIGNAL GENERATION
 # =========================================================
-
 
 def detect_structure_retest(df5, direction, structure_time, reference, atr, symbol="UNKNOWN"):
     """Return the latest 5m candle only if it confirms a genuine structure retest.
@@ -1698,7 +1678,7 @@ def detect_structure_retest(df5, direction, structure_time, reference, atr, symb
             "symbol": symbol,
             "stage": "RETEST",
             "reason": "RETEST_WINDOW_EXPIRED",
-                        "bars_after_structure": int(bars_after_structure),
+            "bars_after_structure": int(bars_after_structure),
             "max_bars": RETEST_MAX_BARS_AFTER_STRUCTURE,
             "direction": direction
         })
@@ -1819,11 +1799,6 @@ def generate_signal(symbol, df5, df15):
 
     direction = sweep["direction"]
 
-    # -----------------------------------------------------
-    # ENTRY FRESHNESS FILTER
-    # Do not chase a move after the structure break is old
-    # or price has already extended far from the break level.
-    # -----------------------------------------------------
     structure_index = int(structure.get("index", len(df15) - 1))
     bars_since_structure = max(
         0,
@@ -1859,8 +1834,6 @@ def generate_signal(symbol, df5, df15):
         })
         return None
 
-    # No more direct entries after BOS/CHoCH. Require the latest closed
-    # 5m candle to retest and reclaim/reject the broken structure level.
     retest = detect_structure_retest(
         df5,
         direction,
@@ -1888,7 +1861,7 @@ def generate_signal(symbol, df5, df15):
             row["rsi"] < 50,
             row["close"] < row["bb_mid"],
             row["ema20"] < row["ema50"] < row["ema200"],
-                        volume_ratio >= VOLUME_MULTIPLIER,
+            volume_ratio >= VOLUME_MULTIPLIER,
             trend["ema20"] < trend["ema50"] < trend["ema200"],
             row["adx"] >= ADX_CONFIRMATION,
             row["minus_di"] > row["plus_di"]
@@ -1912,7 +1885,6 @@ def generate_signal(symbol, df5, df15):
 
         return None
 
-    # Entry is the close of the latest fully closed 5m retest-confirmation candle.
     entry = float(retest["close"])
 
     if direction == "BUY":
@@ -1943,7 +1915,7 @@ def generate_signal(symbol, df5, df15):
             structural_stop
             if structural_stop > entry
             else entry + atr * FALLBACK_STOP_ATR
-                    )
+        )
 
         risk = stop_loss - entry
 
@@ -1998,7 +1970,7 @@ def generate_signal(symbol, df5, df15):
         "atr": atr,
         "fvg_lower": fvg["lower"] if fvg else None,
         "fvg_upper": fvg["upper"] if fvg else None,
-                "fvg_retest": bool(fvg),
+        "fvg_retest": bool(fvg),
         "fvg_required": False,
         "entry_model": "BOS_CHOCH_RETEST_CONFIRMED_CLOSED_5M",
         "retest_time": int(retest["time"]),
@@ -2098,6 +2070,7 @@ def update_signal_results(state):
             continue
 
         symbol = signal.get("symbol")
+
         if not symbol:
             continue
 
@@ -2109,7 +2082,7 @@ def update_signal_results(state):
         )
 
         try:
-                        candles = get_tracking_candles(symbol, last_checked + 1)
+            candles = get_tracking_candles(symbol, last_checked + 1)
         except Exception as error:
             print(f"Tracking error {symbol}: {error}")
             continue
@@ -2136,15 +2109,11 @@ def update_signal_results(state):
                 tp1_hit = low <= tp1
                 tp2_hit = low <= tp2
 
-            # Conservative same-candle rule: if stop and target overlap,
-            # assume the stop was reached first.
             if stop_hit:
                 signal["result_time"] = close_time
                 signal["result_price"] = stop
 
                 if signal.get("tp1_hit"):
-                    # TP1 already locked the sole statistical WIN. Close
-                    # tracking and release the symbol, but NEVER send SL.
                     signal["status"] = "SL_AFTER_TP1"
                     signal["sl_after_tp1"] = True
                     signal["stat_result"] = "WIN"
@@ -2172,13 +2141,11 @@ def update_signal_results(state):
                 changed = True
 
             if tp2_hit:
-                # TP2 closes tracking. TP3 is intentionally not monitored:
-                # the agreed lifecycle ends at TP2 or SL.
                 if not signal.get("tp1_hit"):
                     signal["tp1_hit"] = True
                     signal["tp1_time"] = close_time
                     signal["stat_result"] = "WIN"
-                                        signal["result_locked"] = True
+                    signal["result_locked"] = True
                     queue_event(signal, "TP1")
 
                 if not signal.get("tp2_hit"):
@@ -2212,7 +2179,6 @@ def week_bounds_for_date(value):
             "%Y-%m-%d"
         ).date()
 
-    # Python weekday: Monday=0, Saturday=5.
     days_since_saturday = (value.weekday() - 5) % 7
 
     start = value - timedelta(days=days_since_saturday)
@@ -2232,7 +2198,7 @@ def signal_created_date(signal):
 
 
 def event_in_week(timestamp_ms, week_start, week_end):
-        if timestamp_ms in (None, "", 0):
+    if timestamp_ms in (None, "", 0):
         return False
     try:
         event_date = datetime.fromtimestamp(
@@ -2261,8 +2227,6 @@ def create_weekly_report(state, week_start, week_end):
         if week_start <= created_date <= week_end:
             weekly_new_signals += 1
 
-    # Results and milestones are event-based: an older trade contributes
-    # when its TP1/TP2/SL event actually occurs during this report week.
     wins = sum(
         signal.get("stat_result") == "WIN"
         and event_in_week(signal.get("tp1_time"), week_start, week_end)
@@ -2297,7 +2261,6 @@ def create_weekly_report(state, week_start, week_end):
     decided = wins + losses
     win_rate = wins / decided * 100.0 if decided else 0.0
 
-    # Current snapshot, not restricted to trades created this week.
     open_count = sum(
         signal.get("status") == "OPEN"
         for signal in all_signals
@@ -2334,7 +2297,7 @@ def create_weekly_report(state, week_start, week_end):
 
 
 def maybe_send_weekly_report(state):
-    """Send once Friday night after entry hours; Saturday is a retry window."""
+    """Send once Friday night after entry hours; Saturday is a retry."""
 
     now = iran_now()
 
@@ -2401,7 +2364,7 @@ def prune_pending_setups(state):
             expires_at = int(setup.get("expires_at", 0))
         except (TypeError, ValueError):
             expires_at = 0
-            
+
         if not expires_at or now_ms >= expires_at:
             pending.pop(symbol, None)
             expired += 1
@@ -2417,7 +2380,6 @@ def sync_pending_setups(state):
     now_ms = int(time.time() * 1000)
     replaced = 0
 
-    # A confirmed or explicitly expired setup is no longer waiting.
     for item in STRUCTURE_DEBUG:
         symbol = item.get("symbol")
         direction = item.get("direction")
@@ -2438,8 +2400,6 @@ def sync_pending_setups(state):
         except (TypeError, ValueError):
             continue
 
-        # Sweep timestamp is the candle open. Add its 15m close plus four
-        # subsequent 15m candles: exactly 60 minutes of post-sweep waiting.
         expires_at = sweep_time + WAITING_SETUP_MAX_AGE_MS
         if not sweep_time or now_ms >= expires_at:
             continue
@@ -2501,14 +2461,12 @@ def run_scanner():
     prune_pending_setups(state)
     save_state(state)
 
-    # Open trades are monitored even during news windows.
     update_signal_results(state)
 
     save_state(state)
 
     process_pending_events(state)
 
-    # Weekly report is sent after Friday's entry window; Saturday is a retry.
     maybe_send_weekly_report(state)
 
     news_active, news_event, calendar_ok = (
@@ -2591,7 +2549,6 @@ def run_scanner():
 
     new_signals = 0
 
-    # News is warning-only. It never suppresses signals.
     coins_to_scan = coins
 
     print(
@@ -2620,14 +2577,13 @@ def run_scanner():
                 df5,
                 df15
             )
-            
+
             if signal is None:
                 continue
 
             if news_warning:
                 signal["news_warning"] = news_warning
 
-            # Re-check before appending.
             if has_open_trade_for_symbol(state, symbol):
                 DIAGNOSTICS["duplicate_signals"] += 1
                 continue
@@ -2782,5 +2738,4 @@ if __name__ == "__main__":
 
     except Exception as error:
         print("FATAL ERROR:", error)
-
-            
+        raise
