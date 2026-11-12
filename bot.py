@@ -14,7 +14,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.4.2
 # =========================================================
 
-VERSION = "6.4.2"
+VERSION = "6.4.3"
 MAX_RISK_ATR = 4.0
 
 MAX_BARS_SINCE_STRUCTURE = 3  # Keep a confirmed structure eligible for up to 45 minutes.
@@ -22,6 +22,8 @@ MAX_ENTRY_EXTENSION_ATR = 0.80
 
 RETEST_MAX_BARS_AFTER_STRUCTURE = 9  # Nine closed 5m candles = 45 minutes.
 RETEST_TOLERANCE_ATR = 0.20
+RETEST_EVENT_MAX_AGE_BARS = 4
+RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR = 0.40
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -1752,10 +1754,11 @@ def prune_pending_retests(state):
 
 def evaluate_pending_retest(state, symbol, df5, df15):
     """
-    Evaluate the persisted setup using closed 5m candles only.
+    Evaluate a persisted BOS/CHoCH setup using closed 5m candles.
 
-    A retest on an older candle is never used for a late entry: the qualifying
-    retest must be the latest closed 5m candle available in this scan.
+    A qualified retest may be a few candles old when the bot next scans,
+    but it is actionable only while price remains close to the structure
+    level and no later candle has invalidated the reclaim.
     """
     pending = state.setdefault("pending_retests", {})
     setup = pending.get(symbol)
@@ -1813,65 +1816,122 @@ def evaluate_pending_retest(state, symbol, df5, df15):
         })
         return None
 
-    tolerance = float(df5.iloc[-1]["atr"]) * RETEST_TOLERANCE_ATR
-    if not np.isfinite(tolerance) or tolerance <= 0:
+    latest = post.iloc[-1]
+    latest_close_time = int(latest["close_time"])
+    current_price = float(latest["close"])
+    current_atr = float(df5.iloc[-1]["atr"])
+
+    tolerance = current_atr * RETEST_TOLERANCE_ATR
+    if (
+        not np.isfinite(tolerance)
+        or tolerance <= 0
+        or not np.isfinite(current_price)
+        or current_price <= 0
+    ):
         DIAGNOSTICS["retest_waiting"] += 1
         return None
 
-    latest = post.iloc[-1]
-    latest_open_time = int(latest["time"])
-    latest_close_time = int(latest["close_time"])
-
     qualifying = []
-    for _, candle in post.iterrows():
+    for index, candle in post.iterrows():
         o = float(candle["open"])
         h = float(candle["high"])
         l = float(candle["low"])
         c = float(candle["close"])
 
         if direction == "BUY":
-            touched = l <= reference + tolerance and l >= reference - tolerance
+            touched = (
+                l <= reference + tolerance
+                and l >= reference - tolerance
+            )
             reclaimed = c > reference and c > o
         else:
-            touched = h >= reference - tolerance and h <= reference + tolerance
+            touched = (
+                h >= reference - tolerance
+                and h <= reference + tolerance
+            )
             reclaimed = c < reference and c < o
 
         if touched and reclaimed:
-            qualifying.append(candle)
+            qualifying.append((index, candle))
 
     if qualifying:
-        candidate = qualifying[-1]
+        candidate_index, candidate = qualifying[-1]
         candidate_close_time = int(candidate["close_time"])
+        event_age_bars = len(post) - 1 - int(candidate_index)
 
-        # Only a retest on the current latest closed candle is actionable.
-        if candidate_close_time != latest_close_time:
+        # A retest is not discarded merely because a later scan candle exists.
+        # It is accepted for at most four 5m candles, provided the reclaim held.
+        later = post.iloc[int(candidate_index) + 1:]
+
+        if direction == "BUY":
+            invalidated_after_retest = (
+                not later.empty
+                and (pd.to_numeric(later["close"], errors="coerce") <= reference).any()
+            )
+            still_on_valid_side = current_price > reference
+        else:
+            invalidated_after_retest = (
+                not later.empty
+                and (pd.to_numeric(later["close"], errors="coerce") >= reference).any()
+            )
+            still_on_valid_side = current_price < reference
+
+        current_distance_atr = abs(current_price - reference) / current_atr
+
+        if event_age_bars > RETEST_EVENT_MAX_AGE_BARS:
             pending.pop(symbol, None)
             DIAGNOSTICS["retest_rejected"] += 1
             DIAGNOSTICS["pending_retest_stale"] += 1
             DIAGNOSTICS["pending_retest_expired"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol,
-                "stage": "RETEST",
-                "reason": "QUALIFIED_RETEST_BECAME_STALE",
-                "retest_time": candidate_close_time,
-                "latest_closed_time": latest_close_time,
-                "direction": direction
-            })
-            return None
+            reason = "QUALIFIED_RETEST_TOO_OLD"
+        elif invalidated_after_retest:
+            pending.pop(symbol, None)
+            DIAGNOSTICS["retest_rejected"] += 1
+            DIAGNOSTICS["pending_retest_expired"] += 1
+            reason = "RECLAIM_INVALIDATED_AFTER_RETEST"
+        elif (
+            not still_on_valid_side
+            or current_distance_atr > RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR
+        ):
+            pending.pop(symbol, None)
+            DIAGNOSTICS["retest_rejected"] += 1
+            DIAGNOSTICS["pending_retest_stale"] += 1
+            DIAGNOSTICS["pending_retest_expired"] += 1
+            reason = "PRICE_MOVED_AWAY_FROM_RETEST_ZONE"
+        else:
+            DIAGNOSTICS["retest_confirmed"] += 1
+            setup["last_checked_time"] = latest_close_time
+            setup["status"] = "RETEST_CONFIRMED"
+            setup["qualified_retest_time"] = candidate_close_time
+            setup["qualified_retest_age_bars"] = int(event_age_bars)
+            return {
+                "time": candidate_close_time,
+                "latest_time": latest_close_time,
+                "open_time": int(candidate["time"]),
+                "open": float(candidate["open"]),
+                "high": float(candidate["high"]),
+                "low": float(candidate["low"]),
+                "close": float(candidate["close"]),
+                "current_price": current_price,
+                "current_distance_atr": float(current_distance_atr),
+                "event_age_bars": int(event_age_bars),
+                "bars_after_structure": int(len(post)),
+                "tolerance": float(tolerance)
+            }
 
-        DIAGNOSTICS["retest_confirmed"] += 1
-        setup["last_checked_time"] = latest_close_time
-        setup["status"] = "RETEST_CONFIRMED"
-        return {
-            "time": latest_close_time,
-            "open_time": latest_open_time,
-            "open": float(latest["open"]),
-            "high": float(latest["high"]),
-            "low": float(latest["low"]),
-            "close": float(latest["close"]),
-            "bars_after_structure": int(len(post)),
-            "tolerance": tolerance
-        }
+        REJECTION_DEBUG.append({
+            "symbol": symbol,
+            "stage": "RETEST",
+            "reason": reason,
+            "retest_time": candidate_close_time,
+            "latest_closed_time": latest_close_time,
+            "event_age_bars": int(event_age_bars),
+            "current_distance_atr": round(float(current_distance_atr), 3),
+            "max_event_age_bars": RETEST_EVENT_MAX_AGE_BARS,
+            "max_current_distance_atr": RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR,
+            "direction": direction
+        })
+        return None
 
     setup["last_checked_time"] = latest_close_time
 
@@ -1879,7 +1939,7 @@ def evaluate_pending_retest(state, symbol, df5, df15):
         pending.pop(symbol, None)
         DIAGNOSTICS["retest_expired"] += 1
         DIAGNOSTICS["pending_retest_expired"] += 1
-        reason = "NO_RETEST_WITHIN_SIX_CLOSED_5M_CANDLES"
+        reason = "NO_RETEST_WITHIN_MAXIMUM_WINDOW"
     else:
         DIAGNOSTICS["retest_waiting"] += 1
         reason = "WAITING_FOR_FRESH_5M_RETEST"
@@ -2016,8 +2076,8 @@ def generate_signal(symbol, df5, df15, state=None):
         })
         return None
 
-    # The retest candle must be the latest closed candle; use its close as entry.
-    entry = float(retest["close"])
+    # Enter at the latest closed candle price; the historical retest only validates setup.
+    entry = float(price)
 
     if float(row["adx"]) < ADX_MINIMUM:
         state["pending_retests"].pop(symbol, None)
@@ -2152,8 +2212,10 @@ def generate_signal(symbol, df5, df15, state=None):
         "fvg_upper": fvg["upper"] if fvg else None,
         "fvg_retest": bool(fvg),
         "fvg_required": False,
-        "entry_model": "PERSISTENT_BOS_CHOCH_FRESH_CLOSED_5M_RETEST",
+        "entry_model": "PERSISTENT_BOS_CHOCH_RECENT_RETEST_CURRENT_PRICE",
         "retest_time": int(retest["time"]),
+        "retest_event_age_bars": int(retest["event_age_bars"]),
+        "retest_current_distance_atr": float(retest["current_distance_atr"]),
         "retest_bars_after_structure": int(retest["bars_after_structure"]),
         "retest_tolerance": float(retest["tolerance"]),
         "bars_since_structure": int(bars_since_structure),
