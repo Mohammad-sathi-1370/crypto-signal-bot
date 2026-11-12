@@ -946,7 +946,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794319199999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1143,7 +1143,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794320999999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1832,7 +1832,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794324899999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2079,7 +2079,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2128,7 +2128,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2226,7 +2226,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2373,7 +2373,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2570,7 +2570,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2766,7 +2766,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2815,7 +2815,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -3161,7 +3161,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794330599999,
-      "last_checked_time": 1794499199999,
+      "last_checked_time": 1794499799999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -3858,7 +3858,7 @@
       }
     },
     "2026-11-12": {
-      "scans": 30,
+      "scans": 31,
       "signals": 0,
       "diagnostics": {
         "insufficient_data": 0,
@@ -3866,18 +3866,18 @@
         "adx_rejected": 111,
         "volatility_rejected": 0,
         "confirmations_rejected": 3,
-        "sweep_rejected": 368,
-        "sweep_detected": 734,
-        "structure_rejected": 938,
+        "sweep_rejected": 386,
+        "sweep_detected": 757,
+        "structure_rejected": 979,
         "structure_detected": 50,
         "structure_no_pivot": 0,
-        "structure_no_break": 629,
-        "structure_waiting": 545,
-        "structure_expired": 629,
+        "structure_no_break": 646,
+        "structure_waiting": 576,
+        "structure_expired": 646,
         "structure_confirmed": 50,
         "late_entry_rejected": 17,
         "entry_extension_rejected": 7,
-        "waiting_queue_active": 268,
+        "waiting_queue_active": 279,
         "waiting_queue_expired": 85,
         "waiting_queue_replaced": 37,
         "fvg_rejected": 0,
@@ -3892,7 +3892,7 @@
         "risk_rejected_invalid": 0,
         "risk_rejected_too_wide": 0,
         "duplicate_signals": 0,
-        "open_trade_locked": 287,
+        "open_trade_locked": 296,
         "news_warning_active": 4,
         "news_calendar_errors": 0,
         "errors": 0,
@@ -3905,16 +3905,16 @@
         "pending_retest_replaced": 0,
         "pending_retest_expired": 14,
         "pending_retest_stale": 1,
-        "early_reversal_candidates": 61,
+        "early_reversal_candidates": 67,
         "early_reversal_confirmed": 0,
-        "early_reversal_rejected": 61,
-        "momentum_candidates": 19,
+        "early_reversal_rejected": 67,
+        "momentum_candidates": 52,
         "momentum_confirmed": 0,
-        "momentum_rejected": 19,
-        "momentum_reject_breakout": 22,
-        "momentum_reject_trend": 18,
+        "momentum_rejected": 52,
+        "momentum_reject_breakout": 30,
+        "momentum_reject_trend": 46,
         "momentum_reject_volume_adx": 1,
-        "momentum_reject_extension": 0,
+        "momentum_reject_extension": 5,
         "momentum_reject_risk": 0
       }
     }
@@ -3936,7 +3936,7 @@
       "liquidity_level": 0.06456,
       "bars_required": 4,
       "expires_at": 1794501000000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "INJUSDT": {
       "symbol": "INJUSDT",
@@ -3950,7 +3950,7 @@
       "liquidity_level": 7.28,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "ZROUSDT": {
       "symbol": "ZROUSDT",
@@ -3964,7 +3964,7 @@
       "liquidity_level": 1.503,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "PENGUUSDT": {
       "symbol": "PENGUUSDT",
@@ -3978,7 +3978,7 @@
       "liquidity_level": 0.005986,
       "bars_required": 4,
       "expires_at": 1794501000000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "ONEUSDT": {
       "symbol": "ONEUSDT",
@@ -3992,7 +3992,7 @@
       "liquidity_level": 0.001598,
       "bars_required": 4,
       "expires_at": 1794502800000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "QNTUSDT": {
       "symbol": "QNTUSDT",
@@ -4006,7 +4006,7 @@
       "liquidity_level": 161.24,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "DASHUSDT": {
       "symbol": "DASHUSDT",
@@ -4020,7 +4020,7 @@
       "liquidity_level": 40.24,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "BCHUSDT": {
       "symbol": "BCHUSDT",
@@ -4034,7 +4034,7 @@
       "liquidity_level": 223.3,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "WLDUSDT": {
       "symbol": "WLDUSDT",
@@ -4048,7 +4048,7 @@
       "liquidity_level": 0.3026,
       "bars_required": 4,
       "expires_at": 1794502800000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "OPGUSDT": {
       "symbol": "OPGUSDT",
@@ -4062,7 +4062,7 @@
       "liquidity_level": 0.1416,
       "bars_required": 4,
       "expires_at": 1794502800000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     },
     "HUMAUSDT": {
       "symbol": "HUMAUSDT",
@@ -4076,7 +4076,7 @@
       "liquidity_level": 0.00793,
       "bars_required": 4,
       "expires_at": 1794502800000,
-      "updated_at": "2026-11-12 19:33"
+      "updated_at": "2026-11-12 19:41"
     }
   },
   "pending_retests": {}
