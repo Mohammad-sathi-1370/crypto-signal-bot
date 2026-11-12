@@ -118,7 +118,7 @@ DIAGNOSTICS = {
     "waiting_queue_expired": 0,
     "waiting_queue_replaced": 0,
     "fvg_rejected": 0,
-        "fvg_detected": 0,
+    "fvg_detected": 0,
     "fvg_retest_detected": 0,
     "order_block_detected": 0,
     "pullback_waiting": 0,
@@ -181,7 +181,7 @@ def send_telegram_text(message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
     try:
-                response = session.post(
+        response = session.post(
             url,
             data={
                 "chat_id": chat_id,
@@ -238,7 +238,7 @@ def send_signal(signal):
         f"📍 Direction: {label}\n"
         "⏱ Timeframe: 5m\n"
         f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
-                "📊 SMC ANALYSIS\n"
+        "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
         f"Entry Model: {signal.get('entry_model', 'FRESH_STRUCTURE_DIRECT_CLOSED_5M')}\n"
@@ -358,7 +358,7 @@ def load_state():
         signal.setdefault("tp1_hit", False)
         signal.setdefault("tp2_hit", False)
         signal.setdefault("tp3_hit", False)
-                signal.setdefault("telegram_events", {})
+        signal.setdefault("telegram_events", {})
         signal.setdefault("pending_events", [])
         signal.setdefault("result_stage", "NONE")
         signal.setdefault("tp1_time", None)
@@ -418,7 +418,7 @@ def load_state():
                 signal.get("stat_result") or "LOSS"
             )
             signal["result_locked"] = True
-            
+
         signal.setdefault(
             "telegram_events", {}
         ).setdefault("ENTRY", True)
@@ -464,7 +464,7 @@ def get_daily_record(state):
 # =========================================================
 
 def get_market_coins():
-        """
+    """
     Top 50 liquid Binance USDT markets intersected
     with active Nobitex assets.
     """
@@ -529,7 +529,7 @@ def get_market_coins():
             continue
 
         base = symbol[:-4]
-        
+
         if base not in nobitex_assets:
             continue
 
@@ -648,7 +648,7 @@ def get_tracking_candles(symbol, start_time):
             break
 
         df = candles_to_dataframe(data)
-        
+
         if df.empty:
             break
 
@@ -828,7 +828,7 @@ def active_high_impact_news(force_refresh=False):
     """
     Return:
     (news_active, matching_event, calendar_ok)
-        """
+    """
 
     calendar_ok = refresh_news_calendar(
         force=force_refresh
@@ -890,7 +890,7 @@ def has_open_trade_for_symbol(state, symbol):
         and old.get("status") == "OPEN"
         for old in state.get("signals", [])
     )
-    
+
 
 # =========================================================
 # INDICATORS
@@ -1198,7 +1198,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
 
     reference_type = (
         "SWING_HIGH"
-            if direction == "BUY"
+        if direction == "BUY"
         else "SWING_LOW"
     )
 
@@ -1264,7 +1264,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         close = float(candle["close"])
 
         broken = (
-                    close > reference
+            close > reference
             if direction == "BUY"
             else close < reference
         )
@@ -1309,7 +1309,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             "reference": reference,
             "reference_type": reference_type,
             "pivot_age": sweep_index - int(pivot["index"]),
-                    "bars_checked": j - sweep_index,
+            "bars_checked": j - sweep_index,
             "distance": distance,
             "distance_atr": distance_atr,
             "sweep_time": sweep["time"]
@@ -1368,7 +1368,7 @@ def find_sweep_structure(df15, symbol):
 
     for sweep in candidates:
         structure = detect_structure(
-                        df15,
+            df15,
             sweep,
             symbol
         )
@@ -1419,7 +1419,7 @@ def detect_fvg_retest(df, direction, after_time, atr):
     counted = False
 
     for i in range(
-                last_index - 1,
+        last_index - 1,
         start - 1,
         -1
     ):
@@ -1478,7 +1478,7 @@ def detect_fvg_retest(df, direction, after_time, atr):
             confirmed = (
                 float(last["close"]) > float(last["open"])
             )
-            
+
         else:
             confirmed = (
                 float(last["close"]) < float(last["open"])
@@ -1538,7 +1538,7 @@ def detect_order_block(df, direction, structure_time, structure_reference):
         -1
     ):
         displacement = work.iloc[displacement_index]
-        
+
         op = float(displacement["open"])
         cl = float(displacement["close"])
         hi = float(displacement["high"])
@@ -1598,7 +1598,7 @@ def detect_order_block(df, direction, structure_time, structure_reference):
             -1
         ):
             candidate = work.iloc[candidate_index]
-            
+
             cop = float(candidate["open"])
             ccl = float(candidate["close"])
 
@@ -1668,7 +1668,7 @@ def register_pending_retest(state, symbol, sweep, structure, df15):
     age_bars = int(
         (pd.to_numeric(df15["time"], errors="coerce") > structure_time).sum()
     )
-    
+
     if age_bars > MAX_BARS_SINCE_STRUCTURE:
         DIAGNOSTICS["late_entry_rejected"] += 1
         REJECTION_DEBUG.append({
@@ -1729,7 +1729,7 @@ def prune_pending_retests(state):
     expired = 0
 
     for symbol, setup in list(pending.items()):
-                try:
+        try:
             structure_time = int(setup.get("structure_time", 0))
             expires_at = int(setup.get("expires_at", 0))
         except (TypeError, ValueError, AttributeError):
@@ -1798,7 +1798,7 @@ def evaluate_pending_retest(state, symbol, df5, df15):
     if post.empty:
         DIAGNOSTICS["retest_waiting"] += 1
         return None
-        
+
     if len(post) > RETEST_MAX_BARS_AFTER_STRUCTURE:
         pending.pop(symbol, None)
         DIAGNOSTICS["retest_expired"] += 1
@@ -1918,7 +1918,7 @@ def generate_signal(symbol, df5, df15, state=None):
         row["ema200"],
         row["bb_mid"],
         row["plus_di"],
-                row["minus_di"],
+        row["minus_di"],
         trend["ema20"],
         trend["ema50"],
         trend["ema200"]
@@ -1999,7 +1999,7 @@ def generate_signal(symbol, df5, df15, state=None):
             "direction": direction
         })
         return None
-        
+
     if entry_extension_atr > MAX_ENTRY_EXTENSION_ATR:
         state["pending_retests"].pop(symbol, None)
         DIAGNOSTICS["entry_extension_rejected"] += 1
@@ -2070,7 +2070,7 @@ def generate_signal(symbol, df5, df15, state=None):
             "symbol": symbol,
             "stage": "CONFIRMATIONS",
             "reason": "CONFIRMATION_SCORE_LOW_ON_RETEST",
-                    "score": int(confirmations),
+            "score": int(confirmations),
             "required": MIN_CONFIRMATIONS,
             "direction": direction
         })
@@ -2119,7 +2119,7 @@ def generate_signal(symbol, df5, df15, state=None):
     )
 
     order_block_zone = detect_order_block(
-                df5,
+        df5,
         direction,
         structure_time,
         structure_reference
@@ -2183,7 +2183,7 @@ def generate_signal(symbol, df5, df15, state=None):
         "pending_events": [],
         "created_at": current_time_string(),
         "created_date": today_string()
-            }
+    }
 
     # Remove only after a complete, valid signal has been assembled.
     state["pending_retests"].pop(symbol, None)
@@ -2297,7 +2297,7 @@ def update_signal_results(state):
 
                 if signal.get("tp1_hit"):
                     signal["status"] = "SL_AFTER_TP1"
-                                        signal["sl_after_tp1"] = True
+                    signal["sl_after_tp1"] = True
                     signal["stat_result"] = "WIN"
                     signal["result_locked"] = True
                     signal.setdefault("pending_events", [])[:] = [
@@ -2499,7 +2499,7 @@ def maybe_send_weekly_report(state):
         )
 
     else:
-                week_start, week_end = week_bounds_for_date(
+        week_start, week_end = week_bounds_for_date(
             now.date() - timedelta(days=1)
         )
 
@@ -2623,7 +2623,7 @@ def run_scanner():
     global REJECTION_DEBUG
 
     DIAGNOSTICS = {
-                key: 0 for key in DIAGNOSTICS
+        key: 0 for key in DIAGNOSTICS
     }
 
     STRUCTURE_DEBUG = []
@@ -2675,7 +2675,7 @@ def run_scanner():
 
         print(
             "HIGH-IMPACT NEWS WARNING "
-                    "(signals are NOT blocked):",
+            "(signals are NOT blocked):",
             news_warning
         )
 
@@ -2749,7 +2749,7 @@ def run_scanner():
                 symbol,
                 TIMEFRAME
             )
-            
+
             df15 = get_candles(
                 symbol,
                 TREND_TIMEFRAME
@@ -2799,7 +2799,7 @@ def run_scanner():
             )
 
             new_signals += 1
-            
+
             risk_tag = (
                 " ⚠️ HIGH RISK"
                 if signal["risk_atr"] > MAX_RISK_ATR
@@ -2898,7 +2898,7 @@ def run_report():
         state,
         week_start,
         iran_now().date()
-            )
+    )
 
     send_telegram_text(message)
 
