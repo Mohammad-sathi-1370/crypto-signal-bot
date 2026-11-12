@@ -201,7 +201,7 @@ def send_telegram_text(message):
         return True
 
     except Exception as error:
-                print("Telegram ERROR:", error)
+        print("Telegram ERROR:", error)
         return False
 
 
