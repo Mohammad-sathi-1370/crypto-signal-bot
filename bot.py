@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.1
 # =========================================================
 
-VERSION = "6.6.0"
+VERSION = "6.6.1"
 MAX_RISK_ATR = 4.0
 
 MAX_BARS_SINCE_STRUCTURE = 4  # Keep a confirmed structure eligible for up to 60 minutes.
@@ -118,6 +118,14 @@ DIAGNOSTICS = {
     "early_reversal_candidates": 0,
     "early_reversal_confirmed": 0,
     "early_reversal_rejected": 0,
+    "momentum_candidates": 0,
+    "momentum_confirmed": 0,
+    "momentum_rejected": 0,
+    "momentum_reject_breakout": 0,
+    "momentum_reject_trend": 0,
+    "momentum_reject_volume_adx": 0,
+    "momentum_reject_extension": 0,
+    "momentum_reject_risk": 0,
     "late_entry_rejected": 0,
     "entry_extension_rejected": 0,
     "retest_waiting": 0,
@@ -381,6 +389,12 @@ def load_state():
         signal.setdefault("tp3_hit", False)
         signal.setdefault("telegram_events", {})
         signal.setdefault("pending_events", [])
+        signal.setdefault("result_notice_sent", False)
+        if any(
+            signal["telegram_events"].get(name)
+            for name in ("TP1", "TP2", "TP3", "SL")
+        ):
+            signal["result_notice_sent"] = True
         signal.setdefault("result_stage", "NONE")
         signal.setdefault("tp1_time", None)
         signal.setdefault("tp2_time", None)
@@ -2067,6 +2081,20 @@ def generate_early_reversal_signal(symbol, df5, df15):
         DIAGNOSTICS["early_reversal_candidates"] += 1
         if not rejection_ok:
             DIAGNOSTICS["early_reversal_rejected"] += 1
+            if wick_ratio < EARLY_REVERSAL_MIN_WICK_RATIO:
+                reason = "REVERSAL_WICK_TOO_SMALL"
+            elif direction == "BUY" and close_position < 0.60:
+                reason = "BULLISH_RECLAIM_CLOSE_TOO_WEAK"
+            elif direction == "SELL" and close_position > 0.40:
+                reason = "BEARISH_RECLAIM_CLOSE_TOO_WEAK"
+            else:
+                reason = "REVERSAL_CANDLE_BODY_NOT_CONFIRMED"
+            REJECTION_DEBUG.append({
+                "symbol": symbol, "stage": "EARLY_REVERSAL",
+                "reason": reason, "direction": direction,
+                "wick_ratio": round(float(wick_ratio), 3),
+                "close_position": round(float(close_position), 3)
+            })
             continue
 
         event_age = current_index - index
@@ -2171,12 +2199,12 @@ def generate_early_reversal_signal(symbol, df5, df15):
             "tp1_hit": False, "tp2_hit": False, "tp3_hit": False,
             "tp1_time": None, "tp2_time": None, "tp3_time": None, "result_stage": "NONE",
             "status": "OPEN", "stat_result": None, "result_locked": False,
-            "result_time": None, "result_price": None, "telegram_events": {}, "pending_events": [],
+            "result_time": None, "result_price": None, "telegram_events": {}, "pending_events": [], "result_notice_sent": False,
             "created_at": current_time_string(), "created_date": today_string()
         }
     return None
 
-def generate_signal(symbol, df5, df15, state=None):
+def _generate_smc_signal(symbol, df5, df15, state=None):
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
@@ -2255,9 +2283,6 @@ def generate_signal(symbol, df5, df15, state=None):
         DIAGNOSTICS["pending_retest_active"] = len(
             state.get("pending_retests", {})
         )
-        early_signal = generate_early_reversal_signal(symbol, df5, df15)
-        if early_signal is not None:
-            return early_signal
         return None
 
     setup = state.get("pending_retests", {}).get(symbol)
@@ -2482,52 +2507,215 @@ def generate_signal(symbol, df5, df15, state=None):
     return signal
 
 
+def generate_momentum_signal(symbol, df5, df15):
+    """Fresh closed-candle momentum breakout model for BUY and SELL."""
+    if len(df5) < 30 or len(df15) < 50:
+        return None
+
+    row, trend = df5.iloc[-1], df15.iloc[-1]
+    needed = [
+        row["close"], row["open"], row["high"], row["low"], row["atr"],
+        row["adx"], row["rsi"], row["volume_avg"], row["plus_di"],
+        row["minus_di"], row["ema20"], trend["close"],
+        trend["ema20"], trend["ema50"]
+    ]
+    if not np.isfinite(needed).all():
+        DIAGNOSTICS["momentum_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "MOMENTUM",
+            "reason": "INVALID_INDICATOR_VALUES"
+        })
+        return None
+
+    price, opn = float(row["close"]), float(row["open"])
+    high, low, atr = float(row["high"]), float(row["low"]), float(row["atr"])
+    candle_range, volume_avg = high - low, float(row["volume_avg"])
+    if price <= 0 or atr <= 0 or candle_range <= 0 or volume_avg <= 0:
+        DIAGNOSTICS["momentum_rejected"] += 1
+        return None
+
+    prior = df5.iloc[-13:-1]
+    if len(prior) < 12:
+        return None
+
+    prior_high, prior_low = float(prior["high"].max()), float(prior["low"].min())
+    body_ratio = abs(price - opn) / candle_range
+    close_position = (price - low) / candle_range
+    volume_ratio = float(row["volume"] / volume_avg)
+    adx, rsi = float(row["adx"]), float(row["rsi"])
+    ema20 = float(row["ema20"])
+    trend_close, trend_ema20, trend_ema50 = (
+        float(trend["close"]), float(trend["ema20"]), float(trend["ema50"])
+    )
+    plus_di, minus_di = float(row["plus_di"]), float(row["minus_di"])
+
+    if price > prior_high + 0.05 * atr and price > opn and close_position >= 0.72:
+        direction, breakout_level = "BUY", prior_high
+    elif price < prior_low - 0.05 * atr and price < opn and close_position <= 0.28:
+        direction, breakout_level = "SELL", prior_low
+    else:
+        DIAGNOSTICS["momentum_reject_breakout"] += 1
+        return None
+
+    DIAGNOSTICS["momentum_candidates"] += 1
+
+    if direction == "BUY":
+        trend_ok = trend_close > trend_ema20 > trend_ema50
+        di_ok, rsi_ok = plus_di > minus_di, 52 <= rsi <= 76
+        ema_extension = (price - ema20) / atr
+        breakout_extension = (price - breakout_level) / atr
+        stop_loss = min(float(df5.iloc[-6:]["low"].min()), breakout_level - 0.25 * atr)
+        risk = price - stop_loss
+    else:
+        trend_ok = trend_close < trend_ema20 < trend_ema50
+        di_ok, rsi_ok = minus_di > plus_di, 24 <= rsi <= 48
+        ema_extension = (ema20 - price) / atr
+        breakout_extension = (breakout_level - price) / atr
+        stop_loss = max(float(df5.iloc[-6:]["high"].max()), breakout_level + 0.25 * atr)
+        risk = stop_loss - price
+
+    if not trend_ok:
+        DIAGNOSTICS["momentum_reject_trend"] += 1
+        DIAGNOSTICS["momentum_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "MOMENTUM",
+            "reason": "15M_TREND_NOT_ALIGNED", "direction": direction
+        })
+        return None
+
+    if volume_ratio < 1.15 or adx < 17 or not di_ok:
+        DIAGNOSTICS["momentum_reject_volume_adx"] += 1
+        DIAGNOSTICS["momentum_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "MOMENTUM",
+            "reason": "VOLUME_ADX_OR_DIRECTIONAL_PRESSURE_WEAK",
+            "direction": direction, "volume_ratio": round(volume_ratio, 3),
+            "adx": round(adx, 2), "di_aligned": bool(di_ok)
+        })
+        return None
+
+    if (
+        body_ratio < 0.55 or breakout_extension > 0.65
+        or ema_extension > 1.50 or candle_range > 2.20 * atr
+        or not rsi_ok
+    ):
+        DIAGNOSTICS["momentum_reject_extension"] += 1
+        DIAGNOSTICS["momentum_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "MOMENTUM",
+            "reason": "WEAK_CANDLE_OR_LATE_EXTENDED_ENTRY",
+            "direction": direction, "body_ratio": round(body_ratio, 3),
+            "breakout_extension_atr": round(breakout_extension, 3),
+            "ema_extension_atr": round(ema_extension, 3),
+            "candle_range_atr": round(candle_range / atr, 3),
+            "rsi": round(rsi, 2)
+        })
+        return None
+
+    risk_atr = risk / atr
+    if not np.isfinite(risk) or risk <= 0 or risk_atr < 0.35 or risk_atr > 1.80:
+        DIAGNOSTICS["momentum_reject_risk"] += 1
+        DIAGNOSTICS["momentum_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "MOMENTUM",
+            "reason": "STOP_DISTANCE_OUTSIDE_VALID_RANGE",
+            "direction": direction, "risk_atr": round(float(risk_atr), 3)
+        })
+        return None
+
+    if direction == "BUY":
+        tp1, tp2, tp3 = price + risk, price + 2*risk, price + 3*risk
+    else:
+        tp1, tp2, tp3 = price - risk, price - 2*risk, price - 3*risk
+
+    signal_time = int(row["close_time"])
+    DIAGNOSTICS["momentum_confirmed"] += 1
+    return {
+        "symbol": symbol, "direction": direction, "entry": price,
+        "stop_loss": float(stop_loss), "tp1": float(tp1),
+        "tp2": float(tp2), "tp3": float(tp3), "risk": float(risk),
+        "risk_atr": float(risk_atr), "high_risk": risk_atr > MAX_RISK_ATR,
+        "risk_limit_atr": MAX_RISK_ATR, "confirmations": 6,
+        "confirmation_total": 7, "analysis_label": "MOMENTUM CONTINUATION ANALYSIS",
+        "liquidity_sweep": False, "rsi": rsi, "adx": adx,
+        "volume_ratio": volume_ratio, "atr": atr,
+        "fvg_lower": None, "fvg_upper": None, "fvg_retest": False,
+        "fvg_required": False,
+        "entry_model": "MOMENTUM_CONTINUATION_CLOSED_5M_BREAKOUT",
+        "retest_time": None, "retest_event_age_bars": 0,
+        "retest_current_distance_atr": float(breakout_extension),
+        "retest_bars_after_structure": 0, "retest_tolerance": None,
+        "bars_since_structure": 0, "entry_extension_atr": float(breakout_extension),
+        "structure_reference": float(breakout_level), "order_block": False,
+        "order_block_zone": None, "structure": "MOMENTUM BREAKOUT",
+        "structure_trend": "CONTINUATION", "structure_time": signal_time,
+        "sweep_time": signal_time, "signal_time": signal_time,
+        "last_checked_time": signal_time, "tp1_hit": False, "tp2_hit": False,
+        "tp3_hit": False, "tp1_time": None, "tp2_time": None,
+        "tp3_time": None, "result_stage": "NONE", "status": "OPEN",
+        "stat_result": None, "result_locked": False, "result_time": None,
+        "result_price": None, "telegram_events": {}, "pending_events": [],
+        "result_notice_sent": False, "created_at": current_time_string(),
+        "created_date": today_string()
+    }
+
+
+def generate_signal(symbol, df5, df15, state=None):
+    """SMC first; independent reversal and momentum models run if SMC has no signal."""
+    smc_signal = _generate_smc_signal(symbol, df5, df15, state)
+    if smc_signal is not None:
+        return smc_signal
+    if len(df5) < 210 or len(df15) < 50:
+        return None
+    df5_ind = calculate_indicators(df5)
+    df15_ind = calculate_indicators(df15)
+    early_signal = generate_early_reversal_signal(symbol, df5_ind, df15_ind)
+    if early_signal is not None:
+        return early_signal
+    return generate_momentum_signal(symbol, df5_ind, df15_ind)
+
+
+
 # =========================================================
 # EVENT QUEUE
 # =========================================================
 
 def queue_event(signal, event):
-    sent = signal.setdefault(
-        "telegram_events",
-        {}
-    )
-
-    if sent.get(event):
+    sent = signal.setdefault("telegram_events", {})
+    if signal.get("result_notice_sent") or any(
+        sent.get(name) for name in ("TP1", "TP2", "TP3", "SL")
+    ):
         return
-
-    pending = signal.setdefault(
-        "pending_events",
-        []
-    )
-
+    pending = signal.setdefault("pending_events", [])
     if event not in pending:
         pending.append(event)
 
 
 def process_pending_events(state):
     changed = False
-
     for signal in state["signals"]:
-        pending = signal.setdefault(
-            "pending_events",
-            []
+        pending = signal.setdefault("pending_events", [])
+        sent = signal.setdefault("telegram_events", {})
+        already_notified = bool(
+            signal.get("result_notice_sent")
+            or any(sent.get(name) for name in ("TP1", "TP2", "TP3", "SL"))
         )
-
-        for event in list(pending):
-            if send_event_message(signal, event):
-                signal.setdefault(
-                    "telegram_events",
-                    {}
-                )[event] = True
-
-                pending.remove(event)
+        if already_notified:
+            if pending:
+                pending.clear()
                 changed = True
-
-                save_state(state)
-
-            else:
-                break
-
+            signal["result_notice_sent"] = True
+            continue
+        if not pending:
+            continue
+        # Only the first queued TP/SL milestone may be sent.
+        event = pending[0]
+        if send_event_message(signal, event):
+            sent[event] = True
+            signal["result_notice_sent"] = True
+            pending.clear()
+            changed = True
+            save_state(state)
     return changed
 
 
@@ -2940,6 +3128,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
+    print("Entry models: SMC + independent Early Reversal + BUY/SELL Momentum Continuation.")
 
     print("=" * 48)
 
