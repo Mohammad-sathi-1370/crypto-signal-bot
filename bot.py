@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.3.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.4.0
 # =========================================================
 
-VERSION = "6.3.0"
+VERSION = "6.4.0"
 MAX_RISK_ATR = 4.0
 
 # Entry freshness controls (experimental, conservative defaults).
@@ -22,6 +22,11 @@ MAX_RISK_ATR = 4.0
 # extended too far from the broken structure reference.
 MAX_BARS_SINCE_STRUCTURE = 2
 MAX_ENTRY_EXTENSION_ATR = 0.80
+
+# Retest entry controls. A signal is allowed only when the latest fully
+# closed 5m candle revisits the broken structure level and rejects it.
+RETEST_MAX_BARS_AFTER_STRUCTURE = 6  # 30 minutes on the 5m chart
+RETEST_TOLERANCE_ATR = 0.20
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -73,7 +78,7 @@ retry = Retry(
     read=4,
     backoff_factor=0.7,
     status_forcelist=[429, 500, 502, 503, 504],
-    allowed_methods=["GET", "POST"]
+        allowed_methods=["GET", "POST"]
 )
 
 adapter = HTTPAdapter(max_retries=retry)
@@ -105,11 +110,15 @@ DIAGNOSTICS = {
     "structure_confirmed": 0,
     "late_entry_rejected": 0,
     "entry_extension_rejected": 0,
+    "retest_waiting": 0,
+    "retest_confirmed": 0,
+    "retest_rejected": 0,
+    "retest_expired": 0,
     "waiting_queue_active": 0,
     "waiting_queue_expired": 0,
     "waiting_queue_replaced": 0,
     "fvg_rejected": 0,
-    "fvg_detected": 0,
+        "fvg_detected": 0,
     "fvg_retest_detected": 0,
     "order_block_detected": 0,
     "pullback_waiting": 0,
@@ -151,7 +160,7 @@ def is_trading_time():
 
 
 def timestamp_string(timestamp):
-    return datetime.fromtimestamp(
+        return datetime.fromtimestamp(
         timestamp / 1000,
         tz=IRAN_TZ
     ).strftime("%Y-%m-%d %H:%M")
@@ -192,7 +201,7 @@ def send_telegram_text(message):
         return True
 
     except Exception as error:
-        print("Telegram ERROR:", error)
+                print("Telegram ERROR:", error)
         return False
 
 
@@ -229,7 +238,7 @@ def send_signal(signal):
         f"📍 Direction: {label}\n"
         "⏱ Timeframe: 5m\n"
         f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
-        "📊 SMC ANALYSIS\n"
+                "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
         f"Entry Model: {signal.get('entry_model', 'FRESH_STRUCTURE_DIRECT_CLOSED_5M')}\n"
@@ -279,7 +288,7 @@ def send_event_message(signal, event):
         "TP2": (
             f"🔥 TP2 HIT\n{symbol}\n"
             f"Price: {signal['tp2']:.8g}\n"
-            "Milestone: 2R\n"
+                        "Milestone: 2R\n"
             "Trade tracking closed."
         ),
         "SL": (
@@ -321,7 +330,7 @@ def load_state():
 
     if not isinstance(state, dict):
         raise RuntimeError("Invalid state file format.")
-
+        
     state.setdefault("signals", [])
     state.setdefault("daily", {})
     state.setdefault("weekly_reports", {})
@@ -364,7 +373,7 @@ def load_state():
 
             signal["tp3"] = (
                 entry + 3 * risk
-                if signal.get("direction") == "BUY"
+                            if signal.get("direction") == "BUY"
                 else entry - 3 * risk
             )
 
@@ -508,7 +517,7 @@ def get_market_coins():
     excluded = {
         "USDC", "FDUSD", "TUSD", "USDP", "DAI", "USDE",
         "BUSD", "USDS", "UST", "USTC", "EUR", "TRY",
-        "BRL", "BIDR", "IDRT", "UAH", "RUB", "AUD", "GBP"
+                "BRL", "BIDR", "IDRT", "UAH", "RUB", "AUD", "GBP"
     }
 
     coins = []
@@ -559,7 +568,7 @@ def candles_to_dataframe(data):
 
     if df.empty:
         return df
-
+        
     numeric = [
         "time", "open", "high", "low",
         "close", "volume", "close_time"
@@ -646,7 +655,7 @@ def get_tracking_candles(symbol, start_time):
         closed = df[
             df["close_time"] < now_ms
         ].copy()
-
+        
         if not closed.empty:
             all_candles.append(closed)
 
@@ -801,7 +810,7 @@ def refresh_news_calendar(force=False):
 
 
 def news_clock_now():
-    """
+        """
     Use calendar provider UTC clock,
     advanced by monotonic elapsed time.
     """
@@ -1084,7 +1093,7 @@ def get_structure_trend(highs, lows, before_index):
     ]
 
     prior_lows = [
-        p for p in lows
+                p for p in lows
         if p["index"] < before_index
     ]
 
@@ -1199,7 +1208,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
 
     for candidate in pivot_pool:
         pivot_index = int(candidate["index"])
-        age = sweep_index - pivot_index
+                age = sweep_index - pivot_index
 
         if age <= 0 or age > MAX_PIVOT_AGE:
             continue
@@ -1323,7 +1332,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         DIAGNOSTICS["structure_waiting"] += 1
 
         STRUCTURE_DEBUG.append({
-            "symbol": symbol,
+                        "symbol": symbol,
             "direction": direction,
             "state": "WAITING_FOR_CONFIRMATION",
             "reference": reference,
@@ -1377,7 +1386,7 @@ def find_sweep_structure(df15, symbol):
 
         if (
             waiting_candidate is None
-            and len(df15) - 1 - sweep["index"]
+                        and len(df15) - 1 - sweep["index"]
             < MAX_STRUCTURE_BARS
         ):
             waiting_candidate = sweep
@@ -1649,7 +1658,7 @@ def detect_order_block(df, direction, structure_time, structure_reference):
                 body / atr_value,
                 3
             )
-        }
+                    }
 
     return None
 
@@ -1657,6 +1666,88 @@ def detect_order_block(df, direction, structure_time, structure_reference):
 # =========================================================
 # SIGNAL GENERATION
 # =========================================================
+
+
+def detect_structure_retest(df5, direction, structure_time, reference, atr, symbol="UNKNOWN"):
+    """Return the latest 5m candle only if it confirms a genuine structure retest.
+
+    The retest candle must open after the 15m structure candle has closed,
+    touch the broken level within a limited ATR tolerance, reclaim/hold the
+    level on close, and close in the signal direction. We deliberately do not
+    enter on an earlier retest if the latest candle has already moved away.
+    """
+    if df5.empty or atr <= 0:
+        DIAGNOSTICS["retest_waiting"] += 1
+        return None
+
+    reference = float(reference)
+    tolerance = float(atr) * RETEST_TOLERANCE_ATR
+
+    post_structure = df5[
+        pd.to_numeric(df5["time"], errors="coerce") > int(structure_time)
+    ].reset_index(drop=True)
+
+    if post_structure.empty:
+        DIAGNOSTICS["retest_waiting"] += 1
+        return None
+
+    bars_after_structure = len(post_structure)
+    if bars_after_structure > RETEST_MAX_BARS_AFTER_STRUCTURE:
+        DIAGNOSTICS["retest_expired"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol,
+            "stage": "RETEST",
+            "reason": "RETEST_WINDOW_EXPIRED",
+                        "bars_after_structure": int(bars_after_structure),
+            "max_bars": RETEST_MAX_BARS_AFTER_STRUCTURE,
+            "direction": direction
+        })
+        return None
+
+    candle = post_structure.iloc[-1]
+    o = float(candle["open"])
+    h = float(candle["high"])
+    l = float(candle["low"])
+    c = float(candle["close"])
+
+    if direction == "BUY":
+        touched = l <= reference + tolerance and l >= reference - tolerance
+        reclaimed = c > reference and c > o
+    else:
+        touched = h >= reference - tolerance and h <= reference + tolerance
+        reclaimed = c < reference and c < o
+
+    if touched and reclaimed:
+        DIAGNOSTICS["retest_confirmed"] += 1
+        return {
+            "time": int(candle["close_time"]),
+            "open_time": int(candle["time"]),
+            "open": o,
+            "high": h,
+            "low": l,
+            "close": c,
+            "bars_after_structure": int(bars_after_structure),
+            "tolerance": tolerance
+        }
+
+    if touched and not reclaimed:
+        DIAGNOSTICS["retest_rejected"] += 1
+        reason = "LEVEL_NOT_RECLAIMED_OR_CANDLE_NOT_DIRECTIONAL"
+    else:
+        DIAGNOSTICS["retest_waiting"] += 1
+        reason = "WAITING_FOR_LATEST_CANDLE_RETEST"
+
+    REJECTION_DEBUG.append({
+        "symbol": symbol,
+        "stage": "RETEST",
+        "reason": reason,
+        "bars_after_structure": int(bars_after_structure),
+        "reference": reference,
+        "tolerance": round(float(tolerance), 8),
+        "direction": direction
+    })
+    return None
+
 
 def generate_signal(symbol, df5, df15):
     if len(df5) < 210 or len(df15) < 50:
@@ -1768,6 +1859,19 @@ def generate_signal(symbol, df5, df15):
         })
         return None
 
+    # No more direct entries after BOS/CHoCH. Require the latest closed
+    # 5m candle to retest and reclaim/reject the broken structure level.
+    retest = detect_structure_retest(
+        df5,
+        direction,
+        structure["time"],
+        structure_reference,
+        atr,
+        symbol
+    )
+    if retest is None:
+        return None
+
     if direction == "BUY":
         checks = [
             row["rsi"] > 50,
@@ -1784,7 +1888,7 @@ def generate_signal(symbol, df5, df15):
             row["rsi"] < 50,
             row["close"] < row["bb_mid"],
             row["ema20"] < row["ema50"] < row["ema200"],
-            volume_ratio >= VOLUME_MULTIPLIER,
+                        volume_ratio >= VOLUME_MULTIPLIER,
             trend["ema20"] < trend["ema50"] < trend["ema200"],
             row["adx"] >= ADX_CONFIRMATION,
             row["minus_di"] > row["plus_di"]
@@ -1808,8 +1912,8 @@ def generate_signal(symbol, df5, df15):
 
         return None
 
-    # Entry is the latest fully closed 5m candle close.
-    entry = price
+    # Entry is the close of the latest fully closed 5m retest-confirmation candle.
+    entry = float(retest["close"])
 
     if direction == "BUY":
         structural_stop = (
@@ -1839,7 +1943,7 @@ def generate_signal(symbol, df5, df15):
             structural_stop
             if structural_stop > entry
             else entry + atr * FALLBACK_STOP_ATR
-        )
+                    )
 
         risk = stop_loss - entry
 
@@ -1894,9 +1998,12 @@ def generate_signal(symbol, df5, df15):
         "atr": atr,
         "fvg_lower": fvg["lower"] if fvg else None,
         "fvg_upper": fvg["upper"] if fvg else None,
-        "fvg_retest": bool(fvg),
+                "fvg_retest": bool(fvg),
         "fvg_required": False,
-        "entry_model": "FRESH_STRUCTURE_DIRECT_CLOSED_5M",
+        "entry_model": "BOS_CHOCH_RETEST_CONFIRMED_CLOSED_5M",
+        "retest_time": int(retest["time"]),
+        "retest_bars_after_structure": int(retest["bars_after_structure"]),
+        "retest_tolerance": float(retest["tolerance"]),
         "bars_since_structure": int(bars_since_structure),
         "entry_extension_atr": float(entry_extension_atr),
         "structure_reference": float(structure_reference),
@@ -2002,7 +2109,7 @@ def update_signal_results(state):
         )
 
         try:
-            candles = get_tracking_candles(symbol, last_checked + 1)
+                        candles = get_tracking_candles(symbol, last_checked + 1)
         except Exception as error:
             print(f"Tracking error {symbol}: {error}")
             continue
@@ -2071,7 +2178,7 @@ def update_signal_results(state):
                     signal["tp1_hit"] = True
                     signal["tp1_time"] = close_time
                     signal["stat_result"] = "WIN"
-                    signal["result_locked"] = True
+                                        signal["result_locked"] = True
                     queue_event(signal, "TP1")
 
                 if not signal.get("tp2_hit"):
@@ -2125,7 +2232,7 @@ def signal_created_date(signal):
 
 
 def event_in_week(timestamp_ms, week_start, week_end):
-    if timestamp_ms in (None, "", 0):
+        if timestamp_ms in (None, "", 0):
         return False
     try:
         event_date = datetime.fromtimestamp(
@@ -2294,7 +2401,7 @@ def prune_pending_setups(state):
             expires_at = int(setup.get("expires_at", 0))
         except (TypeError, ValueError):
             expires_at = 0
-
+            
         if not expires_at or now_ms >= expires_at:
             pending.pop(symbol, None)
             expired += 1
@@ -2513,7 +2620,7 @@ def run_scanner():
                 df5,
                 df15
             )
-
+            
             if signal is None:
                 continue
 
@@ -2598,6 +2705,15 @@ def run_scanner():
     print("Coins in market universe:", len(coins))
     print("Coins scanned for entries:", len(coins_to_scan))
     print("Signals found:", new_signals)
+    print(
+        "Retest diagnostics:",
+        {
+            "waiting": DIAGNOSTICS.get("retest_waiting", 0),
+            "confirmed": DIAGNOSTICS.get("retest_confirmed", 0),
+            "rejected": DIAGNOSTICS.get("retest_rejected", 0),
+            "expired": DIAGNOSTICS.get("retest_expired", 0)
+        }
+    )
     print("Pending structure setups:", len(state.get("pending_setups", {})))
     print("Diagnostics:", DIAGNOSTICS)
     print("=" * 48)
@@ -2666,4 +2782,5 @@ if __name__ == "__main__":
 
     except Exception as error:
         print("FATAL ERROR:", error)
-        raise
+
+            
