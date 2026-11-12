@@ -35,7 +35,8 @@
       "result_price": 0.001830852066257904,
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "ENAUSDT",
@@ -71,7 +72,8 @@
       "result_price": null,
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "ZECUSDT",
@@ -108,7 +110,8 @@
       "result_price": 1256.3462236125306,
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "SOLUSDT",
@@ -144,7 +147,8 @@
       "result_price": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "XRPUSDT",
@@ -180,7 +184,8 @@
       "result_price": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "ONEUSDT",
@@ -216,7 +221,8 @@
       "result_price": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "ENAUSDT",
@@ -252,7 +258,8 @@
       "result_price": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "BMTUSDT",
@@ -288,7 +295,8 @@
       "result_price": null,
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "PUMPUSDT",
@@ -324,7 +332,8 @@
       "result_price": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "XRPUSDT",
@@ -360,7 +369,8 @@
       "result_price": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "UNIUSDT",
@@ -396,7 +406,8 @@
       "result_price": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "DOGEUSDT",
@@ -432,7 +443,8 @@
       "result_price": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "ZECUSDT",
@@ -468,7 +480,8 @@
       "tp3_time": null,
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "SOLUSDT",
@@ -505,7 +518,8 @@
       "result_price": 89.40100209177965,
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "SNDKBUSDT",
@@ -554,7 +568,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "SOXLBUSDT",
@@ -603,7 +618,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "SNDKBUSDT",
@@ -652,7 +668,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "SOXLBUSDT",
@@ -701,7 +718,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "SNDKBUSDT",
@@ -750,7 +768,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "SNDKBUSDT",
@@ -799,7 +818,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "SNDKBUSDT",
@@ -848,7 +868,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "BTCUSDT",
@@ -896,7 +917,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ETHUSDT",
@@ -924,7 +946,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794319199999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -944,7 +966,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "BNBUSDT",
@@ -992,7 +1015,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "DOGEUSDT",
@@ -1041,7 +1065,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "BTCUSDT",
@@ -1089,7 +1114,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ETHUSDT",
@@ -1117,7 +1143,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794320999999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1137,7 +1163,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ZECUSDT",
@@ -1185,7 +1212,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "PEPEUSDT",
@@ -1234,7 +1262,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "BNBUSDT",
@@ -1282,7 +1311,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "DOGEUSDT",
@@ -1331,7 +1361,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ETHUSDT",
@@ -1380,7 +1411,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ZECUSDT",
@@ -1428,7 +1460,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "PEPEUSDT",
@@ -1476,7 +1509,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "NEARUSDT",
@@ -1524,7 +1558,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "SNDKBUSDT",
@@ -1572,7 +1607,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "UNIUSDT",
@@ -1620,7 +1656,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "SOXLBUSDT",
@@ -1668,7 +1705,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ENAUSDT",
@@ -1716,7 +1754,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "BTCUSDT",
@@ -1764,7 +1803,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "ETHUSDT",
@@ -1792,7 +1832,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794324899999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1812,7 +1852,8 @@
       "created_date": "2026-11-10",
       "sl_after_tp1": false,
       "stat_result": "WIN",
-      "result_locked": true
+      "result_locked": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "BNBUSDT",
@@ -1861,7 +1902,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "SNDKBUSDT",
@@ -1909,7 +1951,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "SOXLBUSDT",
@@ -1957,7 +2000,8 @@
       "created_date": "2026-11-10",
       "stat_result": "LOSS",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "DOGEUSDT",
@@ -2006,7 +2050,8 @@
       "created_date": "2026-11-10",
       "stat_result": "WIN",
       "result_locked": true,
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ZECUSDT",
@@ -2034,7 +2079,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2054,7 +2099,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "HYPEUSDT",
@@ -2082,7 +2128,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2101,7 +2147,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": false
     },
     {
       "symbol": "UNIUSDT",
@@ -2150,7 +2197,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ENAUSDT",
@@ -2178,7 +2226,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2198,7 +2246,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "SUIUSDT",
@@ -2246,7 +2295,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ARBUSDT",
@@ -2294,7 +2344,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "LINKUSDT",
@@ -2322,7 +2373,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2342,7 +2393,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "AAVEUSDT",
@@ -2391,7 +2443,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "INJUSDT",
@@ -2439,7 +2492,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "WLDUSDT",
@@ -2487,7 +2541,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "LTCUSDT",
@@ -2515,7 +2570,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2535,7 +2590,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ADAUSDT",
@@ -2583,7 +2639,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "TAOUSDT",
@@ -2631,7 +2688,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "XLMUSDT",
@@ -2679,7 +2737,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "HBARUSDT",
@@ -2707,7 +2766,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2727,7 +2786,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "AEROUSDT",
@@ -2755,7 +2815,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2775,7 +2835,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "PENGUUSDT",
@@ -2823,7 +2884,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "DASHUSDT",
@@ -2872,7 +2934,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "AVAXUSDT",
@@ -2920,7 +2983,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:44",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "FETUSDT",
@@ -2968,7 +3032,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:44",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "PYTHUSDT",
@@ -3016,7 +3081,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:44",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "RENDERUSDT",
@@ -3064,7 +3130,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 19:44",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "BNBUSDT",
@@ -3094,7 +3161,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794330599999,
-      "last_checked_time": 1794498899999,
+      "last_checked_time": 1794499199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -3114,7 +3181,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 20:40",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "NEARUSDT",
@@ -3164,7 +3232,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 20:40",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ZROUSDT",
@@ -3214,7 +3283,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 20:40",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "DOTUSDT",
@@ -3264,7 +3334,8 @@
       "pending_events": [],
       "created_at": "2026-11-10 20:40",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "PROMUSDT",
@@ -3322,7 +3393,8 @@
       "pending_events": [],
       "created_at": "2026-11-11 09:20",
       "created_date": "2026-11-11",
-      "sl_after_tp1": true
+      "sl_after_tp1": true,
+      "result_notice_sent": true
     },
     {
       "symbol": "FETUSDT",
@@ -3375,7 +3447,8 @@
       "created_at": "2026-11-11 14:18",
       "created_date": "2026-11-11",
       "news_warning": "EUR | ECB's President Lagarde speech | UTC: 2026-11-11T09:45:00Z",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "ZROUSDT",
@@ -3433,7 +3506,8 @@
       "pending_events": [],
       "created_at": "2026-11-11 18:18",
       "created_date": "2026-11-11",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "PYTHUSDT",
@@ -3490,7 +3564,8 @@
       "pending_events": [],
       "created_at": "2026-11-11 19:46",
       "created_date": "2026-11-11",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "FILUSDT",
@@ -3547,7 +3622,8 @@
       "pending_events": [],
       "created_at": "2026-11-11 19:46",
       "created_date": "2026-11-11",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "RENDERUSDT",
@@ -3598,7 +3674,8 @@
       "pending_events": [],
       "created_at": "2026-11-11 19:46",
       "created_date": "2026-11-11",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     },
     {
       "symbol": "PENGUUSDT",
@@ -3655,7 +3732,8 @@
       "pending_events": [],
       "created_at": "2026-11-11 19:46",
       "created_date": "2026-11-11",
-      "sl_after_tp1": false
+      "sl_after_tp1": false,
+      "result_notice_sent": true
     }
   ],
   "daily": {
@@ -3780,7 +3858,7 @@
       }
     },
     "2026-11-12": {
-      "scans": 29,
+      "scans": 30,
       "signals": 0,
       "diagnostics": {
         "insufficient_data": 0,
@@ -3788,20 +3866,20 @@
         "adx_rejected": 111,
         "volatility_rejected": 0,
         "confirmations_rejected": 3,
-        "sweep_rejected": 350,
-        "sweep_detected": 711,
-        "structure_rejected": 897,
+        "sweep_rejected": 368,
+        "sweep_detected": 734,
+        "structure_rejected": 938,
         "structure_detected": 50,
         "structure_no_pivot": 0,
-        "structure_no_break": 612,
-        "structure_waiting": 517,
-        "structure_expired": 612,
+        "structure_no_break": 629,
+        "structure_waiting": 545,
+        "structure_expired": 629,
         "structure_confirmed": 50,
         "late_entry_rejected": 17,
         "entry_extension_rejected": 7,
-        "waiting_queue_active": 257,
-        "waiting_queue_expired": 84,
-        "waiting_queue_replaced": 36,
+        "waiting_queue_active": 268,
+        "waiting_queue_expired": 85,
+        "waiting_queue_replaced": 37,
         "fvg_rejected": 0,
         "fvg_detected": 0,
         "fvg_retest_detected": 0,
@@ -3814,7 +3892,7 @@
         "risk_rejected_invalid": 0,
         "risk_rejected_too_wide": 0,
         "duplicate_signals": 0,
-        "open_trade_locked": 278,
+        "open_trade_locked": 287,
         "news_warning_active": 4,
         "news_calendar_errors": 0,
         "errors": 0,
@@ -3827,9 +3905,17 @@
         "pending_retest_replaced": 0,
         "pending_retest_expired": 14,
         "pending_retest_stale": 1,
-        "early_reversal_candidates": 55,
+        "early_reversal_candidates": 61,
         "early_reversal_confirmed": 0,
-        "early_reversal_rejected": 55
+        "early_reversal_rejected": 61,
+        "momentum_candidates": 19,
+        "momentum_confirmed": 0,
+        "momentum_rejected": 19,
+        "momentum_reject_breakout": 22,
+        "momentum_reject_trend": 18,
+        "momentum_reject_volume_adx": 1,
+        "momentum_reject_extension": 0,
+        "momentum_reject_risk": 0
       }
     }
   },
@@ -3844,13 +3930,13 @@
       "sweep_time": 1794496500000,
       "reference": 0.06747,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 1,
+      "bars_checked": 2,
       "sweep_low": 0.06452,
       "sweep_high": 0.06491,
       "liquidity_level": 0.06456,
       "bars_required": 4,
       "expires_at": 1794501000000,
-      "updated_at": "2026-11-12 19:26"
+      "updated_at": "2026-11-12 19:33"
     },
     "INJUSDT": {
       "symbol": "INJUSDT",
@@ -3858,13 +3944,13 @@
       "sweep_time": 1794497400000,
       "reference": 7.486,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 1,
       "sweep_low": 7.269,
       "sweep_high": 7.317,
       "liquidity_level": 7.28,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:26"
+      "updated_at": "2026-11-12 19:33"
     },
     "ZROUSDT": {
       "symbol": "ZROUSDT",
@@ -3872,13 +3958,13 @@
       "sweep_time": 1794497400000,
       "reference": 1.547,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 1,
       "sweep_low": 1.495,
       "sweep_high": 1.51,
       "liquidity_level": 1.503,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:26"
+      "updated_at": "2026-11-12 19:33"
     },
     "PENGUUSDT": {
       "symbol": "PENGUUSDT",
@@ -3886,27 +3972,27 @@
       "sweep_time": 1794496500000,
       "reference": 0.006102,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 1,
+      "bars_checked": 2,
       "sweep_low": 0.005976,
       "sweep_high": 0.00601,
       "liquidity_level": 0.005986,
       "bars_required": 4,
       "expires_at": 1794501000000,
-      "updated_at": "2026-11-12 19:26"
+      "updated_at": "2026-11-12 19:33"
     },
     "ONEUSDT": {
       "symbol": "ONEUSDT",
       "direction": "BUY",
-      "sweep_time": 1794497400000,
+      "sweep_time": 1794498300000,
       "reference": 0.001698,
       "reference_type": "SWING_HIGH",
       "bars_checked": 0,
-      "sweep_low": 0.001598,
-      "sweep_high": 0.001638,
-      "liquidity_level": 0.001605,
+      "sweep_low": 0.001569,
+      "sweep_high": 0.001617,
+      "liquidity_level": 0.001598,
       "bars_required": 4,
-      "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:26"
+      "expires_at": 1794502800000,
+      "updated_at": "2026-11-12 19:33"
     },
     "QNTUSDT": {
       "symbol": "QNTUSDT",
@@ -3914,13 +4000,13 @@
       "sweep_time": 1794497400000,
       "reference": 166.63,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 1,
       "sweep_low": 160.29,
       "sweep_high": 161.89,
       "liquidity_level": 161.24,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:26"
+      "updated_at": "2026-11-12 19:33"
     },
     "DASHUSDT": {
       "symbol": "DASHUSDT",
@@ -3928,13 +4014,13 @@
       "sweep_time": 1794497400000,
       "reference": 41.37,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 1,
       "sweep_low": 40.11,
       "sweep_high": 40.42,
       "liquidity_level": 40.24,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:26"
+      "updated_at": "2026-11-12 19:33"
     },
     "BCHUSDT": {
       "symbol": "BCHUSDT",
@@ -3942,27 +4028,55 @@
       "sweep_time": 1794497400000,
       "reference": 227.5,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 1,
       "sweep_low": 223.2,
       "sweep_high": 224.4,
       "liquidity_level": 223.3,
       "bars_required": 4,
       "expires_at": 1794501900000,
-      "updated_at": "2026-11-12 19:26"
+      "updated_at": "2026-11-12 19:33"
     },
-    "KITEUSDT": {
-      "symbol": "KITEUSDT",
+    "WLDUSDT": {
+      "symbol": "WLDUSDT",
       "direction": "SELL",
-      "sweep_time": 1794494700000,
-      "reference": 0.1249,
+      "sweep_time": 1794498300000,
+      "reference": 0.2955,
       "reference_type": "SWING_LOW",
-      "bars_checked": 3,
-      "sweep_low": 0.1268,
-      "sweep_high": 0.1283,
-      "liquidity_level": 0.1281,
+      "bars_checked": 0,
+      "sweep_low": 0.2991,
+      "sweep_high": 0.3027,
+      "liquidity_level": 0.3026,
       "bars_required": 4,
-      "expires_at": 1794499200000,
-      "updated_at": "2026-11-12 19:26"
+      "expires_at": 1794502800000,
+      "updated_at": "2026-11-12 19:33"
+    },
+    "OPGUSDT": {
+      "symbol": "OPGUSDT",
+      "direction": "SELL",
+      "sweep_time": 1794498300000,
+      "reference": 0.1367,
+      "reference_type": "SWING_LOW",
+      "bars_checked": 0,
+      "sweep_low": 0.1399,
+      "sweep_high": 0.1419,
+      "liquidity_level": 0.1416,
+      "bars_required": 4,
+      "expires_at": 1794502800000,
+      "updated_at": "2026-11-12 19:33"
+    },
+    "HUMAUSDT": {
+      "symbol": "HUMAUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794498300000,
+      "reference": 0.00846,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 0,
+      "sweep_low": 0.00789,
+      "sweep_high": 0.00799,
+      "liquidity_level": 0.00793,
+      "bars_required": 4,
+      "expires_at": 1794502800000,
+      "updated_at": "2026-11-12 19:33"
     }
   },
   "pending_retests": {}
