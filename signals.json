@@ -924,7 +924,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794319199999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1117,7 +1117,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794320999999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1310,7 +1310,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794320999999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1791,7 +1791,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794324899999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1981,7 +1981,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794324899999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2029,7 +2029,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2077,7 +2077,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2173,7 +2173,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2316,7 +2316,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794474599999,
+      "last_checked_time": 1794474899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -3768,26 +3768,26 @@
       }
     },
     "2026-11-12": {
-      "scans": 10,
+      "scans": 11,
       "signals": 0,
       "diagnostics": {
         "insufficient_data": 0,
         "invalid_values": 0,
-        "adx_rejected": 105,
+        "adx_rejected": 111,
         "volatility_rejected": 0,
         "confirmations_rejected": 1,
-        "sweep_rejected": 97,
-        "sweep_detected": 198,
-        "structure_rejected": 181,
-        "structure_detected": 17,
+        "sweep_rejected": 114,
+        "sweep_detected": 215,
+        "structure_rejected": 196,
+        "structure_detected": 19,
         "structure_no_pivot": 0,
-        "structure_no_break": 160,
-        "structure_waiting": 132,
-        "structure_expired": 160,
-        "structure_confirmed": 17,
-        "late_entry_rejected": 9,
-        "entry_extension_rejected": 6,
-        "waiting_queue_active": 70,
+        "structure_no_break": 169,
+        "structure_waiting": 147,
+        "structure_expired": 169,
+        "structure_confirmed": 19,
+        "late_entry_rejected": 10,
+        "entry_extension_rejected": 7,
+        "waiting_queue_active": 79,
         "waiting_queue_expired": 23,
         "waiting_queue_replaced": 12,
         "fvg_rejected": 0,
@@ -3797,12 +3797,12 @@
         "pullback_waiting": 0,
         "pullback_rejected": 0,
         "pullback_confirmed": 0,
-        "entry_distance_rejected": 6,
+        "entry_distance_rejected": 7,
         "risk_rejected": 0,
         "risk_rejected_invalid": 0,
         "risk_rejected_too_wide": 0,
         "duplicate_signals": 0,
-        "open_trade_locked": 100,
+        "open_trade_locked": 110,
         "news_warning_active": 4,
         "news_calendar_errors": 0,
         "errors": 0,
@@ -3827,7 +3827,7 @@
       "bars_checked": 1,
       "bars_required": 4,
       "expires_at": 1794477600000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     },
     "NEARUSDT": {
       "symbol": "NEARUSDT",
@@ -3838,7 +3838,7 @@
       "bars_checked": 0,
       "bars_required": 4,
       "expires_at": 1794478500000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     },
     "ARBUSDT": {
       "symbol": "ARBUSDT",
@@ -3849,7 +3849,7 @@
       "bars_checked": 1,
       "bars_required": 4,
       "expires_at": 1794477600000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     },
     "ONDOUSDT": {
       "symbol": "ONDOUSDT",
@@ -3860,7 +3860,7 @@
       "bars_checked": 0,
       "bars_required": 4,
       "expires_at": 1794478500000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     },
     "HUMAUSDT": {
       "symbol": "HUMAUSDT",
@@ -3871,7 +3871,7 @@
       "bars_checked": 1,
       "bars_required": 4,
       "expires_at": 1794477600000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     },
     "ZAMAUSDT": {
       "symbol": "ZAMAUSDT",
@@ -3882,7 +3882,7 @@
       "bars_checked": 1,
       "bars_required": 4,
       "expires_at": 1794477600000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     },
     "UNIUSDT": {
       "symbol": "UNIUSDT",
@@ -3893,7 +3893,7 @@
       "bars_checked": 2,
       "bars_required": 4,
       "expires_at": 1794476700000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     },
     "PAXGUSDT": {
       "symbol": "PAXGUSDT",
@@ -3904,7 +3904,7 @@
       "bars_checked": 0,
       "bars_required": 4,
       "expires_at": 1794478500000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     },
     "BCHUSDT": {
       "symbol": "BCHUSDT",
@@ -3915,7 +3915,7 @@
       "bars_checked": 2,
       "bars_required": 4,
       "expires_at": 1794476700000,
-      "updated_at": "2026-11-12 12:45"
+      "updated_at": "2026-11-12 12:46"
     }
   }
 }
