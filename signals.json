@@ -946,7 +946,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794319199999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1143,7 +1143,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794320999999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1832,7 +1832,7 @@
       "structure_time": 1794319199999,
       "sweep_time": 1794317400000,
       "signal_time": 1794324899999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2079,7 +2079,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2128,7 +2128,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2226,7 +2226,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2373,7 +2373,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2570,7 +2570,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2766,7 +2766,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2815,7 +2815,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -3161,7 +3161,7 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794330599999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -3920,7 +3920,7 @@
       }
     },
     "2026-11-12": {
-      "scans": 34,
+      "scans": 35,
       "signals": 1,
       "diagnostics": {
         "insufficient_data": 0,
@@ -3928,20 +3928,20 @@
         "adx_rejected": 111,
         "volatility_rejected": 0,
         "confirmations_rejected": 3,
-        "sweep_rejected": 413,
-        "sweep_detected": 853,
-        "structure_rejected": 1096,
-        "structure_detected": 56,
-        "structure_no_pivot": 6,
-        "structure_no_break": 700,
-        "structure_waiting": 692,
-        "structure_expired": 700,
-        "structure_confirmed": 56,
+        "sweep_rejected": 422,
+        "sweep_detected": 886,
+        "structure_rejected": 1136,
+        "structure_detected": 58,
+        "structure_no_pivot": 8,
+        "structure_no_break": 719,
+        "structure_waiting": 733,
+        "structure_expired": 719,
+        "structure_confirmed": 58,
         "late_entry_rejected": 17,
         "entry_extension_rejected": 7,
-        "waiting_queue_active": 334,
+        "waiting_queue_active": 352,
         "waiting_queue_expired": 90,
-        "waiting_queue_replaced": 41,
+        "waiting_queue_replaced": 42,
         "fvg_rejected": 0,
         "fvg_detected": 0,
         "fvg_retest_detected": 0,
@@ -3954,29 +3954,29 @@
         "risk_rejected_invalid": 0,
         "risk_rejected_too_wide": 0,
         "duplicate_signals": 0,
-        "open_trade_locked": 323,
+        "open_trade_locked": 331,
         "news_warning_active": 4,
         "news_calendar_errors": 0,
         "errors": 0,
-        "retest_waiting": 15,
+        "retest_waiting": 16,
         "retest_confirmed": 2,
-        "retest_rejected": 6,
+        "retest_rejected": 7,
         "retest_expired": 10,
-        "pending_retest_active": 14,
-        "pending_retest_added": 20,
+        "pending_retest_active": 15,
+        "pending_retest_added": 21,
         "pending_retest_replaced": 0,
-        "pending_retest_expired": 17,
-        "pending_retest_stale": 3,
-        "early_reversal_candidates": 110,
+        "pending_retest_expired": 18,
+        "pending_retest_stale": 4,
+        "early_reversal_candidates": 115,
         "early_reversal_confirmed": 1,
-        "early_reversal_rejected": 109,
-        "momentum_candidates": 93,
+        "early_reversal_rejected": 114,
+        "momentum_candidates": 98,
         "momentum_confirmed": 0,
-        "momentum_rejected": 93,
-        "momentum_reject_breakout": 117,
-        "momentum_reject_trend": 59,
-        "momentum_reject_volume_adx": 13,
-        "momentum_reject_extension": 21,
+        "momentum_rejected": 98,
+        "momentum_reject_breakout": 156,
+        "momentum_reject_trend": 61,
+        "momentum_reject_volume_adx": 14,
+        "momentum_reject_extension": 23,
         "momentum_reject_risk": 0
       }
     }
@@ -3998,7 +3998,7 @@
       "liquidity_level": 0.306,
       "bars_required": 4,
       "expires_at": 1794504600000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "HUMAUSDT": {
       "symbol": "HUMAUSDT",
@@ -4012,7 +4012,7 @@
       "liquidity_level": 0.00793,
       "bars_required": 4,
       "expires_at": 1794502800000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "GRAMUSDT": {
       "symbol": "GRAMUSDT",
@@ -4026,7 +4026,7 @@
       "liquidity_level": 1.286,
       "bars_required": 4,
       "expires_at": 1794503700000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "ADAUSDT": {
       "symbol": "ADAUSDT",
@@ -4040,7 +4040,7 @@
       "liquidity_level": 0.1717,
       "bars_required": 4,
       "expires_at": 1794503700000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "TAOUSDT": {
       "symbol": "TAOUSDT",
@@ -4054,7 +4054,7 @@
       "liquidity_level": 210.8,
       "bars_required": 4,
       "expires_at": 1794503700000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "ARBUSDT": {
       "symbol": "ARBUSDT",
@@ -4068,7 +4068,7 @@
       "liquidity_level": 0.1468,
       "bars_required": 4,
       "expires_at": 1794503700000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "POLUSDT": {
       "symbol": "POLUSDT",
@@ -4082,7 +4082,7 @@
       "liquidity_level": 0.08541,
       "bars_required": 4,
       "expires_at": 1794503700000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "APTUSDT": {
       "symbol": "APTUSDT",
@@ -4096,7 +4096,7 @@
       "liquidity_level": 0.5482,
       "bars_required": 4,
       "expires_at": 1794503700000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "DOTUSDT": {
       "symbol": "DOTUSDT",
@@ -4110,7 +4110,7 @@
       "liquidity_level": 0.831,
       "bars_required": 4,
       "expires_at": 1794503700000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "SUIUSDT": {
       "symbol": "SUIUSDT",
@@ -4124,7 +4124,7 @@
       "liquidity_level": 0.8016,
       "bars_required": 4,
       "expires_at": 1794504600000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "AAVEUSDT": {
       "symbol": "AAVEUSDT",
@@ -4138,7 +4138,7 @@
       "liquidity_level": 114.44,
       "bars_required": 4,
       "expires_at": 1794504600000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "ONDOUSDT": {
       "symbol": "ONDOUSDT",
@@ -4152,7 +4152,7 @@
       "liquidity_level": 0.3524,
       "bars_required": 4,
       "expires_at": 1794504600000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "FETUSDT": {
       "symbol": "FETUSDT",
@@ -4166,7 +4166,7 @@
       "liquidity_level": 0.147,
       "bars_required": 4,
       "expires_at": 1794504600000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "FILUSDT": {
       "symbol": "FILUSDT",
@@ -4180,7 +4180,7 @@
       "liquidity_level": 0.7506,
       "bars_required": 4,
       "expires_at": 1794504600000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "RENDERUSDT": {
       "symbol": "RENDERUSDT",
@@ -4194,35 +4194,7 @@
       "liquidity_level": 1.519,
       "bars_required": 4,
       "expires_at": 1794504600000,
-      "updated_at": "2026-11-12 20:18"
-    },
-    "ONEUSDT": {
-      "symbol": "ONEUSDT",
-      "direction": "BUY",
-      "sweep_time": 1794498300000,
-      "reference": 0.001698,
-      "reference_type": "SWING_HIGH",
-      "bars_checked": 3,
-      "sweep_low": 0.001569,
-      "sweep_high": 0.001617,
-      "liquidity_level": 0.001598,
-      "bars_required": 4,
-      "expires_at": 1794502800000,
-      "updated_at": "2026-11-12 20:18"
-    },
-    "OPGUSDT": {
-      "symbol": "OPGUSDT",
-      "direction": "SELL",
-      "sweep_time": 1794498300000,
-      "reference": 0.1367,
-      "reference_type": "SWING_LOW",
-      "bars_checked": 3,
-      "sweep_low": 0.1399,
-      "sweep_high": 0.1419,
-      "liquidity_level": 0.1416,
-      "bars_required": 4,
-      "expires_at": 1794502800000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
     },
     "ZAMAUSDT": {
       "symbol": "ZAMAUSDT",
@@ -4236,7 +4208,35 @@
       "liquidity_level": 0.0588,
       "bars_required": 4,
       "expires_at": 1794505500000,
-      "updated_at": "2026-11-12 20:18"
+      "updated_at": "2026-11-12 20:24"
+    },
+    "ONEUSDT": {
+      "symbol": "ONEUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794498300000,
+      "reference": 0.001698,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 3,
+      "sweep_low": 0.001569,
+      "sweep_high": 0.001617,
+      "liquidity_level": 0.001598,
+      "bars_required": 4,
+      "expires_at": 1794502800000,
+      "updated_at": "2026-11-12 20:24"
+    },
+    "OPGUSDT": {
+      "symbol": "OPGUSDT",
+      "direction": "SELL",
+      "sweep_time": 1794498300000,
+      "reference": 0.1367,
+      "reference_type": "SWING_LOW",
+      "bars_checked": 3,
+      "sweep_low": 0.1399,
+      "sweep_high": 0.1419,
+      "liquidity_level": 0.1416,
+      "bars_required": 4,
+      "expires_at": 1794502800000,
+      "updated_at": "2026-11-12 20:24"
     }
   },
   "pending_retests": {
@@ -4254,7 +4254,7 @@
       "liquidity_level": 0.005986,
       "created_at_ms": 1794500414330,
       "expires_at": 1794503699999,
-      "last_checked_time": 1794501899999,
+      "last_checked_time": 1794502199999,
       "status": "WAITING_FOR_RETEST"
     }
   }
