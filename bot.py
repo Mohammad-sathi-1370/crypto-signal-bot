@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.4.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.4.1
 # =========================================================
 
-VERSION = "6.4.0"
+VERSION = "6.4.1"
 MAX_RISK_ATR = 4.0
 
 MAX_BARS_SINCE_STRUCTURE = 2
@@ -109,11 +109,16 @@ DIAGNOSTICS = {
     "retest_confirmed": 0,
     "retest_rejected": 0,
     "retest_expired": 0,
+    "pending_retest_active": 0,
+    "pending_retest_added": 0,
+    "pending_retest_replaced": 0,
+    "pending_retest_expired": 0,
+    "pending_retest_stale": 0,
     "waiting_queue_active": 0,
     "waiting_queue_expired": 0,
     "waiting_queue_replaced": 0,
     "fvg_rejected": 0,
-    "fvg_detected": 0,
+        "fvg_detected": 0,
     "fvg_retest_detected": 0,
     "order_block_detected": 0,
     "pullback_waiting": 0,
@@ -176,7 +181,7 @@ def send_telegram_text(message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
     try:
-        response = session.post(
+                response = session.post(
             url,
             data={
                 "chat_id": chat_id,
@@ -233,7 +238,7 @@ def send_signal(signal):
         f"📍 Direction: {label}\n"
         "⏱ Timeframe: 5m\n"
         f"⭐ Confirmations: {signal['confirmations']}/7\n\n"
-        "📊 SMC ANALYSIS\n"
+                "📊 SMC ANALYSIS\n"
         "Liquidity Sweep: YES\n"
         f"Structure: {signal['structure']}\n"
         f"Entry Model: {signal.get('entry_model', 'FRESH_STRUCTURE_DIRECT_CLOSED_5M')}\n"
@@ -311,7 +316,8 @@ def load_state():
             "daily": {},
             "weekly_reports": {},
             "news_filter": {},
-            "pending_setups": {}
+            "pending_setups": {},
+            "pending_retests": {}
         }
 
     try:
@@ -331,6 +337,7 @@ def load_state():
     state.setdefault("weekly_reports", {})
     state.setdefault("news_filter", {})
     state.setdefault("pending_setups", {})
+    state.setdefault("pending_retests", {})
 
     if not isinstance(state["signals"], list):
         raise RuntimeError("Invalid signals history.")
@@ -344,11 +351,14 @@ def load_state():
     if not isinstance(state["pending_setups"], dict):
         state["pending_setups"] = {}
 
+    if not isinstance(state["pending_retests"], dict):
+        state["pending_retests"] = {}
+
     for signal in state["signals"]:
         signal.setdefault("tp1_hit", False)
         signal.setdefault("tp2_hit", False)
         signal.setdefault("tp3_hit", False)
-        signal.setdefault("telegram_events", {})
+                signal.setdefault("telegram_events", {})
         signal.setdefault("pending_events", [])
         signal.setdefault("result_stage", "NONE")
         signal.setdefault("tp1_time", None)
@@ -408,7 +418,7 @@ def load_state():
                 signal.get("stat_result") or "LOSS"
             )
             signal["result_locked"] = True
-
+            
         signal.setdefault(
             "telegram_events", {}
         ).setdefault("ENTRY", True)
@@ -454,7 +464,7 @@ def get_daily_record(state):
 # =========================================================
 
 def get_market_coins():
-    """
+        """
     Top 50 liquid Binance USDT markets intersected
     with active Nobitex assets.
     """
@@ -519,7 +529,7 @@ def get_market_coins():
             continue
 
         base = symbol[:-4]
-
+        
         if base not in nobitex_assets:
             continue
 
@@ -638,7 +648,7 @@ def get_tracking_candles(symbol, start_time):
             break
 
         df = candles_to_dataframe(data)
-
+        
         if df.empty:
             break
 
@@ -818,7 +828,7 @@ def active_high_impact_news(force_refresh=False):
     """
     Return:
     (news_active, matching_event, calendar_ok)
-    """
+        """
 
     calendar_ok = refresh_news_calendar(
         force=force_refresh
@@ -880,7 +890,7 @@ def has_open_trade_for_symbol(state, symbol):
         and old.get("status") == "OPEN"
         for old in state.get("signals", [])
     )
-
+    
 
 # =========================================================
 # INDICATORS
@@ -1188,7 +1198,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
 
     reference_type = (
         "SWING_HIGH"
-        if direction == "BUY"
+            if direction == "BUY"
         else "SWING_LOW"
     )
 
@@ -1254,7 +1264,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
         close = float(candle["close"])
 
         broken = (
-            close > reference
+                    close > reference
             if direction == "BUY"
             else close < reference
         )
@@ -1299,7 +1309,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
             "reference": reference,
             "reference_type": reference_type,
             "pivot_age": sweep_index - int(pivot["index"]),
-            "bars_checked": j - sweep_index,
+                    "bars_checked": j - sweep_index,
             "distance": distance,
             "distance_atr": distance_atr,
             "sweep_time": sweep["time"]
@@ -1358,7 +1368,7 @@ def find_sweep_structure(df15, symbol):
 
     for sweep in candidates:
         structure = detect_structure(
-            df15,
+                        df15,
             sweep,
             symbol
         )
@@ -1409,7 +1419,7 @@ def detect_fvg_retest(df, direction, after_time, atr):
     counted = False
 
     for i in range(
-        last_index - 1,
+                last_index - 1,
         start - 1,
         -1
     ):
@@ -1468,7 +1478,7 @@ def detect_fvg_retest(df, direction, after_time, atr):
             confirmed = (
                 float(last["close"]) > float(last["open"])
             )
-
+            
         else:
             confirmed = (
                 float(last["close"]) < float(last["open"])
@@ -1528,7 +1538,7 @@ def detect_order_block(df, direction, structure_time, structure_reference):
         -1
     ):
         displacement = work.iloc[displacement_index]
-
+        
         op = float(displacement["open"])
         cl = float(displacement["close"])
         hi = float(displacement["high"])
@@ -1588,7 +1598,7 @@ def detect_order_block(df, direction, structure_time, structure_reference):
             -1
         ):
             candidate = work.iloc[candidate_index]
-
+            
             cop = float(candidate["open"])
             ccl = float(candidate["close"])
 
@@ -1648,80 +1658,237 @@ def detect_order_block(df, direction, structure_time, structure_reference):
 # SIGNAL GENERATION
 # =========================================================
 
-def detect_structure_retest(df5, direction, structure_time, reference, atr, symbol="UNKNOWN"):
-    """Return the latest 5m candle only if it confirms a genuine structure retest.
 
-    The retest candle must open after the 15m structure candle has closed,
-    touch the broken level within a limited ATR tolerance, reclaim/hold the
-    level on close, and close in the signal direction. We deliberately do not
-    enter on an earlier retest if the latest candle has already moved away.
+def register_pending_retest(state, symbol, sweep, structure, df15):
+    """Persist a confirmed BOS/CHoCH until its fresh 5m retest is actionable."""
+    pending = state.setdefault("pending_retests", {})
+    structure_time = int(structure["time"])
+    sweep_time = int(sweep["time"])
+
+    age_bars = int(
+        (pd.to_numeric(df15["time"], errors="coerce") > structure_time).sum()
+    )
+    
+    if age_bars > MAX_BARS_SINCE_STRUCTURE:
+        DIAGNOSTICS["late_entry_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol,
+            "stage": "PENDING_RETEST",
+            "reason": "STRUCTURE_TOO_OLD_AT_REGISTRATION",
+            "bars_since_structure": age_bars,
+            "max_bars": MAX_BARS_SINCE_STRUCTURE,
+            "structure_time": structure_time
+        })
+        return False
+
+    existing = pending.get(symbol)
+    if existing:
+        try:
+            old_time = int(existing.get("structure_time", 0))
+        except (TypeError, ValueError):
+            old_time = 0
+
+        if old_time == structure_time and existing.get("direction") == sweep["direction"]:
+            return False
+
+        # Keep a newer pending setup; replace only with a genuinely newer structure.
+        if old_time >= structure_time:
+            return False
+
+        DIAGNOSTICS["pending_retest_replaced"] += 1
+
+    created_at = int(time.time() * 1000)
+    setup = {
+        "symbol": symbol,
+        "direction": sweep["direction"],
+        "structure": structure["name"],
+        "structure_trend": structure.get("trend_context", "NEUTRAL"),
+        "structure_time": structure_time,
+        "structure_index": int(structure.get("index", len(df15) - 1)),
+        "structure_reference": float(structure["reference"]),
+        "sweep_time": sweep_time,
+        "sweep_low": float(sweep["sweep_low"]),
+        "sweep_high": float(sweep["sweep_high"]),
+        "liquidity_level": float(sweep.get("liquidity_level", structure["reference"])),
+        "created_at_ms": created_at,
+        "expires_at": structure_time + RETEST_MAX_BARS_AFTER_STRUCTURE * 5 * 60 * 1000,
+        "last_checked_time": structure_time,
+        "status": "WAITING_FOR_RETEST"
+    }
+
+    pending[symbol] = setup
+    DIAGNOSTICS["pending_retest_added"] += 1
+    save_state(state)
+    return True
+
+
+def prune_pending_retests(state):
+    """Remove malformed, time-expired, or over-age persisted retest setups."""
+    pending = state.setdefault("pending_retests", {})
+    now_ms = int(time.time() * 1000)
+    expired = 0
+
+    for symbol, setup in list(pending.items()):
+                try:
+            structure_time = int(setup.get("structure_time", 0))
+            expires_at = int(setup.get("expires_at", 0))
+        except (TypeError, ValueError, AttributeError):
+            pending.pop(symbol, None)
+            expired += 1
+            continue
+
+        if (
+            not structure_time
+            or not expires_at
+            or now_ms > expires_at + 5 * 60 * 1000
+        ):
+            pending.pop(symbol, None)
+            expired += 1
+
+    DIAGNOSTICS["pending_retest_expired"] += expired
+    DIAGNOSTICS["pending_retest_active"] = len(pending)
+    return expired
+
+
+def evaluate_pending_retest(state, symbol, df5, df15):
     """
-    if df5.empty or atr <= 0:
-        DIAGNOSTICS["retest_waiting"] += 1
+    Evaluate the persisted setup using closed 5m candles only.
+
+    A retest on an older candle is never used for a late entry: the qualifying
+    retest must be the latest closed 5m candle available in this scan.
+    """
+    pending = state.setdefault("pending_retests", {})
+    setup = pending.get(symbol)
+
+    if not setup:
         return None
 
-    reference = float(reference)
-    tolerance = float(atr) * RETEST_TOLERANCE_ATR
-
-    post_structure = df5[
-        pd.to_numeric(df5["time"], errors="coerce") > int(structure_time)
-    ].reset_index(drop=True)
-
-    if post_structure.empty:
-        DIAGNOSTICS["retest_waiting"] += 1
+    try:
+        structure_time = int(setup["structure_time"])
+        reference = float(setup["structure_reference"])
+        direction = str(setup["direction"])
+    except (KeyError, TypeError, ValueError):
+        pending.pop(symbol, None)
+        DIAGNOSTICS["pending_retest_expired"] += 1
         return None
 
-    bars_after_structure = len(post_structure)
-    if bars_after_structure > RETEST_MAX_BARS_AFTER_STRUCTURE:
+    age_15m = int(
+        (pd.to_numeric(df15["time"], errors="coerce") > structure_time).sum()
+    )
+
+    post = df5[
+        pd.to_numeric(df5["time"], errors="coerce") > structure_time
+    ].sort_values("time").reset_index(drop=True)
+
+    if age_15m > MAX_BARS_SINCE_STRUCTURE:
+        pending.pop(symbol, None)
+        DIAGNOSTICS["late_entry_rejected"] += 1
         DIAGNOSTICS["retest_expired"] += 1
+        DIAGNOSTICS["pending_retest_expired"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol,
+            "stage": "RETEST_FRESHNESS",
+            "reason": "STRUCTURE_TOO_OLD",
+            "bars_since_structure": age_15m,
+            "max_bars": MAX_BARS_SINCE_STRUCTURE,
+            "direction": direction
+        })
+        return None
+
+    if post.empty:
+        DIAGNOSTICS["retest_waiting"] += 1
+        return None
+        
+    if len(post) > RETEST_MAX_BARS_AFTER_STRUCTURE:
+        pending.pop(symbol, None)
+        DIAGNOSTICS["retest_expired"] += 1
+        DIAGNOSTICS["pending_retest_expired"] += 1
         REJECTION_DEBUG.append({
             "symbol": symbol,
             "stage": "RETEST",
             "reason": "RETEST_WINDOW_EXPIRED",
-            "bars_after_structure": int(bars_after_structure),
+            "bars_after_structure": int(len(post)),
             "max_bars": RETEST_MAX_BARS_AFTER_STRUCTURE,
             "direction": direction
         })
         return None
 
-    candle = post_structure.iloc[-1]
-    o = float(candle["open"])
-    h = float(candle["high"])
-    l = float(candle["low"])
-    c = float(candle["close"])
+    tolerance = float(df5.iloc[-1]["atr"]) * RETEST_TOLERANCE_ATR
+    if not np.isfinite(tolerance) or tolerance <= 0:
+        DIAGNOSTICS["retest_waiting"] += 1
+        return None
 
-    if direction == "BUY":
-        touched = l <= reference + tolerance and l >= reference - tolerance
-        reclaimed = c > reference and c > o
-    else:
-        touched = h >= reference - tolerance and h <= reference + tolerance
-        reclaimed = c < reference and c < o
+    latest = post.iloc[-1]
+    latest_open_time = int(latest["time"])
+    latest_close_time = int(latest["close_time"])
 
-    if touched and reclaimed:
+    qualifying = []
+    for _, candle in post.iterrows():
+        o = float(candle["open"])
+        h = float(candle["high"])
+        l = float(candle["low"])
+        c = float(candle["close"])
+
+        if direction == "BUY":
+            touched = l <= reference + tolerance and l >= reference - tolerance
+            reclaimed = c > reference and c > o
+        else:
+            touched = h >= reference - tolerance and h <= reference + tolerance
+            reclaimed = c < reference and c < o
+
+        if touched and reclaimed:
+            qualifying.append(candle)
+
+    if qualifying:
+        candidate = qualifying[-1]
+        candidate_close_time = int(candidate["close_time"])
+
+        # Only a retest on the current latest closed candle is actionable.
+        if candidate_close_time != latest_close_time:
+            pending.pop(symbol, None)
+            DIAGNOSTICS["retest_rejected"] += 1
+            DIAGNOSTICS["pending_retest_stale"] += 1
+            DIAGNOSTICS["pending_retest_expired"] += 1
+            REJECTION_DEBUG.append({
+                "symbol": symbol,
+                "stage": "RETEST",
+                "reason": "QUALIFIED_RETEST_BECAME_STALE",
+                "retest_time": candidate_close_time,
+                "latest_closed_time": latest_close_time,
+                "direction": direction
+            })
+            return None
+
         DIAGNOSTICS["retest_confirmed"] += 1
+        setup["last_checked_time"] = latest_close_time
+        setup["status"] = "RETEST_CONFIRMED"
         return {
-            "time": int(candle["close_time"]),
-            "open_time": int(candle["time"]),
-            "open": o,
-            "high": h,
-            "low": l,
-            "close": c,
-            "bars_after_structure": int(bars_after_structure),
+            "time": latest_close_time,
+            "open_time": latest_open_time,
+            "open": float(latest["open"]),
+            "high": float(latest["high"]),
+            "low": float(latest["low"]),
+            "close": float(latest["close"]),
+            "bars_after_structure": int(len(post)),
             "tolerance": tolerance
         }
 
-    if touched and not reclaimed:
-        DIAGNOSTICS["retest_rejected"] += 1
-        reason = "LEVEL_NOT_RECLAIMED_OR_CANDLE_NOT_DIRECTIONAL"
+    setup["last_checked_time"] = latest_close_time
+
+    if len(post) >= RETEST_MAX_BARS_AFTER_STRUCTURE:
+        pending.pop(symbol, None)
+        DIAGNOSTICS["retest_expired"] += 1
+        DIAGNOSTICS["pending_retest_expired"] += 1
+        reason = "NO_RETEST_WITHIN_SIX_CLOSED_5M_CANDLES"
     else:
         DIAGNOSTICS["retest_waiting"] += 1
-        reason = "WAITING_FOR_LATEST_CANDLE_RETEST"
+        reason = "WAITING_FOR_FRESH_5M_RETEST"
 
     REJECTION_DEBUG.append({
         "symbol": symbol,
         "stage": "RETEST",
         "reason": reason,
-        "bars_after_structure": int(bars_after_structure),
+        "bars_after_structure": int(len(post)),
         "reference": reference,
         "tolerance": round(float(tolerance), 8),
         "direction": direction
@@ -1729,10 +1896,13 @@ def detect_structure_retest(df5, direction, structure_time, reference, atr, symb
     return None
 
 
-def generate_signal(symbol, df5, df15):
+def generate_signal(symbol, df5, df15, state=None):
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
+
+    if state is None:
+        state = {"pending_retests": {}}
 
     df5 = calculate_indicators(df5)
     df15 = calculate_indicators(df15)
@@ -1748,7 +1918,7 @@ def generate_signal(symbol, df5, df15):
         row["ema200"],
         row["bb_mid"],
         row["plus_di"],
-        row["minus_di"],
+                row["minus_di"],
         trend["ema20"],
         trend["ema50"],
         trend["ema200"]
@@ -1761,88 +1931,112 @@ def generate_signal(symbol, df5, df15):
     price = float(row["close"])
     atr = float(row["atr"])
 
-    if (
-        price <= 0
-        or atr <= 0
-        or float(row["volume_avg"]) <= 0
-    ):
+    if price <= 0 or atr <= 0 or float(row["volume_avg"]) <= 0:
         DIAGNOSTICS["invalid_values"] += 1
         return None
 
-    if float(row["adx"]) < ADX_MINIMUM:
-        DIAGNOSTICS["adx_rejected"] += 1
-        return None
+    volume_ratio = float(row["volume"] / row["volume_avg"])
 
-    if atr / price < MIN_ATR_RATIO:
-        DIAGNOSTICS["volatility_rejected"] += 1
-        return None
+    # Discover and persist newly confirmed structures, but never discard an
+    # existing persisted setup merely because the current scan cannot rediscover it.
+    sweep, structure, sweep_count, paired = find_sweep_structure(df15, symbol)
 
-    volume_ratio = float(
-        row["volume"] / row["volume_avg"]
-    )
-
-    sweep, structure, sweep_count, paired = (
-        find_sweep_structure(df15, symbol)
-    )
-
-    if sweep_count == 0:
+    if sweep_count:
+        DIAGNOSTICS["sweep_detected"] += 1
+    else:
         DIAGNOSTICS["sweep_rejected"] += 1
-        return None
 
-    DIAGNOSTICS["sweep_detected"] += 1
-
-    if not paired or structure is None:
+    if paired and structure is not None:
+        DIAGNOSTICS["structure_detected"] += 1
+        register_pending_retest(
+            state,
+            symbol,
+            sweep,
+            structure,
+            df15
+        )
+    else:
         DIAGNOSTICS["structure_rejected"] += 1
+
+    retest = evaluate_pending_retest(
+        state,
+        symbol,
+        df5,
+        df15
+    )
+
+    if retest is None:
+        DIAGNOSTICS["pending_retest_active"] = len(
+            state.get("pending_retests", {})
+        )
         return None
 
-    DIAGNOSTICS["structure_detected"] += 1
+    setup = state.get("pending_retests", {}).get(symbol)
+    if not setup:
+        # Defensive guard: a setup may have been pruned during evaluation.
+        return None
 
-    direction = sweep["direction"]
-
-    structure_index = int(structure.get("index", len(df15) - 1))
-    bars_since_structure = max(
-        0,
-        (len(df15) - 1) - structure_index
-    )
-    structure_reference = float(structure.get("reference", price))
+    direction = setup["direction"]
+    structure_reference = float(setup["structure_reference"])
+    structure_time = int(setup["structure_time"])
+    sweep_time = int(setup["sweep_time"])
     entry_extension_atr = abs(price - structure_reference) / atr
 
+    bars_since_structure = int(
+        (pd.to_numeric(df15["time"], errors="coerce") > structure_time).sum()
+    )
+
     if bars_since_structure > MAX_BARS_SINCE_STRUCTURE:
+        state["pending_retests"].pop(symbol, None)
         DIAGNOSTICS["late_entry_rejected"] += 1
+        DIAGNOSTICS["retest_expired"] += 1
         REJECTION_DEBUG.append({
             "symbol": symbol,
             "stage": "ENTRY_FRESHNESS",
             "reason": "STRUCTURE_TOO_OLD",
-            "bars_since_structure": int(bars_since_structure),
+            "bars_since_structure": bars_since_structure,
             "max_bars": MAX_BARS_SINCE_STRUCTURE,
-            "entry_extension_atr": round(float(entry_extension_atr), 3),
             "direction": direction
         })
         return None
-
+        
     if entry_extension_atr > MAX_ENTRY_EXTENSION_ATR:
+        state["pending_retests"].pop(symbol, None)
         DIAGNOSTICS["entry_extension_rejected"] += 1
         DIAGNOSTICS["entry_distance_rejected"] += 1
+        DIAGNOSTICS["retest_rejected"] += 1
         REJECTION_DEBUG.append({
             "symbol": symbol,
             "stage": "ENTRY_FRESHNESS",
             "reason": "PRICE_EXTENDED_FROM_STRUCTURE",
-            "bars_since_structure": int(bars_since_structure),
+            "bars_since_structure": bars_since_structure,
             "entry_extension_atr": round(float(entry_extension_atr), 3),
             "max_extension_atr": MAX_ENTRY_EXTENSION_ATR,
             "direction": direction
         })
         return None
 
-    retest = detect_structure_retest(
-        df5,
-        direction,
-        structure["time"],
-        structure_reference,
-        atr,
-        symbol
-    )
-    if retest is None:
+    # The retest candle must be the latest closed candle; use its close as entry.
+    entry = float(retest["close"])
+
+    if float(row["adx"]) < ADX_MINIMUM:
+        state["pending_retests"].pop(symbol, None)
+        DIAGNOSTICS["adx_rejected"] += 1
+        DIAGNOSTICS["retest_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol,
+            "stage": "ADX",
+            "reason": "ADX_BELOW_MINIMUM_ON_RETEST",
+            "adx": float(row["adx"]),
+            "minimum": ADX_MINIMUM,
+            "direction": direction
+        })
+        return None
+
+    if atr / price < MIN_ATR_RATIO:
+        state["pending_retests"].pop(symbol, None)
+        DIAGNOSTICS["volatility_rejected"] += 1
+        DIAGNOSTICS["retest_rejected"] += 1
         return None
 
     if direction == "BUY":
@@ -1855,7 +2049,6 @@ def generate_signal(symbol, df5, df15):
             row["adx"] >= ADX_CONFIRMATION,
             row["plus_di"] > row["minus_di"]
         ]
-
     else:
         checks = [
             row["rsi"] < 50,
@@ -1867,63 +2060,51 @@ def generate_signal(symbol, df5, df15):
             row["minus_di"] > row["plus_di"]
         ]
 
-    confirmations = sum(
-        bool(value) for value in checks
-    )
+    confirmations = sum(bool(value) for value in checks)
 
     if confirmations < MIN_CONFIRMATIONS:
+        state["pending_retests"].pop(symbol, None)
         DIAGNOSTICS["confirmations_rejected"] += 1
-
+        DIAGNOSTICS["retest_rejected"] += 1
         REJECTION_DEBUG.append({
             "symbol": symbol,
             "stage": "CONFIRMATIONS",
-            "reason": "CONFIRMATION_SCORE_LOW",
-            "score": int(confirmations),
+            "reason": "CONFIRMATION_SCORE_LOW_ON_RETEST",
+                    "score": int(confirmations),
             "required": MIN_CONFIRMATIONS,
             "direction": direction
         })
-
         return None
-
-    entry = float(retest["close"])
 
     if direction == "BUY":
         structural_stop = (
-            float(sweep["sweep_low"])
-            - atr * SWEEP_STOP_BUFFER
+            float(setup["sweep_low"]) - atr * SWEEP_STOP_BUFFER
         )
-
         stop_loss = (
             structural_stop
             if structural_stop < entry
             else entry - atr * FALLBACK_STOP_ATR
         )
-
         risk = entry - stop_loss
-
         tp1 = entry + risk
         tp2 = entry + 2 * risk
         tp3 = entry + 3 * risk
-
     else:
         structural_stop = (
-            float(sweep["sweep_high"])
-            + atr * SWEEP_STOP_BUFFER
+            float(setup["sweep_high"]) + atr * SWEEP_STOP_BUFFER
         )
-
         stop_loss = (
             structural_stop
             if structural_stop > entry
             else entry + atr * FALLBACK_STOP_ATR
         )
-
         risk = stop_loss - entry
-
         tp1 = entry - risk
         tp2 = entry - 2 * risk
         tp3 = entry - 3 * risk
 
     if not np.isfinite(risk) or risk <= 0:
+        state["pending_retests"].pop(symbol, None)
         DIAGNOSTICS["invalid_values"] += 1
         return None
 
@@ -1933,25 +2114,24 @@ def generate_signal(symbol, df5, df15):
     fvg = detect_fvg_retest(
         df5,
         direction,
-        structure["time"],
+        structure_time,
         atr
     )
 
     order_block_zone = detect_order_block(
-        df5,
+                df5,
         direction,
-        structure["time"],
-        structure["reference"]
+        structure_time,
+        structure_reference
     )
 
     order_block = bool(order_block_zone)
-
     if order_block:
         DIAGNOSTICS["order_block_detected"] += 1
 
     signal_time = int(row["close_time"])
 
-    return {
+    signal = {
         "symbol": symbol,
         "direction": direction,
         "entry": float(entry),
@@ -1972,7 +2152,7 @@ def generate_signal(symbol, df5, df15):
         "fvg_upper": fvg["upper"] if fvg else None,
         "fvg_retest": bool(fvg),
         "fvg_required": False,
-        "entry_model": "BOS_CHOCH_RETEST_CONFIRMED_CLOSED_5M",
+        "entry_model": "PERSISTENT_BOS_CHOCH_FRESH_CLOSED_5M_RETEST",
         "retest_time": int(retest["time"]),
         "retest_bars_after_structure": int(retest["bars_after_structure"]),
         "retest_tolerance": float(retest["tolerance"]),
@@ -1981,13 +2161,10 @@ def generate_signal(symbol, df5, df15):
         "structure_reference": float(structure_reference),
         "order_block": order_block,
         "order_block_zone": order_block_zone,
-        "structure": structure["name"],
-        "structure_trend": structure.get(
-            "trend_context",
-            "NEUTRAL"
-        ),
-        "structure_time": structure["time"],
-        "sweep_time": sweep["time"],
+        "structure": setup["structure"],
+        "structure_trend": setup.get("structure_trend", "NEUTRAL"),
+        "structure_time": structure_time,
+        "sweep_time": sweep_time,
         "signal_time": signal_time,
         "last_checked_time": signal_time,
         "tp1_hit": False,
@@ -2006,7 +2183,12 @@ def generate_signal(symbol, df5, df15):
         "pending_events": [],
         "created_at": current_time_string(),
         "created_date": today_string()
-    }
+            }
+
+    # Remove only after a complete, valid signal has been assembled.
+    state["pending_retests"].pop(symbol, None)
+    save_state(state)
+    return signal
 
 
 # =========================================================
@@ -2115,7 +2297,7 @@ def update_signal_results(state):
 
                 if signal.get("tp1_hit"):
                     signal["status"] = "SL_AFTER_TP1"
-                    signal["sl_after_tp1"] = True
+                                        signal["sl_after_tp1"] = True
                     signal["stat_result"] = "WIN"
                     signal["result_locked"] = True
                     signal.setdefault("pending_events", [])[:] = [
@@ -2317,7 +2499,7 @@ def maybe_send_weekly_report(state):
         )
 
     else:
-        week_start, week_end = week_bounds_for_date(
+                week_start, week_end = week_bounds_for_date(
             now.date() - timedelta(days=1)
         )
 
@@ -2441,7 +2623,7 @@ def run_scanner():
     global REJECTION_DEBUG
 
     DIAGNOSTICS = {
-        key: 0 for key in DIAGNOSTICS
+                key: 0 for key in DIAGNOSTICS
     }
 
     STRUCTURE_DEBUG = []
@@ -2459,6 +2641,7 @@ def run_scanner():
 
     state = load_state()
     prune_pending_setups(state)
+    prune_pending_retests(state)
     save_state(state)
 
     update_signal_results(state)
@@ -2492,7 +2675,7 @@ def run_scanner():
 
         print(
             "HIGH-IMPACT NEWS WARNING "
-            "(signals are NOT blocked):",
+                    "(signals are NOT blocked):",
             news_warning
         )
 
@@ -2566,7 +2749,7 @@ def run_scanner():
                 symbol,
                 TIMEFRAME
             )
-
+            
             df15 = get_candles(
                 symbol,
                 TREND_TIMEFRAME
@@ -2575,7 +2758,8 @@ def run_scanner():
             signal = generate_signal(
                 symbol,
                 df5,
-                df15
+                df15,
+                state
             )
 
             if signal is None:
@@ -2615,7 +2799,7 @@ def run_scanner():
             )
 
             new_signals += 1
-
+            
             risk_tag = (
                 " ⚠️ HIGH RISK"
                 if signal["risk_atr"] > MAX_RISK_ATR
@@ -2671,6 +2855,7 @@ def run_scanner():
         }
     )
     print("Pending structure setups:", len(state.get("pending_setups", {})))
+    print("Pending retest setups:", len(state.get("pending_retests", {})))
     print("Diagnostics:", DIAGNOSTICS)
     print("=" * 48)
 
@@ -2697,6 +2882,7 @@ def run_report():
 
     state = load_state()
     prune_pending_setups(state)
+    prune_pending_retests(state)
 
     update_signal_results(state)
 
@@ -2712,7 +2898,7 @@ def run_report():
         state,
         week_start,
         iran_now().date()
-    )
+            )
 
     send_telegram_text(message)
 
