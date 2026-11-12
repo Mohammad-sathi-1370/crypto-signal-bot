@@ -11,13 +11,13 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.4.2
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.4.4
 # =========================================================
 
-VERSION = "6.4.3"
+VERSION = "6.4.4"
 MAX_RISK_ATR = 4.0
 
-MAX_BARS_SINCE_STRUCTURE = 3  # Keep a confirmed structure eligible for up to 45 minutes.
+MAX_BARS_SINCE_STRUCTURE = 4  # Keep a confirmed structure eligible for up to 60 minutes.
 MAX_ENTRY_EXTENSION_ATR = 0.80
 
 RETEST_MAX_BARS_AFTER_STRUCTURE = 9  # Nine closed 5m candles = 45 minutes.
