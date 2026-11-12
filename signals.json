@@ -3768,26 +3768,26 @@
       }
     },
     "2026-11-12": {
-      "scans": 2,
+      "scans": 3,
       "signals": 0,
       "diagnostics": {
         "insufficient_data": 0,
         "invalid_values": 0,
-        "adx_rejected": 27,
+        "adx_rejected": 43,
         "volatility_rejected": 0,
         "confirmations_rejected": 1,
-        "sweep_rejected": 14,
-        "sweep_detected": 39,
-        "structure_rejected": 35,
-        "structure_detected": 4,
+        "sweep_rejected": 20,
+        "sweep_detected": 57,
+        "structure_rejected": 51,
+        "structure_detected": 6,
         "structure_no_pivot": 0,
-        "structure_no_break": 25,
-        "structure_waiting": 30,
-        "structure_expired": 25,
-        "structure_confirmed": 4,
-        "late_entry_rejected": 1,
-        "entry_extension_rejected": 2,
-        "waiting_queue_active": 18,
+        "structure_no_break": 38,
+        "structure_waiting": 44,
+        "structure_expired": 38,
+        "structure_confirmed": 6,
+        "late_entry_rejected": 2,
+        "entry_extension_rejected": 3,
+        "waiting_queue_active": 27,
         "waiting_queue_expired": 5,
         "waiting_queue_replaced": 1,
         "fvg_rejected": 0,
@@ -3797,12 +3797,12 @@
         "pullback_waiting": 0,
         "pullback_rejected": 0,
         "pullback_confirmed": 0,
-        "entry_distance_rejected": 2,
+        "entry_distance_rejected": 3,
         "risk_rejected": 0,
         "risk_rejected_invalid": 0,
         "risk_rejected_too_wide": 0,
         "duplicate_signals": 0,
-        "open_trade_locked": 20,
+        "open_trade_locked": 30,
         "news_warning_active": 0,
         "news_calendar_errors": 0,
         "errors": 0
@@ -3834,7 +3834,7 @@
       "bars_checked": 1,
       "bars_required": 4,
       "expires_at": 1794465000000,
-      "updated_at": "2026-11-12 09:23"
+      "updated_at": "2026-11-12 09:25"
     },
     "APTUSDT": {
       "symbol": "APTUSDT",
@@ -3845,7 +3845,7 @@
       "bars_checked": 2,
       "bars_required": 4,
       "expires_at": 1794464100000,
-      "updated_at": "2026-11-12 09:23"
+      "updated_at": "2026-11-12 09:25"
     },
     "OPENUSDT": {
       "symbol": "OPENUSDT",
@@ -3856,7 +3856,7 @@
       "bars_checked": 2,
       "bars_required": 4,
       "expires_at": 1794464100000,
-      "updated_at": "2026-11-12 09:23"
+      "updated_at": "2026-11-12 09:25"
     },
     "BTCUSDT": {
       "symbol": "BTCUSDT",
@@ -3867,7 +3867,7 @@
       "bars_checked": 0,
       "bars_required": 4,
       "expires_at": 1794465900000,
-      "updated_at": "2026-11-12 09:23"
+      "updated_at": "2026-11-12 09:25"
     },
     "XRPUSDT": {
       "symbol": "XRPUSDT",
@@ -3878,7 +3878,7 @@
       "bars_checked": 1,
       "bars_required": 4,
       "expires_at": 1794465000000,
-      "updated_at": "2026-11-12 09:23"
+      "updated_at": "2026-11-12 09:25"
     },
     "QNTUSDT": {
       "symbol": "QNTUSDT",
@@ -3889,7 +3889,7 @@
       "bars_checked": 0,
       "bars_required": 4,
       "expires_at": 1794465900000,
-      "updated_at": "2026-11-12 09:23"
+      "updated_at": "2026-11-12 09:25"
     },
     "PYTHUSDT": {
       "symbol": "PYTHUSDT",
@@ -3900,7 +3900,7 @@
       "bars_checked": 1,
       "bars_required": 4,
       "expires_at": 1794465000000,
-      "updated_at": "2026-11-12 09:23"
+      "updated_at": "2026-11-12 09:25"
     },
     "HUMAUSDT": {
       "symbol": "HUMAUSDT",
@@ -3911,7 +3911,7 @@
       "bars_checked": 1,
       "bars_required": 4,
       "expires_at": 1794465000000,
-      "updated_at": "2026-11-12 09:23"
+      "updated_at": "2026-11-12 09:25"
     }
   }
 }
