@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import time
 import requests
@@ -14,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.3
 # =========================================================
 
-VERSION = "6.6.3"
+VERSION = "6.6.4"
 MAX_RISK_ATR = 4.0
 
 MAX_BARS_SINCE_STRUCTURE = 4  # Keep a confirmed structure eligible for up to 60 minutes.
@@ -193,40 +192,42 @@ def timestamp_string(timestamp):
 # TELEGRAM
 # =========================================================
 
-def send_telegram_text(message):
+def send_telegram_message(message, reply_to_message_id=None):
+    """Send a Telegram message and return the Telegram message object."""
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
     if not token or not chat_id:
         print("Telegram credentials missing.")
-        return False
+        return None
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message
+    }
+
+    if reply_to_message_id is not None:
+        payload["reply_to_message_id"] = int(reply_to_message_id)
 
     try:
-        response = session.post(
-            url,
-            data={
-                "chat_id": chat_id,
-                "text": message
-            },
-            timeout=20
-        )
-
+        response = session.post(url, data=payload, timeout=20)
         response.raise_for_status()
         result = response.json()
 
-        if not result.get("ok"):
-            print("Telegram rejected message.")
-            return False
+        if not result.get("ok") or not isinstance(result.get("result"), dict):
+            print("Telegram rejected message:", result)
+            return None
 
-        print("Telegram message sent.")
-        return True
+        return result["result"]
 
     except Exception as error:
         print("Telegram ERROR:", error)
-        return False
+        return None
 
+
+def send_telegram_text(message):
+    return send_telegram_message(message) is not None
 
 def send_signal(signal):
     direction = signal["direction"]
@@ -292,46 +293,57 @@ def send_signal(signal):
         "━━━━━━━━━━━━━━━━━━"
     )
 
-    return send_telegram_text(message)
+    result = send_telegram_message(message)
+    if not result:
+        return False
+
+    signal["telegram_message_id"] = result.get("message_id")
+    chat = result.get("chat") or {}
+    signal["telegram_chat_id"] = chat.get("id") or os.getenv("TELEGRAM_CHAT_ID")
+    return signal.get("telegram_message_id") is not None
 
 
 def send_event_message(signal, event):
+    """Reply to the original signal message for each TP/SL milestone."""
     symbol = signal["symbol"]
-
-    if event == "ENTRY":
-        return send_signal(signal)
-
     messages = {
         "TP1": (
-            f"✅ TP1 HIT\n{symbol}\n"
-            f"Price: {signal['tp1']:.8g}\n"
-            "Milestone: 1R\n"
-            "Statistical result: WIN (locked)\n"
-            "Trade remains OPEN until TP2 or SL."
+            f"✅ TP1 HIT — {symbol}\\n"
+            f"Target: {float(signal['tp1']):.8g}\\n"
+            "Milestone: 1R"
         ),
         "TP2": (
-            f"🔥 TP2 HIT\n{symbol}\n"
-            f"Price: {signal['tp2']:.8g}\n"
-            "Milestone: 2R\n"
-            "Trade tracking closed."
+            f"🔥 TP2 HIT — {symbol}\\n"
+            f"Target: {float(signal['tp2']):.8g}\\n"
+            "Milestone: 2R"
         ),
         "TP3": (
-            f"🚀 TP3 HIT\n{symbol}\n"
-            f"Price: {signal['tp3']:.8g}\n"
-            "Milestone: 3R. TP2 and TP3 were reached within the same 5m candle."
+            f"🚀 TP3 HIT — {symbol}\\n"
+            f"Target: {float(signal['tp3']):.8g}\\n"
+            "Milestone: 3R — signal completed"
         ),
         "SL": (
-            f"🛑 STOP LOSS HIT\n{symbol}\n"
-            f"Price: {signal['stop_loss']:.8g}\n"
-            f"Statistical result: {signal.get('stat_result', 'LOSS')}\n"
-            f"Previous milestone: {signal.get('result_stage', 'NONE')}"
+            f"🛑 STOP LOSS HIT — {symbol}\\n"
+            f"Stop: {float(signal['stop_loss']):.8g}"
         )
     }
 
     if event not in messages:
         return False
 
-    return send_telegram_text(messages[event])
+    message_id = signal.get("telegram_message_id")
+    if not message_id:
+        print(
+            f"Cannot reply to legacy signal {symbol}: "
+            "original Telegram message_id is not stored."
+        )
+        return False
+
+    result = send_telegram_message(
+        messages[event],
+        reply_to_message_id=message_id
+    )
+    return result is not None
 
 
 # =========================================================
@@ -342,8 +354,6 @@ def load_state():
     if not os.path.exists(STATE_FILE):
         return {
             "signals": [],
-            "daily": {},
-            "weekly_reports": {},
             "news_filter": {},
             "pending_setups": {},
             "pending_retests": {}
@@ -352,7 +362,6 @@ def load_state():
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as file:
             state = json.load(file)
-
     except Exception as error:
         raise RuntimeError(
             f"Cannot safely load {STATE_FILE}: {error}"
@@ -362,104 +371,57 @@ def load_state():
         raise RuntimeError("Invalid state file format.")
 
     state.setdefault("signals", [])
-    state.setdefault("daily", {})
-    state.setdefault("weekly_reports", {})
     state.setdefault("news_filter", {})
     state.setdefault("pending_setups", {})
     state.setdefault("pending_retests", {})
 
     if not isinstance(state["signals"], list):
-        raise RuntimeError("Invalid signals history.")
+        raise RuntimeError("Invalid signals state.")
 
-    if not isinstance(state["daily"], dict):
-        state["daily"] = {}
-
-    if not isinstance(state["weekly_reports"], dict):
-        state["weekly_reports"] = {}
-
+    if not isinstance(state["news_filter"], dict):
+        state["news_filter"] = {}
     if not isinstance(state["pending_setups"], dict):
         state["pending_setups"] = {}
-
     if not isinstance(state["pending_retests"], dict):
         state["pending_retests"] = {}
 
+    # Remove legacy performance/statistics containers.
+    state.pop("daily", None)
+    state.pop("weekly_reports", None)
+
     for signal in state["signals"]:
+        if not isinstance(signal, dict):
+            continue
+
         signal.setdefault("tp1_hit", False)
         signal.setdefault("tp2_hit", False)
         signal.setdefault("tp3_hit", False)
         signal.setdefault("telegram_events", {})
         signal.setdefault("pending_events", [])
-        signal.setdefault("result_notice_sent", False)
-        if any(
-            signal["telegram_events"].get(name)
-            for name in ("TP1", "TP2", "TP3", "SL")
-        ):
-            signal["result_notice_sent"] = True
-        signal.setdefault("result_stage", "NONE")
-        signal.setdefault("tp1_time", None)
-        signal.setdefault("tp2_time", None)
-        signal.setdefault("tp3_time", None)
-        signal.setdefault("result_time", None)
-        signal.setdefault("result_price", None)
-        signal.setdefault("sl_after_tp1", False)
 
-        if (
-            "tp3" not in signal
-            and "entry" in signal
-            and "stop_loss" in signal
-        ):
-            entry = float(signal["entry"])
-            risk = abs(entry - float(signal["stop_loss"]))
+        # Old state files did not retain Telegram's original message id.
+        # Such legacy signals remain trackable, but cannot receive reply messages.
+        if not isinstance(signal["telegram_events"], dict):
+            signal["telegram_events"] = {}
+        if not isinstance(signal["pending_events"], list):
+            signal["pending_events"] = []
 
-            signal["tp3"] = (
-                entry + 3 * risk
-                if signal.get("direction") == "BUY"
-                else entry - 3 * risk
-            )
-
-        if signal.get("tp1_hit"):
-            signal["stat_result"] = (
-                signal.get("stat_result") or "WIN"
-            )
-            signal["result_locked"] = True
-
-            if signal.get("status") == "TP1":
-                signal["status"] = "OPEN"
-
-            if signal.get("result_stage") == "NONE":
-                signal["result_stage"] = "TP1"
-
+        # Normalize older state labels without retaining statistical fields.
+        if signal.get("status") == "SL_AFTER_TP1":
+            signal["status"] = "SL"
         if signal.get("status") == "TP2":
+            signal["status"] = "TP2"
             signal["tp1_hit"] = True
             signal["tp2_hit"] = True
-            signal["stat_result"] = "WIN"
-            signal["result_locked"] = True
 
-            if signal.get("result_stage") == "NONE":
-                signal["result_stage"] = "TP2"
-
-        if signal.get("status") == "SL" and signal.get("tp1_hit"):
-            signal["status"] = "SL_AFTER_TP1"
-            signal["sl_after_tp1"] = True
-            signal["stat_result"] = "WIN"
-            signal["result_locked"] = True
-            signal["pending_events"] = [
-                event for event in signal.get("pending_events", [])
-                if event != "SL"
-            ]
-
-        elif signal.get("status") == "SL":
-            signal["stat_result"] = (
-                signal.get("stat_result") or "LOSS"
-            )
-            signal["result_locked"] = True
-
-        signal.setdefault(
-            "telegram_events", {}
-        ).setdefault("ENTRY", True)
+        for key in (
+            "stat_result", "result_locked", "result_stage",
+            "result_time", "result_price", "sl_after_tp1",
+            "tp1_time", "tp2_time", "tp3_time", "result_notice_sent"
+        ):
+            signal.pop(key, None)
 
     return state
-
 
 def save_state(state):
     temp_file = STATE_FILE + ".tmp"
@@ -473,25 +435,6 @@ def save_state(state):
         )
 
     os.replace(temp_file, STATE_FILE)
-
-
-def get_daily_record(state):
-    today = today_string()
-
-    if today not in state["daily"]:
-        state["daily"][today] = {
-            "scans": 0,
-            "signals": 0,
-            "diagnostics": {}
-        }
-
-    record = state["daily"][today]
-
-    record.setdefault("scans", 0)
-    record.setdefault("signals", 0)
-    record.setdefault("diagnostics", {})
-
-    return record
 
 
 # =========================================================
@@ -2197,9 +2140,8 @@ def generate_early_reversal_signal(symbol, df5, df15):
             "structure_trend": "REVERSAL", "structure_time": structure_time, "sweep_time": sweep_time,
             "signal_time": signal_time, "last_checked_time": signal_time,
             "tp1_hit": False, "tp2_hit": False, "tp3_hit": False,
-            "tp1_time": None, "tp2_time": None, "tp3_time": None, "result_stage": "NONE",
-            "status": "OPEN", "stat_result": None, "result_locked": False,
-            "result_time": None, "result_price": None, "telegram_events": {}, "pending_events": [], "result_notice_sent": False,
+            "status": "OPEN",
+            "telegram_events": {}, "pending_events": [],
             "created_at": current_time_string(), "created_date": today_string()
         }
     return None
@@ -2486,15 +2428,7 @@ def _generate_smc_signal(symbol, df5, df15, state=None):
         "tp1_hit": False,
         "tp2_hit": False,
         "tp3_hit": False,
-        "tp1_time": None,
-        "tp2_time": None,
-        "tp3_time": None,
-        "result_stage": "NONE",
         "status": "OPEN",
-        "stat_result": None,
-        "result_locked": False,
-        "result_time": None,
-        "result_price": None,
         "telegram_events": {},
         "pending_events": [],
         "created_at": current_time_string(),
@@ -2730,11 +2664,9 @@ def generate_momentum_signal(symbol, df5, df15):
             "sweep_time": int(df5.iloc[breakout_idx]["close_time"]),
             "signal_time": signal_time, "last_checked_time": signal_time,
             "tp1_hit": False, "tp2_hit": False, "tp3_hit": False,
-            "tp1_time": None, "tp2_time": None, "tp3_time": None,
-            "result_stage": "NONE", "status": "OPEN", "stat_result": None,
-            "result_locked": False, "result_time": None, "result_price": None,
+            "status": "OPEN",
             "telegram_events": {}, "pending_events": [],
-            "result_notice_sent": False, "created_at": current_time_string(),
+            "created_at": current_time_string(),
             "created_date": today_string()
         }
 
@@ -2758,69 +2690,85 @@ def generate_signal(symbol, df5, df15, state=None):
 
 
 # =========================================================
-# EVENT QUEUE
+# TELEGRAM EVENT QUEUE
 # =========================================================
 
 def queue_event(signal, event):
-    sent = signal.setdefault("telegram_events", {})
-    if signal.get("result_notice_sent") or any(
-        sent.get(name) for name in ("TP1", "TP2", "TP3", "SL")
-    ):
+    """Queue each milestone independently; never suppress later TP/SL events."""
+    if event not in ("ENTRY", "TP1", "TP2", "TP3", "SL"):
         return
+
+    sent = signal.setdefault("telegram_events", {})
+    if sent.get(event):
+        return
+
     pending = signal.setdefault("pending_events", [])
     if event not in pending:
         pending.append(event)
 
 
 def process_pending_events(state):
+    """Send ENTRY once, then reply to it once for every TP/SL milestone."""
     changed = False
-    for signal in state["signals"]:
+
+    for signal in state.get("signals", []):
         pending = signal.setdefault("pending_events", [])
         sent = signal.setdefault("telegram_events", {})
-        already_notified = bool(
-            signal.get("result_notice_sent")
-            or any(sent.get(name) for name in ("TP1", "TP2", "TP3", "SL"))
-        )
-        if already_notified:
-            if pending:
-                pending.clear()
+
+        while pending:
+            event = pending[0]
+
+            if sent.get(event):
+                pending.pop(0)
                 changed = True
-            signal["result_notice_sent"] = True
-            continue
-        if not pending:
-            continue
-        # Only the first queued TP/SL milestone may be sent.
-        event = pending[0]
-        if send_event_message(signal, event):
+                continue
+
+            if event == "ENTRY":
+                if not send_signal(signal):
+                    break
+                sent["ENTRY"] = True
+                pending.pop(0)
+                changed = True
+                save_state(state)
+                continue
+
+            # A reply is only possible after the original signal message exists.
+            if not signal.get("telegram_message_id"):
+                print(
+                    f"Pending {event} for {signal.get('symbol')}: "
+                    "original Telegram message id is unavailable."
+                )
+                break
+
+            if not send_event_message(signal, event):
+                break
+
             sent[event] = True
-            signal["result_notice_sent"] = True
-            pending.clear()
+            pending.pop(0)
             changed = True
             save_state(state)
+
     return changed
 
 
 # =========================================================
-# SIGNAL TRACKING
+# SIGNAL MILESTONE MONITOR
 # =========================================================
 
 def update_signal_results(state):
+    """Monitor open signals and queue each TP1/TP2/TP3/SL event once."""
     changed = False
 
-    for signal in state["signals"]:
+    for signal in state.get("signals", []):
         if signal.get("status") != "OPEN":
             continue
 
         symbol = signal.get("symbol")
-
         if not symbol:
             continue
 
         last_checked = int(
-            signal.get(
-                "last_checked_time",
-                signal.get("signal_time", 0)
-            )
+            signal.get("last_checked_time", signal.get("signal_time", 0))
         )
 
         try:
@@ -2836,7 +2784,7 @@ def update_signal_results(state):
         stop = float(signal["stop_loss"])
         tp1 = float(signal["tp1"])
         tp2 = float(signal["tp2"])
-        tp3 = float(signal.get("tp3", tp2))
+        tp3 = float(signal["tp3"])
 
         for _, candle in candles.iterrows():
             high = float(candle["high"])
@@ -2854,61 +2802,29 @@ def update_signal_results(state):
                 tp2_hit = low <= tp2
                 tp3_hit = low <= tp3
 
+            # Conservative handling when TP and SL are both inside one candle:
+            # stop-loss takes priority because candle order is unknown.
             if stop_hit:
-                signal["result_time"] = close_time
-                signal["result_price"] = stop
-
-                if signal.get("tp1_hit"):
-                    signal["status"] = "SL_AFTER_TP1"
-                    signal["sl_after_tp1"] = True
-                    signal["stat_result"] = "WIN"
-                    signal["result_locked"] = True
-                    signal.setdefault("pending_events", [])[:] = [
-                        event for event in signal.get("pending_events", [])
-                        if event != "SL"
-                    ]
-                else:
-                    signal["status"] = "SL"
-                    signal["stat_result"] = "LOSS"
-                    signal["result_locked"] = True
-                    queue_event(signal, "SL")
-
+                signal["status"] = "SL"
+                signal["stop_hit_time"] = close_time
+                queue_event(signal, "SL")
                 changed = True
                 break
 
             if tp1_hit and not signal.get("tp1_hit"):
                 signal["tp1_hit"] = True
-                signal["tp1_time"] = close_time
-                signal["result_stage"] = "TP1"
-                signal["stat_result"] = "WIN"
-                signal["result_locked"] = True
                 queue_event(signal, "TP1")
                 changed = True
 
-            if tp2_hit:
-                if not signal.get("tp1_hit"):
-                    signal["tp1_hit"] = True
-                    signal["tp1_time"] = close_time
-                    signal["stat_result"] = "WIN"
-                    signal["result_locked"] = True
-                    queue_event(signal, "TP1")
+            if tp2_hit and not signal.get("tp2_hit"):
+                signal["tp2_hit"] = True
+                queue_event(signal, "TP2")
+                changed = True
 
-                if not signal.get("tp2_hit"):
-                    signal["tp2_hit"] = True
-                    signal["tp2_time"] = close_time
-                    signal["result_stage"] = "TP2"
-                    queue_event(signal, "TP2")
-
-                # TP2 closes tracking as requested. If one candle gaps through TP3,
-                # emit the TP3 milestone too; later candles are not tracked past TP2.
-                if tp3_hit and not signal.get("tp3_hit"):
-                    signal["tp3_hit"] = True
-                    signal["tp3_time"] = close_time
-                    queue_event(signal, "TP3")
-
-                signal["status"] = "TP2"
-                signal["result_time"] = close_time
-                signal["result_price"] = tp2
+            if tp3_hit and not signal.get("tp3_hit"):
+                signal["tp3_hit"] = True
+                queue_event(signal, "TP3")
+                signal["status"] = "TP3"
                 changed = True
                 break
 
@@ -2916,193 +2832,6 @@ def update_signal_results(state):
         changed = True
 
     return changed
-
-
-# =========================================================
-# WEEKLY REPORT
-# =========================================================
-
-def week_bounds_for_date(value):
-    """Iranian calendar week: Saturday 00:00 through Friday 23:59."""
-
-    if isinstance(value, str):
-        value = datetime.strptime(
-            value[:10],
-            "%Y-%m-%d"
-        ).date()
-
-    days_since_saturday = (value.weekday() - 5) % 7
-
-    start = value - timedelta(days=days_since_saturday)
-
-    return start, start + timedelta(days=6)
-
-
-def signal_created_date(signal):
-    value = signal.get("created_date")
-
-    if value:
-        return str(value)[:10]
-
-    value = signal.get("created_at", "")
-
-    return str(value)[:10] if value else None
-
-
-def event_in_week(timestamp_ms, week_start, week_end):
-    if timestamp_ms in (None, "", 0):
-        return False
-    try:
-        event_date = datetime.fromtimestamp(
-            int(timestamp_ms) / 1000,
-            tz=IRAN_TZ
-        ).date()
-    except (TypeError, ValueError, OSError):
-        return False
-    return week_start <= event_date <= week_end
-
-
-def create_weekly_report(state, week_start, week_end):
-    start_text = week_start.strftime("%Y-%m-%d")
-    end_text = week_end.strftime("%Y-%m-%d")
-    all_signals = state.get("signals", [])
-
-    weekly_new_signals = 0
-    for signal in all_signals:
-        created = signal_created_date(signal)
-        if not created:
-            continue
-        try:
-            created_date = datetime.strptime(created, "%Y-%m-%d").date()
-        except ValueError:
-            continue
-        if week_start <= created_date <= week_end:
-            weekly_new_signals += 1
-
-    wins = sum(
-        signal.get("stat_result") == "WIN"
-        and event_in_week(signal.get("tp1_time"), week_start, week_end)
-        for signal in all_signals
-    )
-    losses = sum(
-        signal.get("stat_result") == "LOSS"
-        and signal.get("status") == "SL"
-        and event_in_week(signal.get("result_time"), week_start, week_end)
-        for signal in all_signals
-    )
-    tp1_count = sum(
-        event_in_week(signal.get("tp1_time"), week_start, week_end)
-        for signal in all_signals
-    )
-    tp2_count = sum(
-        event_in_week(signal.get("tp2_time"), week_start, week_end)
-        for signal in all_signals
-    )
-    sl_count = sum(
-        signal.get("status") == "SL"
-        and not signal.get("tp1_hit")
-        and event_in_week(signal.get("result_time"), week_start, week_end)
-        for signal in all_signals
-    )
-    sl_after_tp1_count = sum(
-        signal.get("sl_after_tp1")
-        and event_in_week(signal.get("result_time"), week_start, week_end)
-        for signal in all_signals
-    )
-
-    decided = wins + losses
-    win_rate = wins / decided * 100.0 if decided else 0.0
-
-    open_count = sum(
-        signal.get("status") == "OPEN"
-        for signal in all_signals
-    )
-
-    scans = 0
-    day = week_start
-    daily_records = state.get("daily", {})
-    while day <= week_end:
-        record = daily_records.get(day.strftime("%Y-%m-%d"), {})
-        scans += int(record.get("scans", 0) or 0)
-        day += timedelta(days=1)
-
-    return (
-        "📊 WEEKLY PERFORMANCE REPORT\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        f"Week: {start_text} to {end_text} (Iran time)\n\n"
-        f"Scans completed: {scans}\n"
-        f"New signals created: {weekly_new_signals}\n\n"
-        "STATISTICAL RESULTS (first TP1 or SL only)\n"
-        f"Wins (TP1 first): {wins}\n"
-        f"Losses (SL before TP1): {losses}\n"
-        f"Win rate: {win_rate:.1f}%\n\n"
-        "EVENTS DURING THIS WEEK\n"
-        f"TP1 reached: {tp1_count}\n"
-        f"TP2 reached: {tp2_count}\n"
-        f"SL before TP1: {sl_count}\n"
-        f"SL after TP1 (WIN preserved, no SL alert): {sl_after_tp1_count}\n\n"
-        f"Currently open trades (snapshot): {open_count}\n\n"
-        "Older trades are included when their events occur this week.\n"
-        "TP1 locks one WIN; a later SL never creates a LOSS.\n"
-        "━━━━━━━━━━━━━━━━━━"
-    )
-
-
-def maybe_send_weekly_report(state):
-    """Send once Friday night after entry hours; Saturday is a retry."""
-
-    now = iran_now()
-
-    is_friday_night = (
-        now.weekday() == 4
-        and now.hour >= 22
-    )
-
-    is_saturday_retry = now.weekday() == 5
-
-    if not (is_friday_night or is_saturday_retry):
-        return False
-
-    if is_friday_night:
-        week_start, week_end = week_bounds_for_date(
-            now.date()
-        )
-
-    else:
-        week_start, week_end = week_bounds_for_date(
-            now.date() - timedelta(days=1)
-        )
-
-    week_key = week_start.strftime("%Y-%m-%d")
-
-    sent_reports = state.setdefault(
-        "weekly_reports",
-        {}
-    )
-
-    if sent_reports.get(week_key, {}).get("sent"):
-        return False
-
-    message = create_weekly_report(
-        state,
-        week_start,
-        week_end
-    )
-
-    if send_telegram_text(message):
-        sent_reports[week_key] = {
-            "sent": True,
-            "sent_at": current_time_string(),
-            "week_end": week_end.strftime("%Y-%m-%d")
-        }
-
-        save_state(state)
-
-        print(message)
-
-        return True
-
-    return False
 
 
 def prune_pending_setups(state):
@@ -3127,29 +2856,75 @@ def prune_pending_setups(state):
 
 
 def sync_pending_setups(state):
-    """Keep at most one active waiting setup per symbol in persistent state."""
+    """Apply only the newest structure event per symbol to persisted setup state."""
     pending = state.setdefault("pending_setups", {})
     now_ms = int(time.time() * 1000)
     replaced = 0
+    newest_by_symbol = {}
+
+    terminal_states = {
+        "CONFIRMED",
+        "EXPIRED_NO_BREAK",
+        "NO_FRESH_UNBROKEN_PIVOT"
+    }
 
     for item in STRUCTURE_DEBUG:
         symbol = item.get("symbol")
-        direction = item.get("direction")
         if not symbol:
             continue
+        try:
+            event_time = int(item.get("sweep_time", 0) or 0)
+        except (TypeError, ValueError):
+            continue
 
-        state_name = item.get("state")
-        existing = pending.get(symbol)
-        if existing and (not direction or existing.get("direction") == direction):
-            if state_name in ("CONFIRMED", "EXPIRED_NO_BREAK", "NO_FRESH_UNBROKEN_PIVOT"):
-                pending.pop(symbol, None)
-
-        if state_name != "WAITING_FOR_CONFIRMATION":
+        previous = newest_by_symbol.get(symbol)
+        if previous is None:
+            newest_by_symbol[symbol] = item
             continue
 
         try:
-            sweep_time = int(item.get("sweep_time", 0))
+            previous_time = int(previous.get("sweep_time", 0) or 0)
         except (TypeError, ValueError):
+            previous_time = 0
+
+        if event_time > previous_time:
+            newest_by_symbol[symbol] = item
+        elif event_time == previous_time:
+            # At equal timestamps, a terminal event wins over a waiting event.
+            if (
+                item.get("state") in terminal_states
+                and previous.get("state") == "WAITING_FOR_CONFIRMATION"
+            ):
+                newest_by_symbol[symbol] = item
+
+    for symbol, item in newest_by_symbol.items():
+        direction = item.get("direction")
+        state_name = item.get("state")
+        try:
+            sweep_time = int(item.get("sweep_time", 0) or 0)
+        except (TypeError, ValueError):
+            sweep_time = 0
+
+        old = pending.get(symbol)
+        old_time = 0
+        if isinstance(old, dict):
+            try:
+                old_time = int(old.get("sweep_time", 0) or 0)
+            except (TypeError, ValueError):
+                old_time = 0
+
+        if old and old_time > sweep_time:
+            continue
+
+        if state_name in terminal_states:
+            if old and (
+                not direction
+                or old.get("direction") == direction
+            ) and sweep_time >= old_time:
+                pending.pop(symbol, None)
+            continue
+
+        if state_name != "WAITING_FOR_CONFIRMATION":
             continue
 
         expires_at = sweep_time + WAITING_SETUP_MAX_AGE_MS
@@ -3171,14 +2946,12 @@ def sync_pending_setups(state):
             "updated_at": current_time_string()
         }
 
-        old = pending.get(symbol)
-        if old and int(old.get("sweep_time", 0) or 0) > sweep_time:
-            continue
         if old and (
             old.get("direction") != direction
-            or int(old.get("sweep_time", 0) or 0) != sweep_time
+            or old_time != sweep_time
         ):
             replaced += 1
+
         pending[symbol] = new_setup
 
     DIAGNOSTICS["waiting_queue_replaced"] += replaced
@@ -3223,8 +2996,6 @@ def run_scanner():
     save_state(state)
 
     process_pending_events(state)
-
-    maybe_send_weekly_report(state)
 
     news_active, news_event, calendar_ok = (
         active_high_impact_news()
@@ -3397,17 +3168,6 @@ def run_scanner():
 
     sync_pending_setups(state)
 
-    record = get_daily_record(state)
-
-    record["scans"] += 1
-    record["signals"] += new_signals
-
-    for key, value in DIAGNOSTICS.items():
-        record["diagnostics"][key] = (
-            record["diagnostics"].get(key, 0)
-            + value
-        )
-
     save_state(state)
 
     process_pending_events(state)
@@ -3448,53 +3208,12 @@ def run_scanner():
 
 
 # =========================================================
-# WEEKLY REPORT RUNNER
-# =========================================================
-
-def run_report():
-    """Manually send a report for the current Iranian calendar week-to-date."""
-
-    state = load_state()
-    prune_pending_setups(state)
-    prune_pending_retests(state)
-
-    update_signal_results(state)
-
-    save_state(state)
-
-    process_pending_events(state)
-
-    week_start, _ = week_bounds_for_date(
-        iran_now().date()
-    )
-
-    message = create_weekly_report(
-        state,
-        week_start,
-        iran_now().date()
-    )
-
-    send_telegram_text(message)
-
-    save_state(state)
-
-    print(message)
-
-
-# =========================================================
 # MAIN
 # =========================================================
 
 if __name__ == "__main__":
     try:
-        if (
-            len(sys.argv) > 1
-            and sys.argv[1].lower() == "report"
-        ):
-            run_report()
-
-        else:
-            run_scanner()
+        run_scanner()
 
     except Exception as error:
         print("FATAL ERROR:", error)
