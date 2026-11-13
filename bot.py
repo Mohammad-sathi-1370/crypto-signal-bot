@@ -10,11 +10,12 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.3
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.6
 # =========================================================
 
-VERSION = "6.6.4"
+VERSION = "6.6.6"
 MAX_RISK_ATR = 4.0
+MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
 MAX_BARS_SINCE_STRUCTURE = 4  # Keep a confirmed structure eligible for up to 60 minutes.
 MAX_ENTRY_EXTENSION_ATR = 0.80
@@ -857,6 +858,54 @@ def format_news_event(event):
     )
 
 
+def signal_created_timestamp_ms(signal):
+    """Return a signal creation timestamp in milliseconds when available."""
+    for key in ("signal_time", "created_at_ms", "sweep_time"):
+        value = signal.get(key)
+        try:
+            timestamp = int(value)
+        except (TypeError, ValueError):
+            continue
+        if timestamp > 0:
+            # Be tolerant of legacy state saved in Unix seconds.
+            return timestamp * 1000 if timestamp < 10**12 else timestamp
+
+    created_at = signal.get("created_at")
+    if created_at:
+        try:
+            parsed = datetime.strptime(str(created_at), "%Y-%m-%d %H:%M")
+            return int(parsed.replace(tzinfo=IRAN_TZ).timestamp() * 1000)
+        except (TypeError, ValueError, OverflowError):
+            pass
+
+    return None
+
+
+def prune_expired_signals(state, now_ms=None):
+    """Drop signals older than 48 hours so they no longer lock or trigger tracking."""
+    now_ms = int(now_ms or time.time() * 1000)
+    active = []
+    expired = 0
+
+    for signal in state.get("signals", []):
+        if not isinstance(signal, dict):
+            continue
+
+        created_ms = signal_created_timestamp_ms(signal)
+        if created_ms is not None and now_ms - created_ms >= MAX_SIGNAL_TRACKING_AGE_MS:
+            expired += 1
+            continue
+
+        active.append(signal)
+
+    # Always write back the cleaned list, even when no timestamped signal expired.
+    state["signals"] = active
+    if expired:
+        print(f"Expired signal tracking removed after 48 hours: {expired}")
+
+    return expired
+
+
 def has_open_trade_for_symbol(state, symbol):
     """
     TP1 does not close a trade.
@@ -1163,6 +1212,30 @@ def detect_sweep_candidates(df):
 # BOS / CHoCH
 # =========================================================
 
+def append_structure_debug(item):
+    """Keep one debug/state event per symbol, direction, state and sweep candle."""
+    key = (
+        item.get("symbol"),
+        item.get("direction"),
+        item.get("state"),
+        int(item.get("sweep_time", 0) or 0)
+    )
+    for existing in STRUCTURE_DEBUG:
+        existing_key = (
+            existing.get("symbol"),
+            existing.get("direction"),
+            existing.get("state"),
+            int(existing.get("sweep_time", 0) or 0)
+        )
+        if existing_key == key:
+            # Preserve any extra metadata supplied by a repeated evaluation.
+            for name, value in item.items():
+                if value is not None:
+                    existing[name] = value
+            return
+    STRUCTURE_DEBUG.append(item)
+
+
 def detect_structure(df, sweep, symbol="UNKNOWN"):
     sweep_index = int(sweep["index"])
     direction = sweep["direction"]
@@ -1210,7 +1283,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
     if not valid:
         DIAGNOSTICS["structure_no_pivot"] += 1
 
-        STRUCTURE_DEBUG.append({
+        append_structure_debug({
             "symbol": symbol,
             "direction": direction,
             "state": "NO_FRESH_UNBROKEN_PIVOT",
@@ -1279,7 +1352,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
 
         DIAGNOSTICS["structure_confirmed"] += 1
 
-        STRUCTURE_DEBUG.append({
+        append_structure_debug({
             "symbol": symbol,
             "direction": direction,
             "state": "CONFIRMED",
@@ -1306,7 +1379,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
     if available_bars < MAX_STRUCTURE_BARS:
         DIAGNOSTICS["structure_waiting"] += 1
 
-        STRUCTURE_DEBUG.append({
+        append_structure_debug({
             "symbol": symbol,
             "direction": direction,
             "state": "WAITING_FOR_CONFIRMATION",
@@ -1326,7 +1399,7 @@ def detect_structure(df, sweep, symbol="UNKNOWN"):
     DIAGNOSTICS["structure_no_break"] += 1
     DIAGNOSTICS["structure_expired"] += 1
 
-    STRUCTURE_DEBUG.append({
+    append_structure_debug({
         "symbol": symbol,
         "direction": direction,
         "state": "EXPIRED_NO_BREAK",
@@ -2732,13 +2805,15 @@ def process_pending_events(state):
                 save_state(state)
                 continue
 
-            # A reply is only possible after the original signal message exists.
+            # Legacy signals without an original Telegram message cannot receive
+            # reply notifications. Drop that one queued event silently so it
+            # cannot print the same warning or block later signals on every scan.
             if not signal.get("telegram_message_id"):
-                print(
-                    f"Pending {event} for {signal.get('symbol')}: "
-                    "original Telegram message id is unavailable."
-                )
-                break
+                pending.pop(0)
+                sent[event] = "SKIPPED_NO_ORIGINAL_MESSAGE"
+                changed = True
+                save_state(state)
+                continue
 
             if not send_event_message(signal, event):
                 break
@@ -2759,8 +2834,13 @@ def update_signal_results(state):
     """Monitor open signals and queue each TP1/TP2/TP3/SL event once."""
     changed = False
 
+    now_ms = int(time.time() * 1000)
     for signal in state.get("signals", []):
         if signal.get("status") != "OPEN":
+            continue
+
+        created_ms = signal_created_timestamp_ms(signal)
+        if created_ms is not None and now_ms - created_ms >= MAX_SIGNAL_TRACKING_AGE_MS:
             continue
 
         symbol = signal.get("symbol")
@@ -2779,6 +2859,13 @@ def update_signal_results(state):
 
         if candles.empty:
             continue
+
+        # Never evaluate price candles beyond this signal's 48-hour lifetime.
+        if created_ms is not None:
+            expires_at = created_ms + MAX_SIGNAL_TRACKING_AGE_MS
+            candles = candles[candles["close_time"] <= expires_at].reset_index(drop=True)
+            if candles.empty:
+                continue
 
         direction = signal["direction"]
         stop = float(signal["stop_loss"])
@@ -2987,6 +3074,7 @@ def run_scanner():
     print("=" * 48)
 
     state = load_state()
+    prune_expired_signals(state)
     prune_pending_setups(state)
     prune_pending_retests(state)
     save_state(state)
