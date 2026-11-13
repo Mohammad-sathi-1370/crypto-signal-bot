@@ -17,10 +17,8 @@
       "signal_date": "2026-11-08",
       "tp1_hit": true,
       "last_checked_time": 1794326399999,
-      "status": "SL_AFTER_TP1",
+      "status": "SL",
       "id": "ONEUSDT_SELL_1794156300000",
-      "tp1_time": 1794156899999,
-      "result_time": 1794161999999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
@@ -28,15 +26,7 @@
         "SL": true
       },
       "pending_events": [],
-      "result_stage": "TP1",
-      "tp3": 0.0015794438012262885,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": 0.001830852066257904,
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "tp3": 0.0015794438012262885
     },
     {
       "symbol": "ENAUSDT",
@@ -57,23 +47,13 @@
       "last_checked_time": 1794157799999,
       "status": "TP2",
       "id": "ENAUSDT_SELL_1794156300000",
-      "tp1_time": 1794156599999,
       "tp2_hit": true,
-      "result_time": 1794157799999,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "TP2",
-      "tp3": 0.15170877507203362,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 0.15170877507203362
     },
     {
       "symbol": "ZECUSDT",
@@ -92,10 +72,8 @@
       "signal_date": "2026-11-08",
       "tp1_hit": true,
       "last_checked_time": 1794326399999,
-      "status": "SL_AFTER_TP1",
+      "status": "SL",
       "id": "ZECUSDT_SELL_1794156900000",
-      "tp1_time": 1794158099999,
-      "result_time": 1794161999999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
@@ -103,15 +81,7 @@
         "SL": true
       },
       "pending_events": [],
-      "result_stage": "TP1",
-      "tp3": 1226.241329162408,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": 1256.3462236125306,
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "tp3": 1226.241329162408
     },
     {
       "symbol": "SOLUSDT",
@@ -132,23 +102,13 @@
       "last_checked_time": 1794157499999,
       "status": "SL",
       "id": "SOLUSDT_SELL_1794156900000",
-      "result_time": 1794157499999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 88.31857805109644,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 88.31857805109644
     },
     {
       "symbol": "XRPUSDT",
@@ -169,23 +129,13 @@
       "last_checked_time": 1794157799999,
       "status": "SL",
       "id": "XRPUSDT_SELL_1794156900000",
-      "result_time": 1794157799999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 1.1434803487966012,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 1.1434803487966012
     },
     {
       "symbol": "ONEUSDT",
@@ -206,23 +156,13 @@
       "last_checked_time": 1794158699999,
       "status": "SL",
       "id": "ONEUSDT_SELL_1794156900000",
-      "result_time": 1794158699999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 0.0015243622581259855,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 0.0015243622581259855
     },
     {
       "symbol": "ENAUSDT",
@@ -243,23 +183,13 @@
       "last_checked_time": 1794157199999,
       "status": "SL",
       "id": "ENAUSDT_SELL_1794156900000",
-      "result_time": 1794157199999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 0.15053537236766584,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 0.15053537236766584
     },
     {
       "symbol": "BMTUSDT",
@@ -280,23 +210,13 @@
       "last_checked_time": 1794162299999,
       "status": "TP2",
       "id": "BMTUSDT_SELL_1794156900000",
-      "tp1_time": 1794159899999,
       "tp2_hit": true,
-      "result_time": 1794162299999,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "TP2",
-      "tp3": 0.02375580780890602,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 0.02375580780890602
     },
     {
       "symbol": "PUMPUSDT",
@@ -317,23 +237,13 @@
       "last_checked_time": 1794159899999,
       "status": "SL",
       "id": "PUMPUSDT_SELL_1794156900000",
-      "result_time": 1794159899999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 0.003569878879962001,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 0.003569878879962001
     },
     {
       "symbol": "XRPUSDT",
@@ -354,23 +264,13 @@
       "last_checked_time": 1794161699999,
       "status": "SL",
       "id": "XRPUSDT_SELL_1794159000000",
-      "result_time": 1794161699999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 1.143510086054795,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 1.143510086054795
     },
     {
       "symbol": "UNIUSDT",
@@ -391,23 +291,13 @@
       "last_checked_time": 1794160499999,
       "status": "SL",
       "id": "UNIUSDT_SELL_1794159000000",
-      "result_time": 1794160499999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 6.879428066378472,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 6.879428066378472
     },
     {
       "symbol": "DOGEUSDT",
@@ -428,23 +318,13 @@
       "last_checked_time": 1794161699999,
       "status": "SL",
       "id": "DOGEUSDT_SELL_1794159000000",
-      "result_time": 1794161699999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 0.07032643160697043,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 0.07032643160697043
     },
     {
       "symbol": "ZECUSDT",
@@ -465,23 +345,13 @@
       "last_checked_time": 1794203399999,
       "status": "SL",
       "id": "ZECUSDT_BUY_1794162000000",
-      "result_time": 1794168599999,
-      "result_price": 1256.85909784687,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_stage": "NONE",
-      "tp3": 1288.6227064593895,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "tp3": 1288.6227064593895
     },
     {
       "symbol": "SOLUSDT",
@@ -500,10 +370,8 @@
       "signal_date": "2026-11-08",
       "tp1_hit": true,
       "last_checked_time": 1794326399999,
-      "status": "SL_AFTER_TP1",
+      "status": "SL",
       "id": "SOLUSDT_BUY_1794162000000",
-      "tp1_time": 1794162299999,
-      "result_time": 1794165299999,
       "tp2_hit": false,
       "tp3_hit": false,
       "telegram_events": {
@@ -511,15 +379,7 @@
         "SL": true
       },
       "pending_events": [],
-      "result_stage": "TP1",
-      "tp3": 90.31699372466105,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_price": 89.40100209177965,
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "tp3": 90.31699372466105
     },
     {
       "symbol": "SNDKBUSDT",
@@ -551,13 +411,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794317699999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794323099999,
-      "result_price": 901.9992019124187,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -565,11 +419,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 14:21",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SOXLBUSDT",
@@ -601,13 +451,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794317699999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794322499999,
-      "result_price": 56.93902014592639,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -615,11 +459,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 14:21",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SNDKBUSDT",
@@ -651,13 +491,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794317699999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794323099999,
-      "result_price": 902.0271929295346,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -665,11 +499,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 14:35",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SOXLBUSDT",
@@ -701,13 +531,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794317699999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794322499999,
-      "result_price": 56.94138194625219,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -715,11 +539,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 14:35",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SNDKBUSDT",
@@ -751,13 +571,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794317699999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794323099999,
-      "result_price": 902.0275934546468,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -765,11 +579,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 14:40",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SNDKBUSDT",
@@ -801,13 +611,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794317699999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794323099999,
-      "result_price": 901.9841120901376,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -815,11 +619,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 15:02",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SNDKBUSDT",
@@ -851,13 +651,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794317699999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794323099999,
-      "result_price": 901.9701020806643,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -865,11 +659,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 15:56",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "BTCUSDT",
@@ -901,24 +691,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794323099999,
-      "result_price": 74794.90745832282,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 17:33",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ETHUSDT",
@@ -950,24 +730,14 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794325499999,
-      "tp2_time": 1794538499999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "result_time": 1794538499999,
-      "result_price": 1977.1911649773983,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 17:33",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "BNBUSDT",
@@ -999,24 +769,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794323099999,
-      "result_price": 690.1841840328833,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 17:33",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "DOGEUSDT",
@@ -1048,13 +808,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794325199999,
-      "tp2_time": 1794325499999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "result_time": 1794325499999,
-      "result_price": 0.066965740893708,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -1062,11 +816,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 17:33",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "BTCUSDT",
@@ -1098,24 +848,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794323099999,
-      "result_price": 74792.66136222811,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:02",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ETHUSDT",
@@ -1147,24 +887,14 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794325499999,
-      "tp2_time": 1794539999999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "result_time": 1794539999999,
-      "result_price": 1972.2499093038195,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:02",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ZECUSDT",
@@ -1196,24 +926,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794324899999,
-      "result_price": 1131.377241879175,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:02",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "PEPEUSDT",
@@ -1245,13 +965,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794322499999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794327899999,
-      "result_price": 5.1944658492881615e-06,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -1259,11 +973,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:03",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "BNBUSDT",
@@ -1295,24 +1005,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794323099999,
-      "result_price": 690.1723259141552,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:03",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "DOGEUSDT",
@@ -1344,13 +1044,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794325499999,
-      "tp2_time": 1794484499999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "result_time": 1794484499999,
-      "result_price": 0.06625217769016045,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -1358,11 +1052,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:03",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ETHUSDT",
@@ -1394,13 +1084,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794325199999,
-      "tp2_time": 1794325499999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "result_time": 1794325499999,
-      "result_price": 2007.8537701722066,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -1408,11 +1092,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:50",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ZECUSDT",
@@ -1444,24 +1124,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794324899999,
-      "result_price": 1131.2475544316967,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:50",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "PEPEUSDT",
@@ -1493,24 +1163,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794327899999,
-      "result_price": 5.192670310355377e-06,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:50",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "NEARUSDT",
@@ -1542,24 +1202,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794325499999,
-      "result_price": 3.550314933925792,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:50",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SNDKBUSDT",
@@ -1591,24 +1241,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794329699999,
-      "result_price": 839.9120486142959,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:50",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "UNIUSDT",
@@ -1640,24 +1280,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794325499999,
-      "result_price": 6.8099379223912395,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:50",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SOXLBUSDT",
@@ -1689,24 +1319,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794329699999,
-      "result_price": 53.07285193204029,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:50",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ENAUSDT",
@@ -1738,24 +1358,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794325199999,
-      "result_price": 0.14995949536435962,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 18:50",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "BTCUSDT",
@@ -1787,24 +1397,14 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794328799999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "result_time": 1794432899999,
-      "result_price": 74801.03557243802,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:07",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ETHUSDT",
@@ -1836,24 +1436,14 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794488999999,
-      "tp2_time": 1794542099999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "result_time": 1794542099999,
-      "result_price": 1941.528923137434,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:07",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "BNBUSDT",
@@ -1885,13 +1475,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794325499999,
-      "tp2_time": 1794328499999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "result_time": 1794328499999,
-      "result_price": 671.2121270548629,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -1899,11 +1483,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:07",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SNDKBUSDT",
@@ -1935,24 +1515,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794329699999,
-      "result_price": 839.9041673489039,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:07",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SOXLBUSDT",
@@ -1984,24 +1554,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "result_time": 1794329699999,
-      "result_price": 53.07133997640543,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:07",
-      "created_date": "2026-11-10",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "DOGEUSDT",
@@ -2033,13 +1593,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794325499999,
-      "tp2_time": 1794488999999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "result_time": 1794488999999,
-      "result_price": 0.06551619074171447,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -2047,11 +1601,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:07",
-      "created_date": "2026-11-10",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ZECUSDT",
@@ -2079,28 +1629,18 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794571199999,
+      "last_checked_time": 1794574199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794379499999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
       "status": "OPEN",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": null,
-      "result_price": null,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "HYPEUSDT",
@@ -2128,27 +1668,20 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794571199999,
+      "last_checked_time": 1794574199999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
-      "status": "OPEN",
-      "stat_result": null,
-      "result_locked": false,
-      "result_time": null,
-      "result_price": null,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true
       },
-      "pending_events": [],
+      "pending_events": [
+        "SL"
+      ],
       "created_at": "2026-11-10 19:34",
       "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": false
+      "stop_hit_time": 1794571799999
     },
     {
       "symbol": "UNIUSDT",
@@ -2180,15 +1713,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794378599999,
-      "tp2_time": 1794442499999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794442499999,
-      "result_price": 6.16727525935198,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -2196,9 +1721,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ENAUSDT",
@@ -2226,28 +1749,18 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794571199999,
+      "last_checked_time": 1794574199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794486599999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
       "status": "OPEN",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": null,
-      "result_price": null,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "SUIUSDT",
@@ -2279,24 +1792,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794411599999,
-      "result_price": 0.847197456604217,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ARBUSDT",
@@ -2328,24 +1831,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794364199999,
-      "result_price": 0.16705424338204575,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "LINKUSDT",
@@ -2373,28 +1866,18 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794571199999,
+      "last_checked_time": 1794574199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794488999999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
       "status": "OPEN",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": null,
-      "result_price": null,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "AAVEUSDT",
@@ -2426,15 +1909,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794438899999,
-      "tp2_time": 1794480899999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794480899999,
-      "result_price": 115.32912200006334,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -2442,9 +1917,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "INJUSDT",
@@ -2476,24 +1949,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794361499999,
-      "result_price": 8.257628845926211,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "WLDUSDT",
@@ -2525,24 +1988,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794411599999,
-      "result_price": 0.321600023714974,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "LTCUSDT",
@@ -2570,28 +2023,18 @@
       "structure_time": 1794325499999,
       "sweep_time": 1794322800000,
       "signal_time": 1794326399999,
-      "last_checked_time": 1794571199999,
+      "last_checked_time": 1794574199999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794489299999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
       "status": "OPEN",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": null,
-      "result_price": null,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ADAUSDT",
@@ -2623,24 +2066,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794411599999,
-      "result_price": 0.17893569437005144,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "TAOUSDT",
@@ -2672,24 +2105,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794411299999,
-      "result_price": 223.57426539882843,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "XLMUSDT",
@@ -2721,24 +2144,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794392999999,
-      "result_price": 0.14730213403860815,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "HBARUSDT",
@@ -2770,24 +2183,14 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794488999999,
-      "tp2_time": 1794538499999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794538499999,
-      "result_price": 0.06242982028283968,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "AEROUSDT",
@@ -2819,24 +2222,14 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794483599999,
-      "tp2_time": 1794540299999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794540299999,
-      "result_price": 0.502269877038465,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "PENGUUSDT",
@@ -2868,24 +2261,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794411599999,
-      "result_price": 0.006411477688604861,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "DASHUSDT",
@@ -2917,15 +2300,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794328799999,
-      "tp2_time": 1794438599999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794438599999,
-      "result_price": 42.070957402900234,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -2933,9 +2308,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:34",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "AVAXUSDT",
@@ -2967,24 +2340,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794360599999,
-      "result_price": 8.465580289379696,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:44",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "FETUSDT",
@@ -3016,24 +2379,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794366899999,
-      "result_price": 0.14701824329979166,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:44",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "PYTHUSDT",
@@ -3065,24 +2418,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794360599999,
-      "result_price": 0.06716849389271588,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:44",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "RENDERUSDT",
@@ -3114,24 +2457,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794355799999,
-      "result_price": 1.6233831954129114,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 19:44",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "BNBUSDT",
@@ -3165,24 +2498,14 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794493499999,
-      "tp2_time": 1794549599999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794549599999,
-      "result_price": 629.561855642869,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 20:40",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "NEARUSDT",
@@ -3216,24 +2539,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794398399999,
-      "result_price": 3.7690156443091962,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 20:40",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "ZROUSDT",
@@ -3267,24 +2580,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794357599999,
-      "result_price": 1.560582887987521,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 20:40",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "DOTUSDT",
@@ -3318,24 +2621,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794405899999,
-      "result_price": 0.8706011398175945,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-10 20:40",
-      "created_date": "2026-11-10",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-10"
     },
     {
       "symbol": "PROMUSDT",
@@ -3376,15 +2669,7 @@
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": 1794377999999,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "TP1",
-      "status": "SL_AFTER_TP1",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794391199999,
-      "result_price": 4.91389903921402,
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -3392,9 +2677,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-11 09:20",
-      "created_date": "2026-11-11",
-      "sl_after_tp1": true,
-      "result_notice_sent": true
+      "created_date": "2026-11-11"
     },
     {
       "symbol": "FETUSDT",
@@ -3429,15 +2712,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794413099999,
-      "tp2_time": 1794417299999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794417299999,
-      "result_price": 0.15412175046926319,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -3446,9 +2721,7 @@
       "pending_events": [],
       "created_at": "2026-11-11 14:18",
       "created_date": "2026-11-11",
-      "news_warning": "EUR | ECB's President Lagarde speech | UTC: 2026-11-11T09:45:00Z",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "news_warning": "EUR | ECB's President Lagarde speech | UTC: 2026-11-11T09:45:00Z"
     },
     {
       "symbol": "ZROUSDT",
@@ -3489,15 +2762,7 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794411299999,
-      "tp2_time": 1794414599999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794414599999,
-      "result_price": 1.6262905076842586,
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -3505,9 +2770,7 @@
       },
       "pending_events": [],
       "created_at": "2026-11-11 18:18",
-      "created_date": "2026-11-11",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-11"
     },
     {
       "symbol": "PYTHUSDT",
@@ -3548,24 +2811,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794422999999,
-      "result_price": 0.06646887299397107,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-11 19:46",
-      "created_date": "2026-11-11",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-11"
     },
     {
       "symbol": "FILUSDT",
@@ -3606,24 +2859,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794426299999,
-      "result_price": 0.7628946304853144,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-11 19:46",
-      "created_date": "2026-11-11",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-11"
     },
     {
       "symbol": "RENDERUSDT",
@@ -3658,24 +2901,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794423899999,
-      "result_price": 1.582111567977253,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-11 19:46",
-      "created_date": "2026-11-11",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-11"
     },
     {
       "symbol": "PENGUUSDT",
@@ -3716,24 +2949,14 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "tp1_time": null,
-      "tp2_time": null,
-      "tp3_time": null,
-      "result_stage": "NONE",
       "status": "SL",
-      "stat_result": "LOSS",
-      "result_locked": true,
-      "result_time": 1794436799999,
-      "result_price": 0.006286530284522128,
       "telegram_events": {
         "ENTRY": true,
         "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-11 19:46",
-      "created_date": "2026-11-11",
-      "sl_after_tp1": false,
-      "result_notice_sent": true
+      "created_date": "2026-11-11"
     },
     {
       "symbol": "XAUTUSDT",
@@ -3779,488 +3002,215 @@
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "tp1_time": 1794501299999,
-      "tp2_time": 1794501599999,
-      "tp3_time": null,
-      "result_stage": "TP2",
       "status": "TP2",
-      "stat_result": "WIN",
-      "result_locked": true,
-      "result_time": 1794501599999,
-      "result_price": 3863.9713789212374,
       "telegram_events": {
         "ENTRY": true
       },
       "pending_events": [],
-      "result_notice_sent": true,
       "created_at": "2026-11-12 19:50",
-      "created_date": "2026-11-12",
-      "sl_after_tp1": false
+      "created_date": "2026-11-12"
     }
   ],
-  "daily": {
-    "2026-11-08": {
-      "scans": 5,
-      "signals": 14,
-      "diagnostics": {
-        "insufficient_data": 0,
-        "invalid_values": 0,
-        "adx_rejected": 19,
-        "volatility_rejected": 30,
-        "volume_rejected": 30,
-        "confirmations_rejected": 7,
-        "direction_rejected": 0,
-        "errors": 0
-      }
-    },
-    "2026-11-09": {
-      "scans": 24,
-      "signals": 0,
-      "diagnostics": {
-        "insufficient_data": 0,
-        "invalid_values": 0,
-        "adx_rejected": 92,
-        "volatility_rejected": 39,
-        "volume_rejected": 87,
-        "confirmations_rejected": 2,
-        "direction_rejected": 0,
-        "sweep_rejected": 75,
-        "structure_rejected": 150,
-        "fvg_rejected": 35,
-        "order_block_detected": 2,
-        "risk_rejected": 0,
-        "errors": 0,
-        "sweep_detected": 177,
-        "structure_detected": 37,
-        "fvg_detected": 13,
-        "fvg_retest_detected": 2,
-        "structure_no_pivot": 0,
-        "structure_no_break": 119,
-        "structure_pivots_found": 4232,
-        "structure_bars_checked": 568
-      }
-    },
-    "2026-11-10": {
-      "scans": 44,
-      "signals": 57,
-      "diagnostics": {
-        "insufficient_data": 0,
-        "invalid_values": 0,
-        "adx_rejected": 95,
-        "volatility_rejected": 76,
-        "volume_rejected": 0,
-        "confirmations_rejected": 37,
-        "direction_rejected": 0,
-        "sweep_rejected": 220,
-        "sweep_detected": 530,
-        "structure_rejected": 410,
-        "structure_detected": 120,
-        "structure_no_pivot": 0,
-        "structure_no_break": 141,
-        "structure_pivots_found": 2041,
-        "structure_bars_checked": 268,
-        "fvg_rejected": 3,
-        "fvg_detected": 32,
-        "fvg_retest_detected": 4,
-        "order_block_detected": 80,
-        "risk_rejected": 17,
-        "errors": 0,
-        "structure_waiting": 679,
-        "structure_expired": 65,
-        "structure_confirmed": 119,
-        "risk_rejected_invalid": 0,
-        "risk_rejected_too_wide": 15,
-        "duplicate_signals": 5,
-        "pullback_waiting": 1,
-        "pullback_rejected": 0,
-        "pullback_confirmed": 0,
-        "entry_distance_rejected": 0,
-        "open_trade_locked": 109,
-        "news_warning_active": 0,
-        "news_calendar_errors": 0
-      }
-    },
-    "2026-11-11": {
-      "scans": 25,
-      "signals": 7,
-      "diagnostics": {
-        "insufficient_data": 0,
-        "invalid_values": 0,
-        "adx_rejected": 137,
-        "volatility_rejected": 0,
-        "confirmations_rejected": 23,
-        "sweep_rejected": 183,
-        "sweep_detected": 409,
-        "structure_rejected": 379,
-        "structure_detected": 30,
-        "structure_no_pivot": 15,
-        "structure_no_break": 132,
-        "structure_waiting": 541,
-        "structure_expired": 132,
-        "structure_confirmed": 30,
-        "fvg_rejected": 0,
-        "fvg_detected": 0,
-        "fvg_retest_detected": 0,
-        "order_block_detected": 5,
-        "pullback_waiting": 0,
-        "pullback_rejected": 0,
-        "pullback_confirmed": 0,
-        "entry_distance_rejected": 0,
-        "risk_rejected": 0,
-        "risk_rejected_invalid": 0,
-        "risk_rejected_too_wide": 0,
-        "duplicate_signals": 0,
-        "open_trade_locked": 521,
-        "news_warning_active": 9,
-        "news_calendar_errors": 0,
-        "errors": 0,
-        "waiting_queue_active": 36,
-        "waiting_queue_expired": 18,
-        "waiting_queue_replaced": 1
-      }
-    },
-    "2026-11-12": {
-      "scans": 37,
-      "signals": 1,
-      "diagnostics": {
-        "insufficient_data": 0,
-        "invalid_values": 0,
-        "adx_rejected": 111,
-        "volatility_rejected": 0,
-        "confirmations_rejected": 3,
-        "sweep_rejected": 452,
-        "sweep_detected": 940,
-        "structure_rejected": 1218,
-        "structure_detected": 60,
-        "structure_no_pivot": 12,
-        "structure_no_break": 776,
-        "structure_waiting": 745,
-        "structure_expired": 776,
-        "structure_confirmed": 60,
-        "late_entry_rejected": 19,
-        "entry_extension_rejected": 7,
-        "waiting_queue_active": 356,
-        "waiting_queue_expired": 108,
-        "waiting_queue_replaced": 43,
-        "fvg_rejected": 0,
-        "fvg_detected": 0,
-        "fvg_retest_detected": 0,
-        "order_block_detected": 0,
-        "pullback_waiting": 0,
-        "pullback_rejected": 0,
-        "pullback_confirmed": 0,
-        "entry_distance_rejected": 7,
-        "risk_rejected": 0,
-        "risk_rejected_invalid": 0,
-        "risk_rejected_too_wide": 0,
-        "duplicate_signals": 0,
-        "open_trade_locked": 347,
-        "news_warning_active": 4,
-        "news_calendar_errors": 0,
-        "errors": 0,
-        "retest_waiting": 16,
-        "retest_confirmed": 2,
-        "retest_rejected": 7,
-        "retest_expired": 10,
-        "pending_retest_active": 15,
-        "pending_retest_added": 21,
-        "pending_retest_replaced": 0,
-        "pending_retest_expired": 19,
-        "pending_retest_stale": 4,
-        "early_reversal_candidates": 148,
-        "early_reversal_confirmed": 1,
-        "early_reversal_rejected": 147,
-        "momentum_candidates": 105,
-        "momentum_confirmed": 0,
-        "momentum_rejected": 105,
-        "momentum_reject_breakout": 234,
-        "momentum_reject_trend": 64,
-        "momentum_reject_volume_adx": 16,
-        "momentum_reject_extension": 25,
-        "momentum_reject_risk": 0
-      }
-    },
-    "2026-11-13": {
-      "scans": 9,
-      "signals": 0,
-      "diagnostics": {
-        "insufficient_data": 0,
-        "invalid_values": 0,
-        "adx_rejected": 0,
-        "volatility_rejected": 0,
-        "confirmations_rejected": 0,
-        "sweep_rejected": 124,
-        "sweep_detected": 234,
-        "structure_rejected": 351,
-        "structure_detected": 7,
-        "structure_no_pivot": 0,
-        "structure_no_break": 199,
-        "structure_waiting": 160,
-        "structure_expired": 199,
-        "structure_confirmed": 7,
-        "early_reversal_candidates": 125,
-        "early_reversal_confirmed": 0,
-        "early_reversal_rejected": 125,
-        "momentum_candidates": 68,
-        "momentum_confirmed": 0,
-        "momentum_rejected": 68,
-        "momentum_reject_breakout": 296,
-        "momentum_reject_trend": 17,
-        "momentum_reject_volume_adx": 24,
-        "momentum_reject_extension": 26,
-        "momentum_reject_risk": 1,
-        "late_entry_rejected": 2,
-        "entry_extension_rejected": 0,
-        "retest_waiting": 1,
-        "retest_confirmed": 0,
-        "retest_rejected": 4,
-        "retest_expired": 0,
-        "pending_retest_active": 1,
-        "pending_retest_added": 5,
-        "pending_retest_replaced": 0,
-        "pending_retest_expired": 4,
-        "pending_retest_stale": 4,
-        "waiting_queue_active": 79,
-        "waiting_queue_expired": 56,
-        "waiting_queue_replaced": 0,
-        "fvg_rejected": 0,
-        "fvg_detected": 0,
-        "fvg_retest_detected": 0,
-        "order_block_detected": 0,
-        "pullback_waiting": 0,
-        "pullback_rejected": 0,
-        "pullback_confirmed": 0,
-        "entry_distance_rejected": 0,
-        "risk_rejected": 0,
-        "risk_rejected_invalid": 0,
-        "risk_rejected_too_wide": 0,
-        "duplicate_signals": 0,
-        "open_trade_locked": 42,
-        "news_warning_active": 0,
-        "news_calendar_errors": 0,
-        "errors": 1
-      }
-    }
-  },
   "news_filter": {
-    "last_alert_key": "eur-ecb-s-president-lagarde-speech.20261112T1930"
+    "last_alert_key": "usd-ppi-mom.20261113T1330"
   },
-  "weekly_reports": {},
   "pending_setups": {
-    "BTCUSDT": {
-      "symbol": "BTCUSDT",
+    "ETHUSDT": {
+      "symbol": "ETHUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 68666.66,
+      "sweep_time": 1794571200000,
+      "reference": 1931.76,
       "reference_type": "SWING_LOW",
       "bars_checked": 2,
-      "sweep_low": 69272.22,
-      "sweep_high": 69571.37,
-      "liquidity_level": 69495.86,
+      "sweep_low": 1959.24,
+      "sweep_high": 1965.0,
+      "liquidity_level": 1964.83,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794575700000,
+      "updated_at": "2026-11-13 16:23"
     },
     "SOLUSDT": {
       "symbol": "SOLUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 79.67,
+      "sweep_time": 1794573000000,
+      "reference": 80.38,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 80.47,
-      "sweep_high": 80.82,
-      "liquidity_level": 80.67,
+      "bars_checked": 0,
+      "sweep_low": 80.68,
+      "sweep_high": 80.91,
+      "liquidity_level": 80.89,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794577500000,
+      "updated_at": "2026-11-13 16:23"
     },
     "BNBUSDT": {
       "symbol": "BNBUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 627.39,
+      "sweep_time": 1794573000000,
+      "reference": 638.71,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 639.47,
-      "sweep_high": 641.9,
-      "liquidity_level": 640.58,
+      "bars_checked": 0,
+      "sweep_low": 640.13,
+      "sweep_high": 641.93,
+      "liquidity_level": 641.9,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794577500000,
+      "updated_at": "2026-11-13 16:23"
     },
-    "UNIUSDT": {
-      "symbol": "UNIUSDT",
+    "DOGEUSDT": {
+      "symbol": "DOGEUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 5.767,
+      "sweep_time": 1794573000000,
+      "reference": 0.06504,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 5.807,
-      "sweep_high": 5.855,
-      "liquidity_level": 5.838,
+      "bars_checked": 0,
+      "sweep_low": 0.06538,
+      "sweep_high": 0.06566,
+      "liquidity_level": 0.06555,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
-    },
-    "XAUTUSDT": {
-      "symbol": "XAUTUSDT",
-      "direction": "BUY",
-      "sweep_time": 1794569400000,
-      "reference": 3895.24,
-      "reference_type": "SWING_HIGH",
-      "bars_checked": 1,
-      "sweep_low": 3876.85,
-      "sweep_high": 3880.07,
-      "liquidity_level": 3877.77,
-      "bars_required": 4,
-      "expires_at": 1794573900000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794577500000,
+      "updated_at": "2026-11-13 16:23"
     },
     "GRAMUSDT": {
       "symbol": "GRAMUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
+      "sweep_time": 1794572100000,
       "reference": 1.141,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 1.148,
-      "sweep_high": 1.159,
-      "liquidity_level": 1.155,
+      "bars_checked": 1,
+      "sweep_low": 1.154,
+      "sweep_high": 1.161,
+      "liquidity_level": 1.159,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794576600000,
+      "updated_at": "2026-11-13 16:23"
     },
-    "ARBUSDT": {
-      "symbol": "ARBUSDT",
+    "ADAUSDT": {
+      "symbol": "ADAUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 0.1437,
+      "sweep_time": 1794573000000,
+      "reference": 0.171,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 0.1458,
-      "sweep_high": 0.1466,
-      "liquidity_level": 0.1465,
+      "bars_checked": 0,
+      "sweep_low": 0.1716,
+      "sweep_high": 0.1724,
+      "liquidity_level": 0.1723,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794577500000,
+      "updated_at": "2026-11-13 16:23"
     },
-    "AAVEUSDT": {
-      "symbol": "AAVEUSDT",
+    "XLMUSDT": {
+      "symbol": "XLMUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 110.4,
+      "sweep_time": 1794573000000,
+      "reference": 0.1463,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 111.38,
-      "sweep_high": 112.05,
-      "liquidity_level": 111.86,
+      "bars_checked": 0,
+      "sweep_low": 0.1482,
+      "sweep_high": 0.1492,
+      "liquidity_level": 0.1488,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
-    },
-    "WLDUSDT": {
-      "symbol": "WLDUSDT",
-      "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 0.2975,
-      "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 0.2996,
-      "sweep_high": 0.3009,
-      "liquidity_level": 0.3007,
-      "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794577500000,
+      "updated_at": "2026-11-13 16:23"
     },
     "ONDOUSDT": {
       "symbol": "ONDOUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
+      "sweep_time": 1794571200000,
       "reference": 0.3413,
       "reference_type": "SWING_LOW",
       "bars_checked": 2,
-      "sweep_low": 0.3441,
-      "sweep_high": 0.3457,
-      "liquidity_level": 0.3448,
+      "sweep_low": 0.3443,
+      "sweep_high": 0.3458,
+      "liquidity_level": 0.3457,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794575700000,
+      "updated_at": "2026-11-13 16:23"
     },
     "QNTUSDT": {
       "symbol": "QNTUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 156.18,
+      "sweep_time": 1794572100000,
+      "reference": 159.1,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 160.35,
-      "sweep_high": 161.29,
-      "liquidity_level": 160.86,
+      "bars_checked": 1,
+      "sweep_low": 162.2,
+      "sweep_high": 163.43,
+      "liquidity_level": 162.77,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794576600000,
+      "updated_at": "2026-11-13 16:23"
     },
-    "VIRTUALUSDT": {
-      "symbol": "VIRTUALUSDT",
+    "PUMPUSDT": {
+      "symbol": "PUMPUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 0.5119,
+      "sweep_time": 1794573000000,
+      "reference": 0.003437,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 0.5167,
-      "sweep_high": 0.5189,
-      "liquidity_level": 0.5182,
+      "bars_checked": 0,
+      "sweep_low": 0.003487,
+      "sweep_high": 0.003504,
+      "liquidity_level": 0.003502,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794577500000,
+      "updated_at": "2026-11-13 16:23"
+    },
+    "IMXUSDT": {
+      "symbol": "IMXUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794572100000,
+      "reference": 0.1109,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 1,
+      "sweep_low": 0.1097,
+      "sweep_high": 0.1104,
+      "liquidity_level": 0.1098,
+      "bars_required": 4,
+      "expires_at": 1794576600000,
+      "updated_at": "2026-11-13 16:23"
     },
     "STRKUSDT": {
       "symbol": "STRKUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 0.03623,
+      "sweep_time": 1794571200000,
+      "reference": 0.03676,
       "reference_type": "SWING_LOW",
       "bars_checked": 2,
-      "sweep_low": 0.03676,
-      "sweep_high": 0.03701,
-      "liquidity_level": 0.03699,
+      "sweep_low": 0.03704,
+      "sweep_high": 0.03731,
+      "liquidity_level": 0.03707,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794575700000,
+      "updated_at": "2026-11-13 16:23"
     },
-    "APTUSDT": {
-      "symbol": "APTUSDT",
+    "PLUMEUSDT": {
+      "symbol": "PLUMEUSDT",
       "direction": "SELL",
-      "sweep_time": 1794568500000,
-      "reference": 0.5401,
+      "sweep_time": 1794572100000,
+      "reference": 0.0135,
       "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 0.5461,
-      "sweep_high": 0.5486,
-      "liquidity_level": 0.5481,
+      "bars_checked": 1,
+      "sweep_low": 0.01403,
+      "sweep_high": 0.01424,
+      "liquidity_level": 0.01415,
       "bars_required": 4,
-      "expires_at": 1794573000000,
-      "updated_at": "2026-11-13 15:32"
+      "expires_at": 1794576600000,
+      "updated_at": "2026-11-13 16:23"
+    },
+    "HUMAUSDT": {
+      "symbol": "HUMAUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794573000000,
+      "reference": 0.00826,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 0,
+      "sweep_low": 0.00794,
+      "sweep_high": 0.00805,
+      "liquidity_level": 0.00795,
+      "bars_required": 4,
+      "expires_at": 1794577500000,
+      "updated_at": "2026-11-13 16:23"
     }
   },
-  "pending_retests": {
-    "AAVEUSDT": {
-      "symbol": "AAVEUSDT",
-      "direction": "BUY",
-      "structure": "BOS",
-      "structure_trend": "UPTREND",
-      "structure_time": 1794570299999,
-      "structure_index": 247,
-      "structure_reference": 111.86,
-      "sweep_time": 1794565800000,
-      "sweep_low": 110.4,
-      "sweep_high": 111.07,
-      "liquidity_level": 110.5,
-      "created_at_ms": 1794571337885,
-      "expires_at": 1794573899999,
-      "last_checked_time": 1794571199999,
-      "status": "WAITING_FOR_RETEST"
-    }
-  }
+  "pending_retests": {}
 }
