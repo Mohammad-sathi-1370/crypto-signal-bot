@@ -179,7 +179,7 @@ def today_string():
 
 
 def is_trading_time():
-    return 8 <= iran_now().hour < 22
+    return 8 <= iran_now().hour < 24
 
 
 def timestamp_string(timestamp):
