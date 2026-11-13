@@ -230,20 +230,6 @@
     "last_alert_key": "usd-ppi-mom.20261113T1330"
   },
   "pending_setups": {
-    "ONEUSDT": {
-      "symbol": "ONEUSDT",
-      "direction": "SELL",
-      "sweep_time": 1794591000000,
-      "reference": 0.001442,
-      "reference_type": "SWING_LOW",
-      "bars_checked": 2,
-      "sweep_low": 0.001466,
-      "sweep_high": 0.001494,
-      "liquidity_level": 0.001488,
-      "bars_required": 4,
-      "expires_at": 1794595500000,
-      "updated_at": "2026-11-13 21:59"
-    },
     "POLUSDT": {
       "symbol": "POLUSDT",
       "direction": "BUY",
