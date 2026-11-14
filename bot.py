@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.6
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.7
 # =========================================================
 
-VERSION = "6.6.6"
+VERSION = "6.6.7"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -309,22 +309,22 @@ def send_event_message(signal, event):
     symbol = signal["symbol"]
     messages = {
         "TP1": (
-            f"✅ TP1 HIT — {symbol}\\n"
-            f"Target: {float(signal['tp1']):.8g}\\n"
+            f"✅ TP1 HIT — {symbol}\n"
+            f"Target: {float(signal['tp1']):.8g}\n"
             "Milestone: 1R"
         ),
         "TP2": (
-            f"🔥 TP2 HIT — {symbol}\\n"
-            f"Target: {float(signal['tp2']):.8g}\\n"
+            f"🔥 TP2 HIT — {symbol}\n"
+            f"Target: {float(signal['tp2']):.8g}\n"
             "Milestone: 2R"
         ),
         "TP3": (
-            f"🚀 TP3 HIT — {symbol}\\n"
-            f"Target: {float(signal['tp3']):.8g}\\n"
+            f"🚀 TP3 HIT — {symbol}\n"
+            f"Target: {float(signal['tp3']):.8g}\n"
             "Milestone: 3R — signal completed"
         ),
         "SL": (
-            f"🛑 STOP LOSS HIT — {symbol}\\n"
+            f"🛑 STOP LOSS HIT — {symbol}\n"
             f"Stop: {float(signal['stop_loss']):.8g}"
         )
     }
@@ -2894,7 +2894,10 @@ def update_signal_results(state):
             if stop_hit:
                 signal["status"] = "SL"
                 signal["stop_hit_time"] = close_time
-                queue_event(signal, "SL")
+                # The original SL notification is only valid before TP1.
+                # After TP1, do not send a misleading stop-loss reply.
+                if not signal.get("tp1_hit"):
+                    queue_event(signal, "SL")
                 changed = True
                 break
 
