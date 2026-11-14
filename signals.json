@@ -459,13 +459,14 @@
       "structure_time": 1794676199999,
       "sweep_time": 1794676199999,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:43",
@@ -473,7 +474,8 @@
       "telegram_message_id": 219,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 0.9642537756326072
+      "active_stop": 0.9642537756326072,
+      "stop_hit_time": 1794677399999
     },
     {
       "symbol": "HYPEUSDT",
@@ -521,13 +523,14 @@
       "structure_time": 1794676199999,
       "sweep_time": 1794676199999,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:43",
@@ -535,7 +538,8 @@
       "telegram_message_id": 220,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 66.33979013303413
+      "active_stop": 66.33979013303413,
+      "stop_hit_time": 1794677699999
     },
     {
       "symbol": "ENAUSDT",
@@ -583,13 +587,14 @@
       "structure_time": 1794673799999,
       "sweep_time": 1794673799999,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:43",
@@ -597,7 +602,8 @@
       "telegram_message_id": 221,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 0.12041390815263914
+      "active_stop": 0.12041390815263914,
+      "stop_hit_time": 1794677099999
     },
     {
       "symbol": "AAVEUSDT",
@@ -645,13 +651,15 @@
       "structure_time": 1794676199999,
       "sweep_time": 1794675900000,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794676799999,
-      "tp1_hit": false,
-      "tp2_hit": false,
+      "last_checked_time": 1794678599999,
+      "tp1_hit": true,
+      "tp2_hit": true,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:43",
@@ -659,7 +667,9 @@
       "telegram_message_id": 222,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 101.89219660488412
+      "active_stop": 103.15446330619932,
+      "tp1_hit_time": 1794677099999,
+      "tp2_hit_time": 1794677099999
     },
     {
       "symbol": "PUMPUSDT",
@@ -707,13 +717,14 @@
       "structure_time": 1794673799999,
       "sweep_time": 1794673799999,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:43",
@@ -721,7 +732,8 @@
       "telegram_message_id": 223,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 0.0030513443657402403
+      "active_stop": 0.0030513443657402403,
+      "stop_hit_time": 1794677999999
     },
     {
       "symbol": "QNTUSDT",
@@ -769,7 +781,7 @@
       "structure_time": 1794676199999,
       "sweep_time": 1794676199999,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -831,13 +843,14 @@
       "structure_time": 1794672899999,
       "sweep_time": 1794672899999,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:43",
@@ -845,7 +858,8 @@
       "telegram_message_id": 225,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 0.0013010406051521463
+      "active_stop": 0.0013010406051521463,
+      "stop_hit_time": 1794677399999
     },
     {
       "symbol": "AVAXUSDT",
@@ -893,19 +907,26 @@
       "structure_time": 1794676799999,
       "sweep_time": 1794676500000,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794676799999,
-      "tp1_hit": false,
-      "tp2_hit": false,
+      "last_checked_time": 1794678599999,
+      "tp1_hit": true,
+      "tp2_hit": true,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:53",
       "created_date": "2026-11-14",
       "telegram_message_id": 226,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 7.520177716592405,
+      "tp1_hit_time": 1794677099999,
+      "tp2_hit_time": 1794677999999,
+      "stop_hit_time": 1794678299999
     },
     {
       "symbol": "WLDUSDT",
@@ -953,19 +974,23 @@
       "structure_time": 1794673799999,
       "sweep_time": 1794673799999,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:53",
       "created_date": "2026-11-14",
       "telegram_message_id": 227,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.2646526758391389,
+      "stop_hit_time": 1794677099999
     },
     {
       "symbol": "XLMUSDT",
@@ -1013,19 +1038,23 @@
       "structure_time": 1794676499999,
       "sweep_time": 1794676499999,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:53",
       "created_date": "2026-11-14",
       "telegram_message_id": 228,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.13780070643837775,
+      "stop_hit_time": 1794677699999
     },
     {
       "symbol": "GRAMUSDT",
@@ -1073,19 +1102,23 @@
       "structure_time": 1794676799999,
       "sweep_time": 1794676500000,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794676799999,
-      "tp1_hit": false,
+      "last_checked_time": 1794678599999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:53",
       "created_date": "2026-11-14",
       "telegram_message_id": 229,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 1.033,
+      "tp1_hit_time": 1794677699999
     },
     {
       "symbol": "BCHUSDT",
@@ -1133,19 +1166,23 @@
       "structure_time": 1794673799999,
       "sweep_time": 1794673799999,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:53",
       "created_date": "2026-11-14",
       "telegram_message_id": 230,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 208.9560669512653,
+      "stop_hit_time": 1794677699999
     },
     {
       "symbol": "ETHFIUSDT",
@@ -1193,19 +1230,24 @@
       "structure_time": 1794676799999,
       "sweep_time": 1794676500000,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794676799999,
-      "tp1_hit": false,
+      "last_checked_time": 1794678599999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 20:53",
       "created_date": "2026-11-14",
       "telegram_message_id": 231,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.5088,
+      "tp1_hit_time": 1794677699999,
+      "stop_hit_time": 1794678599999
     },
     {
       "symbol": "OPUSDT",
@@ -1253,7 +1295,71 @@
       "structure_time": 1794676799999,
       "sweep_time": 1794676500000,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794676799999,
+      "last_checked_time": 1794678599999,
+      "tp1_hit": true,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "status": "OPEN",
+      "telegram_events": {
+        "ENTRY": true,
+        "TP1": true
+      },
+      "pending_events": [],
+      "created_at": "2026-11-14 20:53",
+      "created_date": "2026-11-14",
+      "telegram_message_id": 232,
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.0838,
+      "tp1_hit_time": 1794677699999
+    },
+    {
+      "symbol": "PENGUUSDT",
+      "direction": "SELL",
+      "entry": 0.005176,
+      "stop_loss": 0.005211208051785466,
+      "tp1": 0.0051339194821453426,
+      "tp2": 0.005091838964290685,
+      "tp3": 0.0050497584464360284,
+      "tp1_r": 1.1951958634652022,
+      "tp2_r": 2.3903917269304045,
+      "tp3_r": 3.5855875903956065,
+      "tp1_atr": 1.0,
+      "tp2_atr": 2.0,
+      "tp3_atr": 3.0,
+      "risk": 3.520805178546579e-05,
+      "risk_atr": 0.8366829492705274,
+      "high_risk": false,
+      "risk_limit_atr": 4.0,
+      "confirmations": 5,
+      "confirmation_total": 6,
+      "analysis_label": "V67 MOMENTUM EARLY IMPULSE OR EMA RECLAIM",
+      "liquidity_sweep": false,
+      "rsi": 42.98843162793374,
+      "adx": 41.144773209433424,
+      "volume_ratio": 0.1156284585276492,
+      "atr": 4.208051785465733e-05,
+      "fvg_lower": null,
+      "fvg_upper": null,
+      "fvg_retest": false,
+      "fvg_required": false,
+      "entry_model": "V67_MOMENTUM_EARLY_IMPULSE_OR_EMA_RECLAIM",
+      "retest_time": null,
+      "retest_event_age_bars": 0,
+      "retest_current_distance_atr": 0.0,
+      "retest_bars_after_structure": 0,
+      "retest_tolerance": null,
+      "bars_since_structure": 0,
+      "entry_extension_atr": 0.0,
+      "structure_reference": 0.005181225180924683,
+      "order_block": false,
+      "order_block_zone": null,
+      "structure": "EARLY IMPULSE / CONTINUATION",
+      "structure_trend": "CONTINUATION",
+      "structure_time": 1794678599999,
+      "sweep_time": 1794678599999,
+      "signal_time": 1794678599999,
+      "last_checked_time": 1794678599999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1262,58 +1368,75 @@
         "ENTRY": true
       },
       "pending_events": [],
-      "created_at": "2026-11-14 20:53",
+      "created_at": "2026-11-14 21:20",
       "created_date": "2026-11-14",
-      "telegram_message_id": 232,
+      "telegram_message_id": 248,
+      "telegram_chat_id": 104951844
+    },
+    {
+      "symbol": "PAXGUSDT",
+      "direction": "SELL",
+      "entry": 3836.23,
+      "stop_loss": 3840.2365245197084,
+      "tp1": 3832.1937526682873,
+      "tp2": 3828.1575053365746,
+      "tp3": 3824.1212580048623,
+      "tp1_r": 1.0074186022968397,
+      "tp2_r": 2.0148372045936793,
+      "tp3_r": 3.022255806890519,
+      "tp1_atr": 1.0,
+      "tp2_atr": 2.0,
+      "tp3_atr": 3.0,
+      "risk": 4.006524519708364,
+      "risk_atr": 0.992636028082144,
+      "high_risk": false,
+      "risk_limit_atr": 4.0,
+      "confirmations": 4,
+      "confirmation_total": 5,
+      "analysis_label": "V67 SWING REVERSAL LOCATION REACTION",
+      "liquidity_sweep": false,
+      "rsi": 48.85213371669844,
+      "adx": 45.52580473193996,
+      "volume_ratio": 1.2836106336622066,
+      "atr": 4.036247331712617,
+      "fvg_lower": null,
+      "fvg_upper": null,
+      "fvg_retest": false,
+      "fvg_required": false,
+      "entry_model": "V67_SWING_REVERSAL_LOCATION_REACTION",
+      "retest_time": null,
+      "retest_event_age_bars": 0,
+      "retest_current_distance_atr": 0.0,
+      "retest_bars_after_structure": 0,
+      "retest_tolerance": null,
+      "bars_since_structure": 0,
+      "entry_extension_atr": 0.0,
+      "structure_reference": 3839.58,
+      "order_block": false,
+      "order_block_zone": null,
+      "structure": "HOURLY EXTREME REACTION",
+      "structure_trend": "REVERSAL",
+      "structure_time": 1794678599999,
+      "sweep_time": 1794678300000,
+      "signal_time": 1794678599999,
+      "last_checked_time": 1794678599999,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "status": "OPEN",
+      "telegram_events": {
+        "ENTRY": true
+      },
+      "pending_events": [],
+      "created_at": "2026-11-14 21:20",
+      "created_date": "2026-11-14",
+      "telegram_message_id": 249,
       "telegram_chat_id": 104951844
     }
   ],
   "news_filter": {
     "last_alert_key": "usd-ppi-mom.20261113T1330"
   },
-  "pending_setups": {
-    "FILUSDT": {
-      "symbol": "FILUSDT",
-      "direction": "BUY",
-      "sweep_time": 1794672900000,
-      "reference": 0.6918,
-      "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
-      "sweep_low": 0.65,
-      "sweep_high": 0.6583,
-      "liquidity_level": 0.6503,
-      "bars_required": 4,
-      "expires_at": 1794677400000,
-      "updated_at": "2026-11-14 20:01"
-    },
-    "LTCUSDT": {
-      "symbol": "LTCUSDT",
-      "direction": "BUY",
-      "sweep_time": 1794672900000,
-      "reference": 47.76,
-      "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
-      "sweep_low": 45.32,
-      "sweep_high": 45.85,
-      "liquidity_level": 45.34,
-      "bars_required": 4,
-      "expires_at": 1794677400000,
-      "updated_at": "2026-11-14 20:01"
-    },
-    "AAVEUSDT": {
-      "symbol": "AAVEUSDT",
-      "direction": "BUY",
-      "sweep_time": 1794672900000,
-      "reference": 106.37,
-      "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
-      "sweep_low": 102.01,
-      "sweep_high": 103.35,
-      "liquidity_level": 102.17,
-      "bars_required": 4,
-      "expires_at": 1794677400000,
-      "updated_at": "2026-11-14 20:01"
-    }
-  },
+  "pending_setups": {},
   "pending_retests": {}
 }
