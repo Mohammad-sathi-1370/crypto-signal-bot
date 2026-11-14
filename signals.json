@@ -419,7 +419,7 @@
       "liquidity_level": 0.2785,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "RENDERUSDT": {
       "symbol": "RENDERUSDT",
@@ -433,7 +433,7 @@
       "liquidity_level": 1.475,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "APTUSDT": {
       "symbol": "APTUSDT",
@@ -447,7 +447,7 @@
       "liquidity_level": 0.5098,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "HYPEUSDT": {
       "symbol": "HYPEUSDT",
@@ -461,7 +461,7 @@
       "liquidity_level": 68.61,
       "bars_required": 4,
       "expires_at": 1794660300000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "ENAUSDT": {
       "symbol": "ENAUSDT",
@@ -475,7 +475,7 @@
       "liquidity_level": 0.1263,
       "bars_required": 4,
       "expires_at": 1794660300000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "INJUSDT": {
       "symbol": "INJUSDT",
@@ -489,7 +489,7 @@
       "liquidity_level": 7.891,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "TAOUSDT": {
       "symbol": "TAOUSDT",
@@ -503,7 +503,7 @@
       "liquidity_level": 206.2,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "QNTUSDT": {
       "symbol": "QNTUSDT",
@@ -517,7 +517,7 @@
       "liquidity_level": 158.99,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "PENGUUSDT": {
       "symbol": "PENGUUSDT",
@@ -531,7 +531,7 @@
       "liquidity_level": 0.005807,
       "bars_required": 4,
       "expires_at": 1794660300000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "STRKUSDT": {
       "symbol": "STRKUSDT",
@@ -545,7 +545,7 @@
       "liquidity_level": 0.03566,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "DASHUSDT": {
       "symbol": "DASHUSDT",
@@ -559,7 +559,7 @@
       "liquidity_level": 39.58,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "WUSDT": {
       "symbol": "WUSDT",
@@ -573,7 +573,7 @@
       "liquidity_level": 0.00941,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "UNIUSDT": {
       "symbol": "UNIUSDT",
@@ -587,7 +587,7 @@
       "liquidity_level": 5.481,
       "bars_required": 4,
       "expires_at": 1794660300000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "TRXUSDT": {
       "symbol": "TRXUSDT",
@@ -601,7 +601,7 @@
       "liquidity_level": 0.3129,
       "bars_required": 4,
       "expires_at": 1794660300000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "AAVEUSDT": {
       "symbol": "AAVEUSDT",
@@ -615,7 +615,7 @@
       "liquidity_level": 106.93,
       "bars_required": 4,
       "expires_at": 1794660300000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "FETUSDT": {
       "symbol": "FETUSDT",
@@ -629,7 +629,7 @@
       "liquidity_level": 0.1387,
       "bars_required": 4,
       "expires_at": 1794660300000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "ONDOUSDT": {
       "symbol": "ONDOUSDT",
@@ -643,7 +643,7 @@
       "liquidity_level": 0.3271,
       "bars_required": 4,
       "expires_at": 1794660300000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "ARBUSDT": {
       "symbol": "ARBUSDT",
@@ -657,7 +657,7 @@
       "liquidity_level": 0.1406,
       "bars_required": 4,
       "expires_at": 1794659400000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "ONEUSDT": {
       "symbol": "ONEUSDT",
@@ -671,7 +671,7 @@
       "liquidity_level": 0.001372,
       "bars_required": 4,
       "expires_at": 1794659400000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     },
     "OPUSDT": {
       "symbol": "OPUSDT",
@@ -685,7 +685,7 @@
       "liquidity_level": 0.0881,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 15:35"
+      "updated_at": "2026-11-14 15:36"
     }
   },
   "pending_retests": {}
