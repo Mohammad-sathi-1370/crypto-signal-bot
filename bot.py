@@ -13,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.9
 # =========================================================
 
-VERSION = "6.6.9"
+VERSION = "6.6.10"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -125,6 +125,7 @@ DIAGNOSTICS = {
     "structure_waiting": 0,
     "structure_expired": 0,
     "structure_confirmed": 0,
+    "structure_stale_confirmed": 0,
     "early_reversal_candidates": 0,
     "early_reversal_confirmed": 0,
     "early_reversal_rejected": 0,
@@ -1468,6 +1469,9 @@ def resume_pending_structure(df15, symbol, state):
     return sweep, structure
 
 def find_sweep_structure(df15, symbol):
+    """Prefer the newest actionable structure; never let an old BOS/CHoCH
+    mask a newer sweep that is still waiting for confirmation.
+    """
     candidates = detect_sweep_candidates(df15)
 
     if not candidates:
@@ -1475,6 +1479,10 @@ def find_sweep_structure(df15, symbol):
 
     waiting_candidate = None
 
+    # detect_sweep_candidates returns newest sweeps first. Only return a
+    # confirmed structure while it is still inside the normal freshness
+    # window. A stale confirmation is skipped so the loop can inspect newer
+    # waiting candidates (or other fresh confirmations) instead.
     for sweep in candidates:
         structure = detect_structure(
             df15,
@@ -1483,12 +1491,30 @@ def find_sweep_structure(df15, symbol):
         )
 
         if structure is not None:
-            return (
-                sweep,
-                structure,
-                len(candidates),
-                True
+            bars_since_structure = int(
+                (pd.to_numeric(df15["time"], errors="coerce")
+                 > int(structure["time"])).sum()
             )
+
+            if bars_since_structure <= MAX_BARS_SINCE_STRUCTURE:
+                return (
+                    sweep,
+                    structure,
+                    len(candidates),
+                    True
+                )
+
+            DIAGNOSTICS["structure_stale_confirmed"] += 1
+            REJECTION_DEBUG.append({
+                "symbol": symbol,
+                "stage": "STRUCTURE_SELECTION",
+                "reason": "STALE_CONFIRMED_STRUCTURE_SKIPPED",
+                "direction": sweep.get("direction"),
+                "bars_since_structure": bars_since_structure,
+                "max_bars": MAX_BARS_SINCE_STRUCTURE,
+                "sweep_time": int(sweep.get("time", 0) or 0)
+            })
+            continue
 
         if (
             waiting_candidate is None
