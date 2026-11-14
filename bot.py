@@ -13,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.11
 # =========================================================
 
-VERSION = "6.6.11"
+VERSION = "6.6.12"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -44,6 +44,16 @@ EARLY_REVERSAL_MIN_SCORE = 6
 EARLY_REVERSAL_MIN_VOLUME_RATIO = 1.00
 EARLY_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.35
 EARLY_REVERSAL_MIN_RISK_ATR = 0.15
+
+# Dedicated swing-turn model: prioritize early rejection at local 1h extremes.
+SWING_REVERSAL_LOOKBACK_5M = 24
+SWING_REVERSAL_LOOKBACK_1H = 12
+SWING_REVERSAL_MAX_EVENT_AGE = 1
+SWING_REVERSAL_MIN_WICK_RATIO = 0.30
+SWING_REVERSAL_MIN_SCORE = 4
+SWING_REVERSAL_MIN_VOLUME_RATIO = 0.80
+SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.45
+SWING_REVERSAL_STOP_BUFFER_ATR = 0.22
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -129,6 +139,9 @@ DIAGNOSTICS = {
     "early_reversal_candidates": 0,
     "early_reversal_confirmed": 0,
     "early_reversal_rejected": 0,
+    "swing_reversal_candidates": 0,
+    "swing_reversal_confirmed": 0,
+    "swing_reversal_rejected": 0,
     "momentum_candidates": 0,
     "momentum_confirmed": 0,
     "momentum_rejected": 0,
@@ -2167,6 +2180,109 @@ def validate_target_room(symbol, direction, entry, risk, atr, df5, df15, model):
     return True
 
 
+def generate_swing_reversal_signal(symbol, df5, df15, df1h):
+    """Catch fresh 5m rejection turns near 1h swing extremes without waiting for a full trend flip."""
+    if len(df5) < SWING_REVERSAL_LOOKBACK_5M + 5 or len(df15) < 5 or len(df1h) < SWING_REVERSAL_LOOKBACK_1H + 3:
+        return None
+
+    row, prev, prev2 = df5.iloc[-1], df5.iloc[-2], df5.iloc[-3]
+    trend, trend_prev = df15.iloc[-1], df15.iloc[-2]
+    h1 = df1h.iloc[-1]
+    price, atr = float(row["close"]), float(row["atr"])
+    vol_avg = float(row["volume_avg"])
+    if not np.isfinite([price, atr, vol_avg, float(row["rsi"]), float(h1["atr"]) ]).all() or price <= 0 or atr <= 0 or vol_avg <= 0 or float(h1["atr"]) <= 0:
+        return None
+
+    volume_ratio = float(row["volume"] / vol_avg)
+    # Search only the most recent two closed 5m candles; no future-candle pivot confirmation.
+    start = max(SWING_REVERSAL_LOOKBACK_5M, len(df5) - 1 - SWING_REVERSAL_MAX_EVENT_AGE)
+    for idx in range(len(df5) - 1, start - 1, -1):
+        candle = df5.iloc[idx]
+        prior = df5.iloc[idx - SWING_REVERSAL_LOOKBACK_5M:idx]
+        o, high, low, close = map(float, (candle["open"], candle["high"], candle["low"], candle["close"]))
+        rng = high - low
+        if rng <= 0:
+            continue
+        prior_high, prior_low = float(prior["high"].max()), float(prior["low"].min())
+        upper_wick = high - max(o, close)
+        lower_wick = min(o, close) - low
+        close_pos = (close - low) / rng
+
+        if high > prior_high and close < prior_high:
+            direction = "SELL"
+            wick_ratio = upper_wick / rng
+            rejection = wick_ratio >= SWING_REVERSAL_MIN_WICK_RATIO and close_pos <= 0.48 and close < o
+            extreme, level = high, prior_high
+            h1_extreme = float(df1h.tail(SWING_REVERSAL_LOOKBACK_1H + 1).iloc[:-1]["high"].max())
+            near_hourly_extreme = (h1_extreme - high) <= float(h1["atr"]) * 1.25 and high >= h1_extreme - float(h1["atr"]) * 1.25
+        elif low < prior_low and close > prior_low:
+            direction = "BUY"
+            wick_ratio = lower_wick / rng
+            rejection = wick_ratio >= SWING_REVERSAL_MIN_WICK_RATIO and close_pos >= 0.52 and close > o
+            extreme, level = low, prior_low
+            h1_extreme = float(df1h.tail(SWING_REVERSAL_LOOKBACK_1H + 1).iloc[:-1]["low"].min())
+            near_hourly_extreme = (low - h1_extreme) <= float(h1["atr"]) * 1.25 and low <= h1_extreme + float(h1["atr"]) * 1.25
+        else:
+            continue
+
+        DIAGNOSTICS["swing_reversal_candidates"] += 1
+        age = len(df5) - 1 - idx
+        distance_atr = abs(price - close) / atr
+        if not rejection or age > SWING_REVERSAL_MAX_EVENT_AGE or distance_atr > SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR:
+            DIAGNOSTICS["swing_reversal_rejected"] += 1
+            REJECTION_DEBUG.append({"symbol": symbol, "stage": "SWING_REVERSAL", "reason": "REJECTION_OR_FRESHNESS_FAILED", "direction": direction, "wick_ratio": round(float(wick_ratio), 3), "close_position": round(float(close_pos), 3), "event_age": int(age), "entry_distance_atr": round(float(distance_atr), 3)})
+            continue
+
+        rsi_now, rsi_prev, rsi_prev2 = float(row["rsi"]), float(prev["rsi"]), float(prev2["rsi"])
+        rsi_turn = (rsi_now > rsi_prev and rsi_prev <= rsi_prev2) if direction == "BUY" else (rsi_now < rsi_prev and rsi_prev >= rsi_prev2)
+        ema_reclaim = price > float(row["ema20"]) if direction == "BUY" else price < float(row["ema20"])
+        rsi_15m_turn = float(trend["rsi"]) > float(trend_prev["rsi"]) if direction == "BUY" else float(trend["rsi"]) < float(trend_prev["rsi"])
+        di_aligned = float(row["plus_di"]) > float(row["minus_di"]) if direction == "BUY" else float(row["minus_di"]) > float(row["plus_di"])
+        hourly_location = bool(near_hourly_extreme)
+        volume_ok = volume_ratio >= SWING_REVERSAL_MIN_VOLUME_RATIO
+        adx_ok = float(row["adx"]) >= ADX_MINIMUM
+        checks = [hourly_location, rsi_turn, ema_reclaim, rsi_15m_turn, di_aligned, volume_ok, adx_ok]
+        score = sum(bool(x) for x in checks)
+        # The rejection candle is mandatory; require 4/7 context checks, not a complete trend reversal.
+        if score < SWING_REVERSAL_MIN_SCORE:
+            DIAGNOSTICS["swing_reversal_rejected"] += 1
+            REJECTION_DEBUG.append({"symbol": symbol, "stage": "SWING_REVERSAL", "reason": "CONTEXT_SCORE_TOO_LOW", "score": int(score), "required": SWING_REVERSAL_MIN_SCORE, "direction": direction, "hourly_location": hourly_location, "volume_ratio": round(float(volume_ratio), 3)})
+            continue
+
+        stop = extreme - atr * SWING_REVERSAL_STOP_BUFFER_ATR if direction == "BUY" else extreme + atr * SWING_REVERSAL_STOP_BUFFER_ATR
+        risk = price - stop if direction == "BUY" else stop - price
+        if not np.isfinite(risk) or risk < atr * 0.15 or risk > atr * MAX_RISK_ATR:
+            DIAGNOSTICS["swing_reversal_rejected"] += 1
+            continue
+        if not validate_target_room(symbol, direction, price, risk, atr, df5, df15, "SWING_REVERSAL"):
+            DIAGNOSTICS["swing_reversal_rejected"] += 1
+            continue
+
+        targets, target_r, target_atr, _ = calculate_trade_targets(direction, price, risk, atr)
+        signal_time = int(row["close_time"])
+        DIAGNOSTICS["swing_reversal_confirmed"] += 1
+        return {
+            "symbol": symbol, "direction": direction, "entry": price, "stop_loss": float(stop),
+            "tp1": float(targets[0]), "tp2": float(targets[1]), "tp3": float(targets[2]),
+            "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
+            "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
+            "risk": float(risk), "risk_atr": float(risk / atr), "high_risk": False, "risk_limit_atr": MAX_RISK_ATR,
+            "confirmations": int(score), "confirmation_total": 7, "analysis_label": "SWING REVERSAL NEAR 1H EXTREME",
+            "liquidity_sweep": True, "rsi": float(row["rsi"]), "adx": float(row["adx"]), "volume_ratio": volume_ratio, "atr": atr,
+            "fvg_lower": None, "fvg_upper": None, "fvg_retest": False, "fvg_required": False,
+            "entry_model": "SWING_REVERSAL_5M_REJECTION_1H_LOCATION", "retest_time": None,
+            "retest_event_age_bars": int(age), "retest_current_distance_atr": float(distance_atr),
+            "retest_bars_after_structure": int(age), "retest_tolerance": None, "bars_since_structure": int(age),
+            "entry_extension_atr": float(distance_atr), "structure_reference": float(level),
+            "order_block": False, "order_block_zone": None, "structure": "SWING EXTREME REJECTION",
+            "structure_trend": "REVERSAL", "structure_time": int(candle["close_time"]), "sweep_time": int(candle["time"]),
+            "signal_time": signal_time, "last_checked_time": signal_time, "tp1_hit": False, "tp2_hit": False,
+            "tp3_hit": False, "status": "OPEN", "telegram_events": {}, "pending_events": [],
+            "created_at": current_time_string(), "created_date": today_string()
+        }
+    return None
+
+
 def generate_early_reversal_signal(symbol, df5, df15):
     """Fresh 5m liquidity-sweep reversal with wick, reclaim, RSI and volume checks."""
     if len(df5) < EARLY_REVERSAL_LOOKBACK + 5 or len(df15) < 3:
@@ -2881,8 +2997,15 @@ def generate_momentum_signal(symbol, df5, df15):
     return None
 
 
-def generate_signal(symbol, df5, df15, state=None):
-    """SMC first; independent reversal and momentum models run if SMC has no signal."""
+def generate_signal(symbol, df5, df15, df1h=None, state=None):
+    """Swing reversals first, then SMC, stricter early reversal and momentum continuation."""
+    if df1h is not None and len(df1h) >= SWING_REVERSAL_LOOKBACK_1H + 3:
+        df5_ind = calculate_indicators(df5)
+        df15_ind = calculate_indicators(df15)
+        df1h_ind = calculate_indicators(df1h)
+        swing_signal = generate_swing_reversal_signal(symbol, df5_ind, df15_ind, df1h_ind)
+        if swing_signal is not None:
+            return swing_signal
     smc_signal = _generate_smc_signal(symbol, df5, df15, state)
     if smc_signal is not None:
         return smc_signal
@@ -3248,7 +3371,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry models: SMC + independent Early Reversal + BUY/SELL Momentum Continuation.")
+    print("Entry models: Early Swing Reversal (5m rejection + 1h location) + SMC + Early Reversal + Momentum Continuation.")
 
     print("=" * 48)
 
@@ -3367,10 +3490,19 @@ def run_scanner():
                 TREND_TIMEFRAME
             )
 
+            try:
+                df1h = get_candles(symbol, "1h")
+            except Exception as context_error:
+                # The 1h context improves reversal location, but its temporary
+                # unavailability must not disable the established signal models.
+                df1h = None
+                print(f"1H CONTEXT UNAVAILABLE {symbol}: {context_error}")
+
             signal = generate_signal(
                 symbol,
                 df5,
                 df15,
+                df1h,
                 state
             )
 
