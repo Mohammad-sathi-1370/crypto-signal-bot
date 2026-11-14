@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.11
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.13
 # =========================================================
 
-VERSION = "6.6.12"
+VERSION = "6.6.13"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -48,12 +48,14 @@ EARLY_REVERSAL_MIN_RISK_ATR = 0.15
 # Dedicated swing-turn model: prioritize early rejection at local 1h extremes.
 SWING_REVERSAL_LOOKBACK_5M = 24
 SWING_REVERSAL_LOOKBACK_1H = 12
-SWING_REVERSAL_MAX_EVENT_AGE = 1
+SWING_REVERSAL_MAX_EVENT_AGE = 0  # Use the latest fully closed 5m candle only.
 SWING_REVERSAL_MIN_WICK_RATIO = 0.30
-SWING_REVERSAL_MIN_SCORE = 4
+SWING_REVERSAL_MIN_SCORE = 5  # 5 of 8 contextual checks; location + rejection remain mandatory.
 SWING_REVERSAL_MIN_VOLUME_RATIO = 0.80
 SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.45
 SWING_REVERSAL_STOP_BUFFER_ATR = 0.22
+SWING_REVERSAL_HOURLY_ZONE_ATR = 0.85
+SWING_REVERSAL_LOCAL_ZONE_ATR = 0.35
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -2181,106 +2183,142 @@ def validate_target_room(symbol, direction, entry, risk, atr, df5, df15, model):
 
 
 def generate_swing_reversal_signal(symbol, df5, df15, df1h):
-    """Catch fresh 5m rejection turns near 1h swing extremes without waiting for a full trend flip."""
-    if len(df5) < SWING_REVERSAL_LOOKBACK_5M + 5 or len(df15) < 5 or len(df1h) < SWING_REVERSAL_LOOKBACK_1H + 3:
+    """Detect a fresh rejection at nearby 5m/1h range extremes; a prior-range breakout is NOT required."""
+    min_5m = max(SWING_REVERSAL_LOOKBACK_5M + 5, 35)
+    if len(df5) < min_5m or len(df15) < 5 or len(df1h) < SWING_REVERSAL_LOOKBACK_1H + 3:
         return None
 
-    row, prev, prev2 = df5.iloc[-1], df5.iloc[-2], df5.iloc[-3]
+    row = df5.iloc[-1]
+    prev = df5.iloc[-2]
+    prev2 = df5.iloc[-3]
     trend, trend_prev = df15.iloc[-1], df15.iloc[-2]
     h1 = df1h.iloc[-1]
     price, atr = float(row["close"]), float(row["atr"])
     vol_avg = float(row["volume_avg"])
-    if not np.isfinite([price, atr, vol_avg, float(row["rsi"]), float(h1["atr"]) ]).all() or price <= 0 or atr <= 0 or vol_avg <= 0 or float(h1["atr"]) <= 0:
+    atr1h = float(h1["atr"])
+    if not np.isfinite([price, atr, vol_avg, float(row["rsi"]), atr1h]).all() or price <= 0 or atr <= 0 or vol_avg <= 0 or atr1h <= 0:
         return None
 
-    volume_ratio = float(row["volume"] / vol_avg)
-    # Search only the most recent two closed 5m candles; no future-candle pivot confirmation.
-    start = max(SWING_REVERSAL_LOOKBACK_5M, len(df5) - 1 - SWING_REVERSAL_MAX_EVENT_AGE)
-    for idx in range(len(df5) - 1, start - 1, -1):
-        candle = df5.iloc[idx]
-        prior = df5.iloc[idx - SWING_REVERSAL_LOOKBACK_5M:idx]
-        o, high, low, close = map(float, (candle["open"], candle["high"], candle["low"], candle["close"]))
-        rng = high - low
-        if rng <= 0:
-            continue
-        prior_high, prior_low = float(prior["high"].max()), float(prior["low"].min())
-        upper_wick = high - max(o, close)
-        lower_wick = min(o, close) - low
-        close_pos = (close - low) / rng
+    # Use the last fully closed 5m candle. The preceding 24 candles define a local
+    # range; the last 12 completed hourly candles define broader location.
+    candle = row
+    prior5 = df5.iloc[-SWING_REVERSAL_LOOKBACK_5M-1:-1]
+    hourly = df1h.iloc[-SWING_REVERSAL_LOOKBACK_1H:]
+    if len(prior5) < SWING_REVERSAL_LOOKBACK_5M or len(hourly) < SWING_REVERSAL_LOOKBACK_1H:
+        return None
 
-        if high > prior_high and close < prior_high:
-            direction = "SELL"
-            wick_ratio = upper_wick / rng
-            rejection = wick_ratio >= SWING_REVERSAL_MIN_WICK_RATIO and close_pos <= 0.48 and close < o
-            extreme, level = high, prior_high
-            h1_extreme = float(df1h.tail(SWING_REVERSAL_LOOKBACK_1H + 1).iloc[:-1]["high"].max())
-            near_hourly_extreme = (h1_extreme - high) <= float(h1["atr"]) * 1.25 and high >= h1_extreme - float(h1["atr"]) * 1.25
-        elif low < prior_low and close > prior_low:
-            direction = "BUY"
-            wick_ratio = lower_wick / rng
-            rejection = wick_ratio >= SWING_REVERSAL_MIN_WICK_RATIO and close_pos >= 0.52 and close > o
-            extreme, level = low, prior_low
-            h1_extreme = float(df1h.tail(SWING_REVERSAL_LOOKBACK_1H + 1).iloc[:-1]["low"].min())
-            near_hourly_extreme = (low - h1_extreme) <= float(h1["atr"]) * 1.25 and low <= h1_extreme + float(h1["atr"]) * 1.25
-        else:
-            continue
+    o, high, low, close = map(float, (candle["open"], candle["high"], candle["low"], candle["close"]))
+    candle_range = high - low
+    if candle_range <= 0:
+        return None
 
-        DIAGNOSTICS["swing_reversal_candidates"] += 1
-        age = len(df5) - 1 - idx
-        distance_atr = abs(price - close) / atr
-        if not rejection or age > SWING_REVERSAL_MAX_EVENT_AGE or distance_atr > SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR:
+    prior_high, prior_low = float(prior5["high"].max()), float(prior5["low"].min())
+    hourly_high, hourly_low = float(hourly["high"].max()), float(hourly["low"].min())
+    upper_wick = high - max(o, close)
+    lower_wick = min(o, close) - low
+    close_pos = (close - low) / candle_range
+    volume_ratio = float(candle["volume"] / vol_avg)
+
+    # Proximity to a range edge replaces the old mandatory sweep condition.
+    # This catches a rejection just below resistance / just above support too.
+    sell_local = high >= prior_high - atr * SWING_REVERSAL_LOCAL_ZONE_ATR
+    buy_local = low <= prior_low + atr * SWING_REVERSAL_LOCAL_ZONE_ATR
+    sell_hourly = high >= hourly_high - atr1h * SWING_REVERSAL_HOURLY_ZONE_ATR
+    buy_hourly = low <= hourly_low + atr1h * SWING_REVERSAL_HOURLY_ZONE_ATR
+
+    candidates = []
+    if sell_local and sell_hourly:
+        wick_ratio = upper_wick / candle_range
+        rejection = wick_ratio >= SWING_REVERSAL_MIN_WICK_RATIO and close_pos <= 0.48 and close < o
+        if rejection:
+            candidates.append(("SELL", high, prior_high, wick_ratio, close_pos, True, True))
+    if buy_local and buy_hourly:
+        wick_ratio = lower_wick / candle_range
+        rejection = wick_ratio >= SWING_REVERSAL_MIN_WICK_RATIO and close_pos >= 0.52 and close > o
+        if rejection:
+            candidates.append(("BUY", low, prior_low, wick_ratio, close_pos, True, True))
+
+    # A candle cannot normally qualify in both directions; if it does, reject ambiguity.
+    if len(candidates) != 1:
+        if sell_local or buy_local:
+            DIAGNOSTICS["swing_reversal_candidates"] += 1
             DIAGNOSTICS["swing_reversal_rejected"] += 1
-            REJECTION_DEBUG.append({"symbol": symbol, "stage": "SWING_REVERSAL", "reason": "REJECTION_OR_FRESHNESS_FAILED", "direction": direction, "wick_ratio": round(float(wick_ratio), 3), "close_position": round(float(close_pos), 3), "event_age": int(age), "entry_distance_atr": round(float(distance_atr), 3)})
-            continue
+            REJECTION_DEBUG.append({
+                "symbol": symbol, "stage": "SWING_REVERSAL",
+                "reason": "NO_UNAMBIGUOUS_EDGE_REJECTION",
+                "sell_local": bool(sell_local), "buy_local": bool(buy_local),
+                "sell_hourly": bool(sell_hourly), "buy_hourly": bool(buy_hourly),
+                "upper_wick_ratio": round(float(upper_wick / candle_range), 3),
+                "lower_wick_ratio": round(float(lower_wick / candle_range), 3),
+                "close_position": round(float(close_pos), 3)
+            })
+        return None
 
-        rsi_now, rsi_prev, rsi_prev2 = float(row["rsi"]), float(prev["rsi"]), float(prev2["rsi"])
-        rsi_turn = (rsi_now > rsi_prev and rsi_prev <= rsi_prev2) if direction == "BUY" else (rsi_now < rsi_prev and rsi_prev >= rsi_prev2)
-        ema_reclaim = price > float(row["ema20"]) if direction == "BUY" else price < float(row["ema20"])
-        rsi_15m_turn = float(trend["rsi"]) > float(trend_prev["rsi"]) if direction == "BUY" else float(trend["rsi"]) < float(trend_prev["rsi"])
-        di_aligned = float(row["plus_di"]) > float(row["minus_di"]) if direction == "BUY" else float(row["minus_di"]) > float(row["plus_di"])
-        hourly_location = bool(near_hourly_extreme)
-        volume_ok = volume_ratio >= SWING_REVERSAL_MIN_VOLUME_RATIO
-        adx_ok = float(row["adx"]) >= ADX_MINIMUM
-        checks = [hourly_location, rsi_turn, ema_reclaim, rsi_15m_turn, di_aligned, volume_ok, adx_ok]
-        score = sum(bool(x) for x in checks)
-        # The rejection candle is mandatory; require 4/7 context checks, not a complete trend reversal.
-        if score < SWING_REVERSAL_MIN_SCORE:
-            DIAGNOSTICS["swing_reversal_rejected"] += 1
-            REJECTION_DEBUG.append({"symbol": symbol, "stage": "SWING_REVERSAL", "reason": "CONTEXT_SCORE_TOO_LOW", "score": int(score), "required": SWING_REVERSAL_MIN_SCORE, "direction": direction, "hourly_location": hourly_location, "volume_ratio": round(float(volume_ratio), 3)})
-            continue
+    direction, extreme, level, wick_ratio, close_pos, _, _ = candidates[0]
+    DIAGNOSTICS["swing_reversal_candidates"] += 1
+    distance_atr = abs(price - close) / atr
+    if distance_atr > SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR:
+        DIAGNOSTICS["swing_reversal_rejected"] += 1
+        REJECTION_DEBUG.append({"symbol": symbol, "stage": "SWING_REVERSAL", "reason": "ENTRY_TOO_FAR_FROM_REJECTION", "direction": direction, "entry_distance_atr": round(float(distance_atr), 3)})
+        return None
 
-        stop = extreme - atr * SWING_REVERSAL_STOP_BUFFER_ATR if direction == "BUY" else extreme + atr * SWING_REVERSAL_STOP_BUFFER_ATR
-        risk = price - stop if direction == "BUY" else stop - price
-        if not np.isfinite(risk) or risk < atr * 0.15 or risk > atr * MAX_RISK_ATR:
-            DIAGNOSTICS["swing_reversal_rejected"] += 1
-            continue
-        if not validate_target_room(symbol, direction, price, risk, atr, df5, df15, "SWING_REVERSAL"):
-            DIAGNOSTICS["swing_reversal_rejected"] += 1
-            continue
+    rsi_now, rsi_prev, rsi_prev2 = float(candle["rsi"]), float(prev["rsi"]), float(prev2["rsi"])
+    rsi_turn = (rsi_now > rsi_prev and rsi_prev <= rsi_prev2) if direction == "BUY" else (rsi_now < rsi_prev and rsi_prev >= rsi_prev2)
+    ema_reclaim = close > float(candle["ema20"]) if direction == "BUY" else close < float(candle["ema20"])
+    rsi_15m_turn = float(trend["rsi"]) > float(trend_prev["rsi"]) if direction == "BUY" else float(trend["rsi"]) < float(trend_prev["rsi"])
+    di_aligned = float(candle["plus_di"]) > float(candle["minus_di"]) if direction == "BUY" else float(candle["minus_di"]) > float(candle["plus_di"])
+    hourly_location = bool(buy_hourly if direction == "BUY" else sell_hourly)
+    local_location = bool(buy_local if direction == "BUY" else sell_local)
+    volume_ok = volume_ratio >= SWING_REVERSAL_MIN_VOLUME_RATIO
+    adx_ok = float(candle["adx"]) >= ADX_MINIMUM
+    checks = [hourly_location, local_location, rsi_turn, ema_reclaim, rsi_15m_turn, di_aligned, volume_ok, adx_ok]
+    score = sum(bool(x) for x in checks)
 
-        targets, target_r, target_atr, _ = calculate_trade_targets(direction, price, risk, atr)
-        signal_time = int(row["close_time"])
-        DIAGNOSTICS["swing_reversal_confirmed"] += 1
-        return {
-            "symbol": symbol, "direction": direction, "entry": price, "stop_loss": float(stop),
-            "tp1": float(targets[0]), "tp2": float(targets[1]), "tp3": float(targets[2]),
-            "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
-            "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
-            "risk": float(risk), "risk_atr": float(risk / atr), "high_risk": False, "risk_limit_atr": MAX_RISK_ATR,
-            "confirmations": int(score), "confirmation_total": 7, "analysis_label": "SWING REVERSAL NEAR 1H EXTREME",
-            "liquidity_sweep": True, "rsi": float(row["rsi"]), "adx": float(row["adx"]), "volume_ratio": volume_ratio, "atr": atr,
-            "fvg_lower": None, "fvg_upper": None, "fvg_retest": False, "fvg_required": False,
-            "entry_model": "SWING_REVERSAL_5M_REJECTION_1H_LOCATION", "retest_time": None,
-            "retest_event_age_bars": int(age), "retest_current_distance_atr": float(distance_atr),
-            "retest_bars_after_structure": int(age), "retest_tolerance": None, "bars_since_structure": int(age),
-            "entry_extension_atr": float(distance_atr), "structure_reference": float(level),
-            "order_block": False, "order_block_zone": None, "structure": "SWING EXTREME REJECTION",
-            "structure_trend": "REVERSAL", "structure_time": int(candle["close_time"]), "sweep_time": int(candle["time"]),
-            "signal_time": signal_time, "last_checked_time": signal_time, "tp1_hit": False, "tp2_hit": False,
-            "tp3_hit": False, "status": "OPEN", "telegram_events": {}, "pending_events": [],
-            "created_at": current_time_string(), "created_date": today_string()
-        }
-    return None
+    if score < SWING_REVERSAL_MIN_SCORE:
+        DIAGNOSTICS["swing_reversal_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "SWING_REVERSAL", "reason": "CONTEXT_SCORE_TOO_LOW",
+            "score": int(score), "required": SWING_REVERSAL_MIN_SCORE, "direction": direction,
+            "checks": {"hourly_location": hourly_location, "local_location": local_location,
+                      "rsi_turn": bool(rsi_turn), "ema_reclaim": bool(ema_reclaim),
+                      "rsi_15m_turn": bool(rsi_15m_turn), "di_aligned": bool(di_aligned),
+                      "volume_ok": bool(volume_ok), "adx_ok": bool(adx_ok)},
+            "volume_ratio": round(float(volume_ratio), 3)
+        })
+        return None
+
+    stop = extreme - atr * SWING_REVERSAL_STOP_BUFFER_ATR if direction == "BUY" else extreme + atr * SWING_REVERSAL_STOP_BUFFER_ATR
+    risk = price - stop if direction == "BUY" else stop - price
+    if not np.isfinite(risk) or risk < atr * 0.15 or risk > atr * MAX_RISK_ATR:
+        DIAGNOSTICS["swing_reversal_rejected"] += 1
+        REJECTION_DEBUG.append({"symbol": symbol, "stage": "SWING_REVERSAL", "reason": "STOP_RISK_OUT_OF_RANGE", "risk_atr": round(float(risk / atr), 3) if np.isfinite(risk) else None})
+        return None
+    if not validate_target_room(symbol, direction, price, risk, atr, df5, df15, "SWING_REVERSAL"):
+        DIAGNOSTICS["swing_reversal_rejected"] += 1
+        return None
+
+    targets, target_r, target_atr, _ = calculate_trade_targets(direction, price, risk, atr)
+    signal_time = int(row["close_time"])
+    DIAGNOSTICS["swing_reversal_confirmed"] += 1
+    return {
+        "symbol": symbol, "direction": direction, "entry": price, "stop_loss": float(stop),
+        "tp1": float(targets[0]), "tp2": float(targets[1]), "tp3": float(targets[2]),
+        "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
+        "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
+        "risk": float(risk), "risk_atr": float(risk / atr), "high_risk": False, "risk_limit_atr": MAX_RISK_ATR,
+        "confirmations": int(score), "confirmation_total": 8, "analysis_label": "EARLY SWING REVERSAL AT RANGE EXTREME",
+        "liquidity_sweep": False, "rsi": float(candle["rsi"]), "adx": float(candle["adx"]), "volume_ratio": volume_ratio, "atr": atr,
+        "fvg_lower": None, "fvg_upper": None, "fvg_retest": False, "fvg_required": False,
+        "entry_model": "SWING_REVERSAL_5M_REJECTION_1H_LOCATION_NO_BREAK_REQUIRED", "retest_time": None,
+        "retest_event_age_bars": 0, "retest_current_distance_atr": float(distance_atr),
+        "retest_bars_after_structure": 0, "retest_tolerance": None, "bars_since_structure": 0,
+        "entry_extension_atr": float(distance_atr), "structure_reference": float(level),
+        "order_block": False, "order_block_zone": None, "structure": "RANGE EXTREME REJECTION",
+        "structure_trend": "REVERSAL", "structure_time": int(candle["close_time"]), "sweep_time": int(candle["time"]),
+        "signal_time": signal_time, "last_checked_time": signal_time, "tp1_hit": False, "tp2_hit": False,
+        "tp3_hit": False, "status": "OPEN", "telegram_events": {}, "pending_events": [],
+        "created_at": current_time_string(), "created_date": today_string()
+    }
 
 
 def generate_early_reversal_signal(symbol, df5, df15):
