@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.8
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.9
 # =========================================================
 
-VERSION = "6.6.8"
+VERSION = "6.6.9"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -28,11 +28,11 @@ RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR = 0.40
 
 # Independent early-reversal model; it supplements rather than weakens SMC.
 
-# A 1R target is not automatically tradable: reject trades whose TP1 is too
-# small in volatility terms or blocked by a nearby confirmed swing level.
-MIN_TP1_DISTANCE_ATR = 0.75
-MIN_TP1_DISTANCE_PCT = 0.0025
+# Targets use the larger of the R-multiple distance and the ATR distance.
+# This avoids artificially tiny targets when the structural stop is tight.
+TP_ATR_MULTIPLIERS = (1.0, 2.0, 3.0)
 TARGET_STRUCTURE_BUFFER_ATR = 0.15
+TRAILING_STOP_ATR_MULTIPLIER = 1.5
 TARGET_PIVOT_LEFT = 2
 TARGET_PIVOT_RIGHT = 2
 TARGET_LOOKBACK_5M = 72
@@ -77,7 +77,7 @@ ORDER_BLOCK_MIN_RANGE_ATR = 0.90
 ORDER_BLOCK_CLOSE_EXTREME = 0.30
 
 FALLBACK_STOP_ATR = 0.75
-SWEEP_STOP_BUFFER = 0.12
+SWEEP_STOP_BUFFER = 0.18
 
 STATE_FILE = "signals.json"
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
@@ -287,14 +287,15 @@ def send_signal(signal):
         "💰 TRADE LEVELS\n"
         f"Entry: {signal['entry']:.8g}\n"
         f"Stop Loss: {signal['stop_loss']:.8g}\n"
-        f"TP1: {signal['tp1']:.8g} (1R)\n"
-        f"TP2: {signal['tp2']:.8g} (2R)\n"
-        f"TP3: {signal['tp3']:.8g} (3R)\n"
+        f"TP1: {signal['tp1']:.8g} ({signal.get('tp1_r', 1.0):.2f}R)\n"
+        f"TP2: {signal['tp2']:.8g} ({signal.get('tp2_r', 2.0):.2f}R)\n"
+        f"TP3: {signal['tp3']:.8g} ({signal.get('tp3_r', 3.0):.2f}R)\n"
         "📈 INDICATORS\n"
         f"RSI: {signal['rsi']:.2f}\n"
         f"ADX: {signal['adx']:.2f}\n"
         f"Volume Ratio: {signal['volume_ratio']:.2f}\n"
-        f"Risk: {risk_atr:.2f} ATR"
+        f"Risk: {risk_atr:.2f} ATR\n"
+        f"Targets: {signal.get('tp1_atr', 1.0):.2f}/{signal.get('tp2_atr', 2.0):.2f}/{signal.get('tp3_atr', 3.0):.2f} ATR"
         f"{risk_warning}"
         + (
             f"\n\n⚠️ HIGH-IMPACT NEWS WINDOW\n"
@@ -323,17 +324,23 @@ def send_event_message(signal, event):
         "TP1": (
             f"✅ TP1 HIT — {symbol}\n"
             f"Target: {float(signal['tp1']):.8g}\n"
-            "Milestone: 1R"
+            f"Milestone: {float(signal.get('tp1_r', 1.0)):.2f}R"
         ),
         "TP2": (
             f"🔥 TP2 HIT — {symbol}\n"
             f"Target: {float(signal['tp2']):.8g}\n"
-            "Milestone: 2R"
+            f"Milestone: {float(signal.get('tp2_r', 2.0)):.2f}R"
         ),
         "TP3": (
             f"🚀 TP3 HIT — {symbol}\n"
             f"Target: {float(signal['tp3']):.8g}\n"
-            "Milestone: 3R — signal completed"
+            f"Milestone: {float(signal.get('tp3_r', 3.0)):.2f}R\n"
+            "Trailing stop activated — trend extension is being monitored"
+        ),
+        "TRAILING_STOP": (
+            f"🔒 TRAILING STOP HIT — {symbol}\n"
+            f"Exit level: {float(signal.get('trailing_stop', signal.get('active_stop', signal['stop_loss']))):.8g}\n"
+            "Profit protection closed the remaining position"
         ),
         "SL": (
             f"🛑 STOP LOSS HIT — {symbol}\n"
@@ -409,6 +416,7 @@ def load_state():
         signal.setdefault("tp1_hit", False)
         signal.setdefault("tp2_hit", False)
         signal.setdefault("tp3_hit", False)
+        signal.setdefault("trailing_active", False)
         signal.setdefault("telegram_events", {})
         signal.setdefault("pending_events", [])
 
@@ -919,10 +927,7 @@ def prune_expired_signals(state, now_ms=None):
 
 
 def has_open_trade_for_symbol(state, symbol):
-    """
-    TP1 does not close a trade.
-    Only TP2 or SL releases the symbol lock.
-    """
+    """Keep the symbol locked until the initial stop or trailing stop exits."""
 
     return any(
         old.get("symbol") == symbol
@@ -2065,8 +2070,24 @@ def evaluate_pending_retest(state, symbol, df5, df15):
 
 
 
+def calculate_trade_targets(direction, entry, risk, atr):
+    """Build wider volatility-aware targets without weakening structural stops."""
+    if not np.isfinite([entry, risk, atr]).all() or entry <= 0 or risk <= 0 or atr <= 0:
+        raise ValueError("Invalid entry/risk/ATR for target calculation")
+
+    distances = [
+        max(risk * float(r_multiple), atr * float(atr_multiple))
+        for r_multiple, atr_multiple in zip((1.0, 2.0, 3.0), TP_ATR_MULTIPLIERS)
+    ]
+    sign = 1.0 if direction == "BUY" else -1.0
+    targets = [entry + sign * distance for distance in distances]
+    r_values = [distance / risk for distance in distances]
+    atr_values = [distance / atr for distance in distances]
+    return targets, r_values, atr_values, distances
+
+
 def validate_target_room(symbol, direction, entry, risk, atr, df5, df15, model):
-    """Reject undersized TP1s and trades with a nearby confirmed opposing swing."""
+    """Require clear room to the volatility-aware TP1, not merely to a 1R target."""
     values = [entry, risk, atr]
     if not np.isfinite(values).all() or entry <= 0 or risk <= 0 or atr <= 0:
         DIAGNOSTICS["target_distance_rejected"] += 1
@@ -2076,18 +2097,7 @@ def validate_target_room(symbol, direction, entry, risk, atr, df5, df15, model):
         })
         return False
 
-    min_distance = max(atr * MIN_TP1_DISTANCE_ATR, entry * MIN_TP1_DISTANCE_PCT)
-    if risk < min_distance:
-        DIAGNOSTICS["target_distance_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "TARGET_QUALITY",
-            "reason": "TP1_DISTANCE_TOO_SMALL", "model": model,
-            "risk_atr": round(float(risk / atr), 3),
-            "tp1_distance_pct": round(float(risk / entry * 100), 4),
-            "minimum_atr": MIN_TP1_DISTANCE_ATR,
-            "minimum_pct": MIN_TP1_DISTANCE_PCT * 100
-        })
-        return False
+    tp1_distance = max(risk, atr * TP_ATR_MULTIPLIERS[0])
 
     # Use only fractal pivots with two subsequent candles available for confirmation.
     levels = []
@@ -2115,15 +2125,16 @@ def validate_target_room(symbol, direction, entry, risk, atr, df5, df15, model):
     if levels:
         nearest = min(levels, key=lambda x: abs(x - entry))
         free_distance = abs(nearest - entry)
-        required_room = risk + atr * TARGET_STRUCTURE_BUFFER_ATR
+        required_room = tp1_distance + atr * TARGET_STRUCTURE_BUFFER_ATR
         if free_distance < required_room:
             DIAGNOSTICS["target_structure_rejected"] += 1
             REJECTION_DEBUG.append({
                 "symbol": symbol, "stage": "TARGET_QUALITY",
-                "reason": "OPPOSING_STRUCTURE_TOO_CLOSE", "model": model,
+                "reason": "OPPOSING_STRUCTURE_BEFORE_TP1", "model": model,
                 "nearest_structure": round(float(nearest), 10),
                 "free_distance_atr": round(float(free_distance / atr), 3),
                 "required_room_atr": round(float(required_room / atr), 3),
+                "tp1_distance_atr": round(float(tp1_distance / atr), 3),
                 "direction": direction
             })
             return False
@@ -2267,10 +2278,10 @@ def generate_early_reversal_signal(symbol, df5, df15):
             DIAGNOSTICS["early_reversal_rejected"] += 1
             continue
 
-        if direction == "BUY":
-            tp1, tp2, tp3 = price + risk, price + 2*risk, price + 3*risk
-        else:
-            tp1, tp2, tp3 = price - risk, price - 2*risk, price - 3*risk
+        targets, target_r, target_atr, target_distances = calculate_trade_targets(
+            direction, price, risk, atr
+        )
+        tp1, tp2, tp3 = targets
 
         signal_time = int(row["close_time"])
         sweep_time = int(candle["time"])
@@ -2280,6 +2291,8 @@ def generate_early_reversal_signal(symbol, df5, df15):
         return {
             "symbol": symbol, "direction": direction, "entry": price,
             "stop_loss": float(stop_loss), "tp1": float(tp1), "tp2": float(tp2), "tp3": float(tp3),
+            "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
+            "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
             "risk": float(risk), "risk_atr": risk_atr, "high_risk": risk_atr > MAX_RISK_ATR,
             "risk_limit_atr": MAX_RISK_ATR, "confirmations": int(score), "confirmation_total": 5,
             "analysis_label": "EARLY REVERSAL ANALYSIS", "liquidity_sweep": True,
@@ -2365,7 +2378,7 @@ def _generate_smc_signal(symbol, df5, df15, state=None):
             structure,
             df15
         )
-    else:
+    elif not sweep_count:
         DIAGNOSTICS["structure_rejected"] += 1
 
     retest = evaluate_pending_retest(
@@ -2496,9 +2509,6 @@ def _generate_smc_signal(symbol, df5, df15, state=None):
             else entry - atr * FALLBACK_STOP_ATR
         )
         risk = entry - stop_loss
-        tp1 = entry + risk
-        tp2 = entry + 2 * risk
-        tp3 = entry + 3 * risk
     else:
         structural_stop = (
             float(setup["sweep_high"]) + atr * SWEEP_STOP_BUFFER
@@ -2509,9 +2519,6 @@ def _generate_smc_signal(symbol, df5, df15, state=None):
             else entry + atr * FALLBACK_STOP_ATR
         )
         risk = stop_loss - entry
-        tp1 = entry - risk
-        tp2 = entry - 2 * risk
-        tp3 = entry - 3 * risk
 
     if not np.isfinite(risk) or risk <= 0:
         state["pending_retests"].pop(symbol, None)
@@ -2522,6 +2529,10 @@ def _generate_smc_signal(symbol, df5, df15, state=None):
         state["pending_retests"].pop(symbol, None)
         return None
 
+    targets, target_r, target_atr, target_distances = calculate_trade_targets(
+        direction, entry, risk, atr
+    )
+    tp1, tp2, tp3 = targets
     risk_atr = float(risk / atr)
     high_risk = risk_atr > MAX_RISK_ATR
 
@@ -2553,6 +2564,8 @@ def _generate_smc_signal(symbol, df5, df15, state=None):
         "tp1": float(tp1),
         "tp2": float(tp2),
         "tp3": float(tp3),
+        "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
+        "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
         "risk": float(risk),
         "risk_atr": risk_atr,
         "high_risk": high_risk,
@@ -2796,17 +2809,20 @@ def generate_momentum_signal(symbol, df5, df15):
             DIAGNOSTICS["momentum_rejected"] += 1
             continue
 
-        if direction == "BUY":
-            tp1, tp2, tp3 = price + risk, price + 2 * risk, price + 3 * risk
-        else:
-            tp1, tp2, tp3 = price - risk, price - 2 * risk, price - 3 * risk
+        targets, target_r, target_atr, target_distances = calculate_trade_targets(
+            direction, price, risk, atr
+        )
+        tp1, tp2, tp3 = targets
 
         signal_time = int(current["close_time"])
         DIAGNOSTICS["momentum_confirmed"] += 1
         return {
             "symbol": symbol, "direction": direction, "entry": price,
             "stop_loss": float(stop_loss), "tp1": float(tp1),
-            "tp2": float(tp2), "tp3": float(tp3), "risk": float(risk),
+            "tp2": float(tp2), "tp3": float(tp3),
+            "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
+            "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
+            "risk": float(risk),
             "risk_atr": float(risk_atr), "high_risk": risk_atr > MAX_RISK_ATR,
             "risk_limit_atr": MAX_RISK_ATR, "confirmations": 6,
             "confirmation_total": 7, "analysis_label": "MOMENTUM CONTINUATION ANALYSIS",
@@ -2856,8 +2872,8 @@ def generate_signal(symbol, df5, df15, state=None):
 # =========================================================
 
 def queue_event(signal, event):
-    """Queue each milestone independently; never suppress later TP/SL events."""
-    if event not in ("ENTRY", "TP1", "TP2", "TP3", "SL"):
+    """Queue each TP, stop-loss, or trailing-stop event once."""
+    if event not in ("ENTRY", "TP1", "TP2", "TP3", "SL", "TRAILING_STOP"):
         return
 
     sent = signal.setdefault("telegram_events", {})
@@ -2870,7 +2886,7 @@ def queue_event(signal, event):
 
 
 def process_pending_events(state):
-    """Send ENTRY once, then reply to it once for every TP/SL milestone."""
+    """Send ENTRY once, then reply once for each trade-management milestone."""
     changed = False
 
     for signal in state.get("signals", []):
@@ -2920,10 +2936,10 @@ def process_pending_events(state):
 # =========================================================
 
 def update_signal_results(state):
-    """Monitor open signals and queue each TP1/TP2/TP3/SL event once."""
+    """Track TP milestones, protect gains, and trail beyond TP3 for up to 48h."""
     changed = False
-
     now_ms = int(time.time() * 1000)
+
     for signal in state.get("signals", []):
         if signal.get("status") != "OPEN":
             continue
@@ -2936,20 +2952,15 @@ def update_signal_results(state):
         if not symbol:
             continue
 
-        last_checked = int(
-            signal.get("last_checked_time", signal.get("signal_time", 0))
-        )
-
+        last_checked = int(signal.get("last_checked_time", signal.get("signal_time", 0)))
         try:
             candles = get_tracking_candles(symbol, last_checked + 1)
         except Exception as error:
             print(f"Tracking error {symbol}: {error}")
             continue
-
         if candles.empty:
             continue
 
-        # Never evaluate price candles beyond this signal's 48-hour lifetime.
         if created_ms is not None:
             expires_at = created_ms + MAX_SIGNAL_TRACKING_AGE_MS
             candles = candles[candles["close_time"] <= expires_at].reset_index(drop=True)
@@ -2957,55 +2968,101 @@ def update_signal_results(state):
                 continue
 
         direction = signal["direction"]
-        stop = float(signal["stop_loss"])
-        tp1 = float(signal["tp1"])
-        tp2 = float(signal["tp2"])
-        tp3 = float(signal["tp3"])
+        entry = float(signal["entry"])
+        initial_stop = float(signal["stop_loss"])
+        tp1, tp2, tp3 = float(signal["tp1"]), float(signal["tp2"]), float(signal["tp3"])
+        atr = float(signal.get("atr", 0) or 0)
+
+        # Restore the protected stop correctly after a workflow restart.
+        if "active_stop" not in signal:
+            if signal.get("tp2_hit"):
+                signal["active_stop"] = tp1
+            elif signal.get("tp1_hit"):
+                signal["active_stop"] = entry
+            else:
+                signal["active_stop"] = initial_stop
+            changed = True
+
+        if signal.get("trailing_active") and "trailing_stop" in signal:
+            signal["active_stop"] = float(signal["trailing_stop"])
 
         for _, candle in candles.iterrows():
-            high = float(candle["high"])
-            low = float(candle["low"])
+            high, low = float(candle["high"]), float(candle["low"])
             close_time = int(candle["close_time"])
+            trailing_active = bool(signal.get("trailing_active", False))
+            active_stop = float(signal.get("active_stop", initial_stop))
 
             if direction == "BUY":
-                stop_hit = low <= stop
-                tp1_hit = high >= tp1
-                tp2_hit = high >= tp2
-                tp3_hit = high >= tp3
+                stop_hit = low <= active_stop
+                hit1, hit2, hit3 = high >= tp1, high >= tp2, high >= tp3
             else:
-                stop_hit = high >= stop
-                tp1_hit = low <= tp1
-                tp2_hit = low <= tp2
-                tp3_hit = low <= tp3
+                stop_hit = high >= active_stop
+                hit1, hit2, hit3 = low <= tp1, low <= tp2, low <= tp3
 
-            # Conservative handling when TP and SL are both inside one candle:
-            # stop-loss takes priority because candle order is unknown.
+            # Conservative candle ordering: an already-active stop takes priority.
             if stop_hit:
-                signal["status"] = "SL"
+                signal["status"] = "TRAILING_STOP" if trailing_active else "SL"
                 signal["stop_hit_time"] = close_time
-                # The original SL notification is only valid before TP1.
-                # After TP1, do not send a misleading stop-loss reply.
-                if not signal.get("tp1_hit"):
+                if trailing_active:
+                    queue_event(signal, "TRAILING_STOP")
+                elif not signal.get("tp1_hit"):
                     queue_event(signal, "SL")
                 changed = True
                 break
 
-            if tp1_hit and not signal.get("tp1_hit"):
+            if hit1 and not signal.get("tp1_hit"):
                 signal["tp1_hit"] = True
+                signal["tp1_hit_time"] = close_time
+                signal["active_stop"] = entry  # Protect the entry after TP1.
                 queue_event(signal, "TP1")
                 changed = True
 
-            if tp2_hit and not signal.get("tp2_hit"):
+            if hit2 and not signal.get("tp2_hit"):
                 signal["tp2_hit"] = True
+                signal["tp2_hit_time"] = close_time
+                signal["active_stop"] = tp1  # Lock the first target after TP2.
                 queue_event(signal, "TP2")
                 changed = True
 
-            if tp3_hit and not signal.get("tp3_hit"):
+            if hit3 and not signal.get("tp3_hit"):
                 signal["tp3_hit"] = True
+                signal["tp3_hit_time"] = close_time
+                signal["trailing_active"] = True
+                signal["best_price"] = high if direction == "BUY" else low
+                if atr > 0:
+                    candidate = (
+                        signal["best_price"] - atr * TRAILING_STOP_ATR_MULTIPLIER
+                        if direction == "BUY"
+                        else signal["best_price"] + atr * TRAILING_STOP_ATR_MULTIPLIER
+                    )
+                    old_stop = float(signal.get("active_stop", tp1))
+                    signal["trailing_stop"] = (
+                        max(old_stop, candidate) if direction == "BUY"
+                        else min(old_stop, candidate)
+                    )
+                    signal["active_stop"] = signal["trailing_stop"]
                 queue_event(signal, "TP3")
-                signal["status"] = "TP3"
                 changed = True
-                break
+
+            # Once trailing is active, ratchet it only in the profitable direction.
+            # The updated stop becomes active from the next candle, avoiding
+            # assumptions about intrabar ordering in this candle.
+            if signal.get("trailing_active") and signal.get("tp3_hit"):
+                best = float(signal.get("best_price", high if direction == "BUY" else low))
+                best = max(best, high) if direction == "BUY" else min(best, low)
+                signal["best_price"] = best
+                if atr > 0:
+                    candidate = (
+                        best - atr * TRAILING_STOP_ATR_MULTIPLIER
+                        if direction == "BUY"
+                        else best + atr * TRAILING_STOP_ATR_MULTIPLIER
+                    )
+                    old_stop = float(signal.get("trailing_stop", signal.get("active_stop", tp1)))
+                    new_stop = max(old_stop, candidate) if direction == "BUY" else min(old_stop, candidate)
+                    if new_stop != old_stop:
+                        signal["trailing_stop"] = new_stop
+                        signal["active_stop"] = new_stop
+                        changed = True
 
         signal["last_checked_time"] = int(candles.iloc[-1]["close_time"])
         changed = True
