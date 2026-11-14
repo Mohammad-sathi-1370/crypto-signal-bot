@@ -1105,7 +1105,7 @@
       "structure_time": 1794676799999,
       "sweep_time": 1794676500000,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794683999999,
+      "last_checked_time": 1794684899999,
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": true,
@@ -1122,12 +1122,12 @@
       "telegram_message_id": 229,
       "telegram_chat_id": 104951844,
       "trailing_active": true,
-      "active_stop": 1.0516152384620243,
+      "active_stop": 1.0596152384620243,
       "tp1_hit_time": 1794677699999,
       "tp2_hit_time": 1794680099999,
       "tp3_hit_time": 1794683099999,
-      "best_price": 1.064,
-      "trailing_stop": 1.0516152384620243
+      "best_price": 1.072,
+      "trailing_stop": 1.0596152384620243
     },
     {
       "symbol": "BCHUSDT",
@@ -1436,7 +1436,7 @@
       "structure_time": 1794678599999,
       "sweep_time": 1794678300000,
       "signal_time": 1794678599999,
-      "last_checked_time": 1794683999999,
+      "last_checked_time": 1794684899999,
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
@@ -1502,7 +1502,7 @@
       "structure_time": 1794680099999,
       "sweep_time": 1794680099999,
       "signal_time": 1794680399999,
-      "last_checked_time": 1794683999999,
+      "last_checked_time": 1794684899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1564,7 +1564,7 @@
       "structure_time": 1794680399999,
       "sweep_time": 1794680399999,
       "signal_time": 1794680399999,
-      "last_checked_time": 1794683999999,
+      "last_checked_time": 1794684899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1626,7 +1626,7 @@
       "structure_time": 1794680399999,
       "sweep_time": 1794680399999,
       "signal_time": 1794680399999,
-      "last_checked_time": 1794683999999,
+      "last_checked_time": 1794684899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1688,11 +1688,11 @@
       "structure_time": 1794681899999,
       "sweep_time": 1794681600000,
       "signal_time": 1794681899999,
-      "last_checked_time": 1794683999999,
+      "last_checked_time": 1794684899999,
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -1706,7 +1706,8 @@
       "trailing_active": false,
       "active_stop": 1.42502461767299,
       "tp1_hit_time": 1794682499999,
-      "tp2_hit_time": 1794683699999
+      "tp2_hit_time": 1794683699999,
+      "stop_hit_time": 1794684599999
     },
     {
       "symbol": "QNTUSDT",
@@ -1882,19 +1883,23 @@
       "structure_time": 1794683999999,
       "sweep_time": 1794683700000,
       "signal_time": 1794683999999,
-      "last_checked_time": 1794683999999,
-      "tp1_hit": false,
+      "last_checked_time": 1794684899999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 22:53",
       "created_date": "2026-11-14",
       "telegram_message_id": 272,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.001286,
+      "tp1_hit_time": 1794684899999
     }
   ],
   "news_filter": {
