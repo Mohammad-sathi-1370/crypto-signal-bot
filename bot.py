@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.9
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.11
 # =========================================================
 
-VERSION = "6.6.10"
+VERSION = "6.6.11"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -24,7 +24,7 @@ RETEST_MAX_BARS_AFTER_STRUCTURE = 12  # Twelve closed 5m candles = 60 minutes, a
 RETEST_TOLERANCE_ATR = 0.20
 RETEST_MAX_PENETRATION_ATR = 0.40
 RETEST_EVENT_MAX_AGE_BARS = 4
-RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR = 0.40
+RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR = 0.55
 
 # Independent early-reversal model; it supplements rather than weakens SMC.
 
@@ -40,7 +40,7 @@ TARGET_LOOKBACK_15M = 32
 EARLY_REVERSAL_LOOKBACK = 12
 EARLY_REVERSAL_MAX_AGE_BARS = 2
 EARLY_REVERSAL_MIN_WICK_RATIO = 0.35
-EARLY_REVERSAL_MIN_SCORE = 3
+EARLY_REVERSAL_MIN_SCORE = 6
 EARLY_REVERSAL_MIN_VOLUME_RATIO = 1.00
 EARLY_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.35
 EARLY_REVERSAL_MIN_RISK_ATR = 0.15
@@ -2255,8 +2255,8 @@ def generate_early_reversal_signal(symbol, df5, df15):
             if direction == "BUY"
             else rsi_now < rsi_prev and rsi_prev >= rsi_prev2
         )
-        # RSI turn and above-average volume are mandatory; the remaining
-        # directional context must contribute at least one more confirmation.
+        # RSI turn and above-average volume remain mandatory. The 7-point
+        # score also checks 5m trend/DI/ADX and 15m RSI/EMA20 direction.
         if not rsi_turn or volume_ratio < EARLY_REVERSAL_MIN_VOLUME_RATIO:
             DIAGNOSTICS["early_reversal_rejected"] += 1
             REJECTION_DEBUG.append({
@@ -2275,7 +2275,9 @@ def generate_early_reversal_signal(symbol, df5, df15):
                 volume_ratio >= EARLY_REVERSAL_MIN_VOLUME_RATIO,
                 price > float(row["ema20"]),
                 float(trend["rsi"]) > float(trend_prev["rsi"]),
-                float(row["plus_di"]) > float(row["minus_di"])
+                float(row["plus_di"]) > float(row["minus_di"]),
+                float(row["adx"]) >= ADX_MINIMUM,
+                float(trend["ema20"]) > float(trend_prev["ema20"])
             ]
             stop_loss = sweep_extreme - atr * SWEEP_STOP_BUFFER
             risk = price - stop_loss
@@ -2285,7 +2287,9 @@ def generate_early_reversal_signal(symbol, df5, df15):
                 volume_ratio >= EARLY_REVERSAL_MIN_VOLUME_RATIO,
                 price < float(row["ema20"]),
                 float(trend["rsi"]) < float(trend_prev["rsi"]),
-                float(row["minus_di"]) > float(row["plus_di"])
+                float(row["minus_di"]) > float(row["plus_di"]),
+                float(row["adx"]) >= ADX_MINIMUM,
+                float(trend["ema20"]) < float(trend_prev["ema20"])
             ]
             stop_loss = sweep_extreme + atr * SWEEP_STOP_BUFFER
             risk = stop_loss - price
@@ -2320,7 +2324,7 @@ def generate_early_reversal_signal(symbol, df5, df15):
             "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
             "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
             "risk": float(risk), "risk_atr": risk_atr, "high_risk": risk_atr > MAX_RISK_ATR,
-            "risk_limit_atr": MAX_RISK_ATR, "confirmations": int(score), "confirmation_total": 5,
+            "risk_limit_atr": MAX_RISK_ATR, "confirmations": int(score), "confirmation_total": 7,
             "analysis_label": "EARLY REVERSAL ANALYSIS", "liquidity_sweep": True,
             "rsi": float(row["rsi"]), "adx": float(row["adx"]), "volume_ratio": volume_ratio, "atr": atr,
             "fvg_lower": None, "fvg_upper": None, "fvg_retest": False, "fvg_required": False,
