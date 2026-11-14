@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.13
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.0
 # =========================================================
 
-VERSION = "6.6.13"
+VERSION = "6.7.0"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -183,6 +183,16 @@ DIAGNOSTICS = {
     "open_trade_locked": 0,
     "news_warning_active": 0,
     "news_calendar_errors": 0,
+    "v67_swing_candidates": 0,
+    "v67_swing_confirmed": 0,
+    "v67_swing_rejected": 0,
+    "v67_smc_candidates": 0,
+    "v67_smc_confirmed": 0,
+    "v67_smc_rejected": 0,
+    "v67_momentum_candidates": 0,
+    "v67_momentum_confirmed": 0,
+    "v67_momentum_rejected": 0,
+    "v67_target_rejected": 0,
     "errors": 0
 }
 
@@ -3035,26 +3045,258 @@ def generate_momentum_signal(symbol, df5, df15):
     return None
 
 
-def generate_signal(symbol, df5, df15, df1h=None, state=None):
-    """Swing reversals first, then SMC, stricter early reversal and momentum continuation."""
-    if df1h is not None and len(df1h) >= SWING_REVERSAL_LOOKBACK_1H + 3:
-        df5_ind = calculate_indicators(df5)
-        df15_ind = calculate_indicators(df15)
-        df1h_ind = calculate_indicators(df1h)
-        swing_signal = generate_swing_reversal_signal(symbol, df5_ind, df15_ind, df1h_ind)
-        if swing_signal is not None:
-            return swing_signal
-    smc_signal = _generate_smc_signal(symbol, df5, df15, state)
-    if smc_signal is not None:
-        return smc_signal
-    if len(df5) < 210 or len(df15) < 50:
+def _v67_build_signal(symbol, direction, entry, stop_loss, atr, row, model,
+                      reference, structure, trend_label, confirmations,
+                      confirmation_total, structure_time=None, sweep_time=None,
+                      volume_ratio=None, liquidity_sweep=False):
+    """Build the unchanged signal schema consumed by Telegram and trade tracking."""
+    risk = entry - stop_loss if direction == "BUY" else stop_loss - entry
+    risk_atr = risk / atr if atr > 0 else float("inf")
+    if not np.isfinite([entry, stop_loss, atr, risk, risk_atr]).all():
         return None
-    df5_ind = calculate_indicators(df5)
-    df15_ind = calculate_indicators(df15)
-    early_signal = generate_early_reversal_signal(symbol, df5_ind, df15_ind)
-    if early_signal is not None:
-        return early_signal
-    return generate_momentum_signal(symbol, df5_ind, df15_ind)
+    if risk <= max(atr * 0.18, entry * 0.0005) or risk_atr > 3.2:
+        return None
+
+    targets, target_r, target_atr, _ = calculate_trade_targets(direction, entry, risk, atr)
+    signal_time = int(row["close_time"])
+    stime = int(structure_time if structure_time is not None else signal_time)
+    swtime = int(sweep_time if sweep_time is not None else stime)
+    return {
+        "symbol": symbol, "direction": direction, "entry": float(entry),
+        "stop_loss": float(stop_loss), "tp1": float(targets[0]),
+        "tp2": float(targets[1]), "tp3": float(targets[2]),
+        "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
+        "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
+        "risk": float(risk), "risk_atr": float(risk_atr), "high_risk": risk_atr > MAX_RISK_ATR,
+        "risk_limit_atr": MAX_RISK_ATR, "confirmations": int(confirmations),
+        "confirmation_total": int(confirmation_total), "analysis_label": model.replace("_", " "),
+        "liquidity_sweep": bool(liquidity_sweep), "rsi": float(row["rsi"]),
+        "adx": float(row["adx"]), "volume_ratio": float(volume_ratio if volume_ratio is not None else 1.0),
+        "atr": float(atr), "fvg_lower": None, "fvg_upper": None,
+        "fvg_retest": False, "fvg_required": False, "entry_model": model,
+        "retest_time": None, "retest_event_age_bars": 0,
+        "retest_current_distance_atr": 0.0, "retest_bars_after_structure": 0,
+        "retest_tolerance": None, "bars_since_structure": 0,
+        "entry_extension_atr": 0.0, "structure_reference": float(reference),
+        "order_block": False, "order_block_zone": None, "structure": structure,
+        "structure_trend": trend_label, "structure_time": stime, "sweep_time": swtime,
+        "signal_time": signal_time, "last_checked_time": signal_time,
+        "tp1_hit": False, "tp2_hit": False, "tp3_hit": False, "status": "OPEN",
+        "telegram_events": {}, "pending_events": [],
+        "created_at": current_time_string(), "created_date": today_string()
+    }
+
+
+def _v67_swing_engine(symbol, df5, df15, df1h):
+    """Early turning-point engine: hourly location + multi-candle reaction; no wick/sweep mandate."""
+    if df1h is None or min(len(df5), len(df15), len(df1h)) < 30:
+        return None
+    c, p, p2 = df5.iloc[-1], df5.iloc[-2], df5.iloc[-3]
+    t, tp = df15.iloc[-1], df15.iloc[-2]
+    h1 = df1h.iloc[-1]
+    vals = [c["close"], c["atr"], c["rsi"], c["volume_avg"], h1["atr"],
+            t["rsi"], tp["rsi"], c["plus_di"], c["minus_di"]]
+    if not np.isfinite(vals).all() or float(c["atr"]) <= 0 or float(h1["atr"]) <= 0:
+        return None
+    price, atr, atr1h = float(c["close"]), float(c["atr"]), float(h1["atr"])
+    local = df5.iloc[-25:-1]
+    hourly = df1h.iloc[-25:-1]
+    if len(local) < 12 or len(hourly) < 12:
+        return None
+    local_low, local_high = float(local["low"].min()), float(local["high"].max())
+    hour_low, hour_high = float(hourly["low"].min()), float(hourly["high"].max())
+    buy_location = (float(c["low"]) <= hour_low + 1.15 * atr1h or float(c["low"]) <= local_low + .45 * atr)
+    sell_location = (float(c["high"]) >= hour_high - 1.15 * atr1h or float(c["high"]) >= local_high - .45 * atr)
+
+    # Reversal can be a reclaim, engulfing move, or two-bar momentum turn.
+    bull_trigger = (float(c["close"]) > float(c["open"]) and
+                    (float(c["close"]) > float(p["high"]) or
+                     (float(p["close"]) < float(p["open"]) and float(c["close"]) > float(p["close"]))))
+    bear_trigger = (float(c["close"]) < float(c["open"]) and
+                    (float(c["close"]) < float(p["low"]) or
+                     (float(p["close"]) > float(p["open"]) and float(c["close"]) < float(p["close"]))))
+    rsi_up = float(c["rsi"]) > float(p["rsi"]) and float(p["rsi"]) <= float(p2["rsi"])
+    rsi_down = float(c["rsi"]) < float(p["rsi"]) and float(p["rsi"]) >= float(p2["rsi"])
+    vol = float(c["volume"]) / max(float(c["volume_avg"]), 1e-12)
+    buy_checks = [buy_location, bull_trigger, rsi_up,
+                  float(t["rsi"]) >= float(tp["rsi"]) or float(t["close"]) > float(t["ema20"]),
+                  float(c["plus_di"]) > float(c["minus_di"]) or vol >= .95]
+    sell_checks = [sell_location, bear_trigger, rsi_down,
+                   float(t["rsi"]) <= float(tp["rsi"]) or float(t["close"]) < float(t["ema20"]),
+                   float(c["minus_di"]) > float(c["plus_di"]) or vol >= .95]
+    options = []
+    if buy_location and bull_trigger:
+        options.append(("BUY", sum(map(bool, buy_checks)), local_low, hour_low, buy_checks))
+    if sell_location and bear_trigger:
+        options.append(("SELL", sum(map(bool, sell_checks)), local_high, hour_high, sell_checks))
+    if not options:
+        return None
+    DIAGNOSTICS["v67_swing_candidates"] += len(options)
+    options.sort(key=lambda x: x[1], reverse=True)
+    direction, score, local_edge, hourly_edge, checks = options[0]
+    if len(options) > 1 or score < 3:
+        DIAGNOSTICS["v67_swing_rejected"] += 1
+        return None
+    if direction == "BUY":
+        extreme = min(float(df5.iloc[-6:]["low"].min()), float(c["low"]))
+        stop = extreme - .18 * atr
+        reference = max(local_edge, hourly_edge)
+    else:
+        extreme = max(float(df5.iloc[-6:]["high"].max()), float(c["high"]))
+        stop = extreme + .18 * atr
+        reference = min(local_edge, hourly_edge)
+    sig = _v67_build_signal(symbol, direction, price, stop, atr, c,
+        "V67_SWING_REVERSAL_LOCATION_REACTION", reference,
+        "HOURLY EXTREME REACTION", "REVERSAL", score, 5,
+        int(c["close_time"]), int(c["time"]), vol, False)
+    if sig is None or not validate_target_room(symbol, direction, price, abs(price-stop), atr, df5, df15, "V67_SWING"):
+        DIAGNOSTICS["v67_swing_rejected"] += 1
+        DIAGNOSTICS["v67_target_rejected"] += 1
+        return None
+    DIAGNOSTICS["v67_swing_confirmed"] += 1
+    return sig
+
+
+def _v67_smc_engine(symbol, df5, df15):
+    """Fresh 15m BOS/CHOCH plus a current 5m hold/reclaim; no persistent retest queue."""
+    if len(df5) < 40 or len(df15) < 30:
+        return None
+    c = df5.iloc[-1]
+    price, atr = float(c["close"]), float(c["atr"])
+    if not np.isfinite([price, atr, float(c["rsi"]), float(c["volume_avg"])]).all() or atr <= 0:
+        return None
+    candidates = []
+    # Look for a recent confirmed 15m close beyond the preceding 12-bar range.
+    for i in range(len(df15)-1, max(11, len(df15)-5)-1, -1):
+        bar = df15.iloc[i]
+        prior = df15.iloc[i-12:i]
+        if len(prior) < 12:
+            continue
+        hi, lo, cl, op = map(float, (bar["high"], bar["low"], bar["close"], bar["open"]))
+        upper, lower = float(prior["high"].max()), float(prior["low"].min())
+        if cl > upper and cl > op:
+            candidates.append(("BUY", upper, int(bar["close_time"]), i))
+        elif cl < lower and cl < op:
+            candidates.append(("SELL", lower, int(bar["close_time"]), i))
+    if not candidates:
+        return None
+    direction, level, stime, idx = candidates[0]
+    DIAGNOSTICS["v67_smc_candidates"] += 1
+    age = len(df15)-1-idx
+    dist = abs(price-level)/atr
+    recent5 = df5.iloc[-4:]
+    if direction == "BUY":
+        held = price >= level - .30*atr and float(c["close"]) > float(c["open"])
+        reclaimed = float(recent5["low"].min()) <= level + .55*atr and price > level
+        stop = min(float(df5.iloc[-7:]["low"].min()), level - .25*atr) - .12*atr
+    else:
+        held = price <= level + .30*atr and float(c["close"]) < float(c["open"])
+        reclaimed = float(recent5["high"].max()) >= level - .55*atr and price < level
+        stop = max(float(df5.iloc[-7:]["high"].max()), level + .25*atr) + .12*atr
+    # A fresh breakout can be traded on continuation or first retest, but not chased.
+    if age > 3 or dist > 1.35 or not (held or reclaimed):
+        DIAGNOSTICS["v67_smc_rejected"] += 1
+        return None
+    score = 2 + int(held) + int(reclaimed) + int(
+        float(c["plus_di"]) > float(c["minus_di"]) if direction == "BUY"
+        else float(c["minus_di"]) > float(c["plus_di"])
+    )
+    sig = _v67_build_signal(symbol, direction, price, stop, atr, c,
+        "V67_SMC_BOS_CHOCH_RETEST", level, "BOS/CHOCH + 5M HOLD",
+        "CONTINUATION", score, 5, stime, stime,
+        float(c["volume"])/max(float(c["volume_avg"]), 1e-12), False)
+    if sig is None or not validate_target_room(symbol, direction, price, abs(price-stop), atr, df5, df15, "V67_SMC"):
+        DIAGNOSTICS["v67_smc_rejected"] += 1
+        DIAGNOSTICS["v67_target_rejected"] += 1
+        return None
+    DIAGNOSTICS["v67_smc_confirmed"] += 1
+    return sig
+
+
+def _v67_momentum_engine(symbol, df5, df15):
+    """Early impulse/continuation model with adaptive evidence, not a hard EMA-extension veto."""
+    if len(df5) < 35 or len(df15) < 25:
+        return None
+    c, p = df5.iloc[-1], df5.iloc[-2]
+    t, tp = df15.iloc[-1], df15.iloc[-2]
+    price, atr = float(c["close"]), float(c["atr"])
+    vals = [price, atr, float(c["rsi"]), float(c["adx"]), float(c["volume_avg"]),
+            float(c["ema20"]), float(t["ema20"]), float(tp["ema20"])]
+    if not np.isfinite(vals).all() or atr <= 0:
+        return None
+    prior = df5.iloc[-13:-1]
+    if len(prior) < 10:
+        return None
+    hi, lo = float(prior["high"].max()), float(prior["low"].min())
+    opn, high, low, close = map(float, (c["open"], c["high"], c["low"], c["close"]))
+    rng = max(high-low, 1e-12)
+    body = abs(close-opn)/rng
+    vol = float(c["volume"])/max(float(c["volume_avg"]), 1e-12)
+    bull_break = close > hi and close > opn
+    bear_break = close < lo and close < opn
+    bull_reclaim = close > float(c["ema20"]) and float(p["close"]) <= float(p["ema20"]) and close > opn
+    bear_reclaim = close < float(c["ema20"]) and float(p["close"]) >= float(p["ema20"]) and close < opn
+    trend_buy = (float(t["close"]) > float(t["ema20"]) or float(t["ema20"]) > float(tp["ema20"]) or float(t["plus_di"]) > float(t["minus_di"]))
+    trend_sell = (float(t["close"]) < float(t["ema20"]) or float(t["ema20"]) < float(tp["ema20"]) or float(t["minus_di"]) > float(t["plus_di"]))
+    choices = []
+    if bull_break or bull_reclaim:
+        score = sum([bull_break, bull_reclaim, trend_buy,
+                     float(c["plus_di"]) > float(c["minus_di"]),
+                     vol >= .80 or float(c["adx"]) >= 16,
+                     48 <= float(c["rsi"]) <= 78])
+        choices.append(("BUY", score, hi if bull_break else float(c["ema20"]), trend_buy))
+    if bear_break or bear_reclaim:
+        score = sum([bear_break, bear_reclaim, trend_sell,
+                     float(c["minus_di"]) > float(c["plus_di"]),
+                     vol >= .80 or float(c["adx"]) >= 16,
+                     22 <= float(c["rsi"]) <= 52])
+        choices.append(("SELL", score, lo if bear_break else float(c["ema20"]), trend_sell))
+    if not choices:
+        return None
+    DIAGNOSTICS["v67_momentum_candidates"] += len(choices)
+    choices.sort(key=lambda x: x[1], reverse=True)
+    direction, score, level, trend_ok = choices[0]
+    if len(choices) > 1 or score < 4 or not trend_ok or body < .28 or (high-low) > 3.0*atr:
+        DIAGNOSTICS["v67_momentum_rejected"] += 1
+        return None
+    extension = (price-level)/atr if direction == "BUY" else (level-price)/atr
+    if extension < -0.20 or extension > 1.60:
+        DIAGNOSTICS["v67_momentum_rejected"] += 1
+        return None
+    if direction == "BUY":
+        stop = min(float(df5.iloc[-6:]["low"].min()), level-.22*atr)-.10*atr
+    else:
+        stop = max(float(df5.iloc[-6:]["high"].max()), level+.22*atr)+.10*atr
+    sig = _v67_build_signal(symbol, direction, price, stop, atr, c,
+        "V67_MOMENTUM_EARLY_IMPULSE_OR_EMA_RECLAIM", level,
+        "EARLY IMPULSE / CONTINUATION", "CONTINUATION", score, 6,
+        int(c["close_time"]), int(c["close_time"]), vol, False)
+    if sig is None or not validate_target_room(symbol, direction, price, abs(price-stop), atr, df5, df15, "V67_MOMENTUM"):
+        DIAGNOSTICS["v67_momentum_rejected"] += 1
+        DIAGNOSTICS["v67_target_rejected"] += 1
+        return None
+    DIAGNOSTICS["v67_momentum_confirmed"] += 1
+    return sig
+
+
+def generate_signal(symbol, df5, df15, df1h=None, state=None):
+    """v6.7.0 independent entry engines: Swing Reversal, SMC, then Momentum."""
+    if len(df5) < 210 or len(df15) < 50:
+        DIAGNOSTICS["insufficient_data"] += 1
+        return None
+    df5i = calculate_indicators(df5)
+    df15i = calculate_indicators(df15)
+    df1hi = calculate_indicators(df1h) if df1h is not None and len(df1h) >= 30 else None
+
+    # Priority: reversal at meaningful HTF extremes, then fresh structure, then continuation.
+    if df1hi is not None:
+        signal = _v67_swing_engine(symbol, df5i, df15i, df1hi)
+        if signal is not None:
+            return signal
+    signal = _v67_smc_engine(symbol, df5i, df15i)
+    if signal is not None:
+        return signal
+    return _v67_momentum_engine(symbol, df5i, df15i)
 
 
 
@@ -3409,7 +3651,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry models: Early Swing Reversal (5m rejection + 1h location) + SMC + Early Reversal + Momentum Continuation.")
+    print("Entry models v6.7: redesigned Swing Reversal + fresh BOS/CHOCH SMC + early Momentum impulse.")
 
     print("=" * 48)
 
@@ -3591,7 +3833,7 @@ def run_scanner():
             print(
                 f"NEW SIGNAL: {symbol} "
                 f"{signal['direction']} "
-                f"{signal['confirmations']}/7 "
+                f"{signal['confirmations']}/{signal.get('confirmation_total', 7)} "
                 f"RISK={signal['risk_atr']:.2f} ATR"
                 f"{risk_tag}"
             )
