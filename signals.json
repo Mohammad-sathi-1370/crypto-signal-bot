@@ -407,33 +407,19 @@
     "last_alert_key": "usd-ppi-mom.20261113T1330"
   },
   "pending_setups": {
-    "PUMPUSDT": {
-      "symbol": "PUMPUSDT",
-      "direction": "BUY",
-      "sweep_time": 1794651300000,
-      "reference": 0.003415,
-      "reference_type": "SWING_HIGH",
-      "bars_checked": 3,
-      "sweep_low": 0.003267,
-      "sweep_high": 0.003289,
-      "liquidity_level": 0.00327,
-      "bars_required": 4,
-      "expires_at": 1794655800000,
-      "updated_at": "2026-11-14 14:54"
-    },
     "BARDUSDT": {
       "symbol": "BARDUSDT",
       "direction": "BUY",
       "sweep_time": 1794653100000,
       "reference": 0.1282,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 1,
+      "bars_checked": 3,
       "sweep_low": 0.121,
       "sweep_high": 0.123,
       "liquidity_level": 0.1212,
       "bars_required": 4,
       "expires_at": 1794657600000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "WLDUSDT": {
       "symbol": "WLDUSDT",
@@ -441,13 +427,13 @@
       "sweep_time": 1794654000000,
       "reference": 0.2835,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 0.2777,
       "sweep_high": 0.2798,
       "liquidity_level": 0.2785,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "RENDERUSDT": {
       "symbol": "RENDERUSDT",
@@ -455,13 +441,13 @@
       "sweep_time": 1794654000000,
       "reference": 1.498,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 1.472,
       "sweep_high": 1.482,
       "liquidity_level": 1.475,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "APTUSDT": {
       "symbol": "APTUSDT",
@@ -469,41 +455,41 @@
       "sweep_time": 1794654000000,
       "reference": 0.516,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 0.5091,
       "sweep_high": 0.5123,
       "liquidity_level": 0.5098,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "HYPEUSDT": {
       "symbol": "HYPEUSDT",
       "direction": "BUY",
-      "sweep_time": 1794654000000,
+      "sweep_time": 1794655800000,
       "reference": 69.72,
       "reference_type": "SWING_HIGH",
       "bars_checked": 0,
-      "sweep_low": 68.74,
-      "sweep_high": 69.18,
-      "liquidity_level": 68.77,
+      "sweep_low": 68.41,
+      "sweep_high": 68.87,
+      "liquidity_level": 68.61,
       "bars_required": 4,
-      "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "expires_at": 1794660300000,
+      "updated_at": "2026-11-14 15:17"
     },
     "ENAUSDT": {
       "symbol": "ENAUSDT",
       "direction": "BUY",
-      "sweep_time": 1794653100000,
+      "sweep_time": 1794655800000,
       "reference": 0.1293,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 1,
-      "sweep_low": 0.1265,
-      "sweep_high": 0.1273,
-      "liquidity_level": 0.1268,
+      "bars_checked": 0,
+      "sweep_low": 0.1261,
+      "sweep_high": 0.1274,
+      "liquidity_level": 0.1263,
       "bars_required": 4,
-      "expires_at": 1794657600000,
-      "updated_at": "2026-11-14 14:54"
+      "expires_at": 1794660300000,
+      "updated_at": "2026-11-14 15:17"
     },
     "INJUSDT": {
       "symbol": "INJUSDT",
@@ -511,13 +497,13 @@
       "sweep_time": 1794654000000,
       "reference": 8.06,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 7.883,
       "sweep_high": 7.955,
       "liquidity_level": 7.891,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "TAOUSDT": {
       "symbol": "TAOUSDT",
@@ -525,13 +511,13 @@
       "sweep_time": 1794654000000,
       "reference": 209.0,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 205.8,
       "sweep_high": 207.5,
       "liquidity_level": 206.2,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "QNTUSDT": {
       "symbol": "QNTUSDT",
@@ -539,27 +525,27 @@
       "sweep_time": 1794654000000,
       "reference": 155.62,
       "reference_type": "SWING_LOW",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 157.46,
       "sweep_high": 159.07,
       "liquidity_level": 158.99,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "PENGUUSDT": {
       "symbol": "PENGUUSDT",
       "direction": "BUY",
-      "sweep_time": 1794654000000,
+      "sweep_time": 1794655800000,
       "reference": 0.005902,
       "reference_type": "SWING_HIGH",
       "bars_checked": 0,
-      "sweep_low": 0.005807,
-      "sweep_high": 0.005835,
-      "liquidity_level": 0.005825,
+      "sweep_low": 0.005796,
+      "sweep_high": 0.005832,
+      "liquidity_level": 0.005807,
       "bars_required": 4,
-      "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "expires_at": 1794660300000,
+      "updated_at": "2026-11-14 15:17"
     },
     "STRKUSDT": {
       "symbol": "STRKUSDT",
@@ -567,13 +553,13 @@
       "sweep_time": 1794654000000,
       "reference": 0.03644,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 0.03553,
       "sweep_high": 0.03581,
       "liquidity_level": 0.03566,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "ETHFIUSDT": {
       "symbol": "ETHFIUSDT",
@@ -581,13 +567,13 @@
       "sweep_time": 1794653100000,
       "reference": 0.5571,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 1,
+      "bars_checked": 3,
       "sweep_low": 0.551,
       "sweep_high": 0.553,
       "liquidity_level": 0.5513,
       "bars_required": 4,
       "expires_at": 1794657600000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "DASHUSDT": {
       "symbol": "DASHUSDT",
@@ -595,13 +581,13 @@
       "sweep_time": 1794654000000,
       "reference": 40.05,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 39.57,
       "sweep_high": 39.77,
       "liquidity_level": 39.58,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
     },
     "WUSDT": {
       "symbol": "WUSDT",
@@ -609,13 +595,111 @@
       "sweep_time": 1794654000000,
       "reference": 0.00955,
       "reference_type": "SWING_HIGH",
-      "bars_checked": 0,
+      "bars_checked": 2,
       "sweep_low": 0.00938,
       "sweep_high": 0.00955,
       "liquidity_level": 0.00941,
       "bars_required": 4,
       "expires_at": 1794658500000,
-      "updated_at": "2026-11-14 14:54"
+      "updated_at": "2026-11-14 15:17"
+    },
+    "UNIUSDT": {
+      "symbol": "UNIUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794655800000,
+      "reference": 5.558,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 0,
+      "sweep_low": 5.464,
+      "sweep_high": 5.509,
+      "liquidity_level": 5.481,
+      "bars_required": 4,
+      "expires_at": 1794660300000,
+      "updated_at": "2026-11-14 15:17"
+    },
+    "TRXUSDT": {
+      "symbol": "TRXUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794655800000,
+      "reference": 0.314,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 0,
+      "sweep_low": 0.3128,
+      "sweep_high": 0.3131,
+      "liquidity_level": 0.3129,
+      "bars_required": 4,
+      "expires_at": 1794660300000,
+      "updated_at": "2026-11-14 15:17"
+    },
+    "AAVEUSDT": {
+      "symbol": "AAVEUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794655800000,
+      "reference": 108.15,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 0,
+      "sweep_low": 106.91,
+      "sweep_high": 107.37,
+      "liquidity_level": 106.93,
+      "bars_required": 4,
+      "expires_at": 1794660300000,
+      "updated_at": "2026-11-14 15:17"
+    },
+    "FETUSDT": {
+      "symbol": "FETUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794655800000,
+      "reference": 0.142,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 0,
+      "sweep_low": 0.1385,
+      "sweep_high": 0.1399,
+      "liquidity_level": 0.1387,
+      "bars_required": 4,
+      "expires_at": 1794660300000,
+      "updated_at": "2026-11-14 15:17"
+    },
+    "ONDOUSDT": {
+      "symbol": "ONDOUSDT",
+      "direction": "BUY",
+      "sweep_time": 1794655800000,
+      "reference": 0.3316,
+      "reference_type": "SWING_HIGH",
+      "bars_checked": 0,
+      "sweep_low": 0.3266,
+      "sweep_high": 0.3287,
+      "liquidity_level": 0.3271,
+      "bars_required": 4,
+      "expires_at": 1794660300000,
+      "updated_at": "2026-11-14 15:17"
+    },
+    "ARBUSDT": {
+      "symbol": "ARBUSDT",
+      "direction": "SELL",
+      "sweep_time": 1794654900000,
+      "reference": 0.138,
+      "reference_type": "SWING_LOW",
+      "bars_checked": 1,
+      "sweep_low": 0.1402,
+      "sweep_high": 0.1407,
+      "liquidity_level": 0.1406,
+      "bars_required": 4,
+      "expires_at": 1794659400000,
+      "updated_at": "2026-11-14 15:17"
+    },
+    "ONEUSDT": {
+      "symbol": "ONEUSDT",
+      "direction": "SELL",
+      "sweep_time": 1794654900000,
+      "reference": 0.001316,
+      "reference_type": "SWING_LOW",
+      "bars_checked": 1,
+      "sweep_low": 0.001359,
+      "sweep_high": 0.001378,
+      "liquidity_level": 0.001372,
+      "bars_required": 4,
+      "expires_at": 1794659400000,
+      "updated_at": "2026-11-14 15:17"
     }
   },
   "pending_retests": {}
