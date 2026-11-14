@@ -13,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.0
 # =========================================================
 
-VERSION = "6.7.1-SWING-ONLY"
+VERSION = "6.7.2-SWING-QUALITY"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -50,7 +50,8 @@ SWING_REVERSAL_LOOKBACK_5M = 24
 SWING_REVERSAL_LOOKBACK_1H = 12
 SWING_REVERSAL_MAX_EVENT_AGE = 0  # Use the latest fully closed 5m candle only.
 SWING_REVERSAL_MIN_WICK_RATIO = 0.30
-SWING_REVERSAL_MIN_SCORE = 5  # 5 of 8 contextual checks; location + rejection remain mandatory.
+SWING_REVERSAL_MIN_SCORE = 4  # Require at least 4 of the 5 active core confirmations.
+SWING_REVERSAL_REQUIRE_COMPLEMENT = True  # Also require at least one independent confirmation.
 SWING_REVERSAL_MIN_VOLUME_RATIO = 0.80
 SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.45
 SWING_REVERSAL_STOP_BUFFER_ATR = 0.22
@@ -309,6 +310,8 @@ def send_signal(signal):
         f"Entry Extension: {signal.get('entry_extension_atr', 0.0):.2f} ATR\n"
         f"FVG Context: {'YES' if signal.get('fvg_retest') else 'NO'}\n"
         f"Order Block: {'YES' if signal['order_block'] else 'NO'}\n"
+        f"15m Structure Shift: {'YES' if signal.get('structure_shift_15m') else 'NO'}\n"
+        f"Complementary Confirmations: {signal.get('complementary_count', 0)}/4\n"
         f"{ob_zone_text}\n"
         "💰 TRADE LEVELS\n"
         f"Entry: {signal['entry']:.8g}\n"
@@ -3134,8 +3137,14 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
     DIAGNOSTICS["v67_swing_candidates"] += len(options)
     options.sort(key=lambda x: x[1], reverse=True)
     direction, score, local_edge, hourly_edge, checks = options[0]
-    if len(options) > 1 or score < 3:
+    if len(options) > 1 or score < SWING_REVERSAL_MIN_SCORE:
         DIAGNOSTICS["v67_swing_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "V67_SWING",
+            "reason": "CORE_CONFIRMATIONS_BELOW_4_OF_5",
+            "score": int(score), "required": SWING_REVERSAL_MIN_SCORE,
+            "direction": direction, "checks": [bool(x) for x in checks]
+        })
         return None
     if direction == "BUY":
         extreme = min(float(df5.iloc[-6:]["low"].min()), float(c["low"]))
@@ -3145,14 +3154,63 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
         extreme = max(float(df5.iloc[-6:]["high"].max()), float(c["high"]))
         stop = extreme + .18 * atr
         reference = min(local_edge, hourly_edge)
+
+    # Independent complementary evidence. The location/reversal score alone is not enough.
+    recent = df5.iloc[-13:-1]
+    prior_low = float(recent["low"].min())
+    prior_high = float(recent["high"].max())
+    if direction == "BUY":
+        liquidity_sweep = float(c["low"]) < prior_low and price > prior_low
+        structure_shift_15m = (float(t["close"]) > float(tp["high"]) and
+                               float(t["close"]) > float(t["open"]))
+        ob_reference = local_edge
+    else:
+        liquidity_sweep = float(c["high"]) > prior_high and price < prior_high
+        structure_shift_15m = (float(t["close"]) < float(tp["low"]) and
+                               float(t["close"]) < float(t["open"]))
+        ob_reference = local_edge
+
+    fvg_zone = detect_fvg_retest(df5, direction, int(p["close_time"]), atr)
+    order_block_zone = detect_order_block(df5, direction, int(p["close_time"]), ob_reference)
+    fvg_confirmed = bool(fvg_zone)
+    order_block_confirmed = bool(order_block_zone)
+    complementary = [bool(liquidity_sweep), fvg_confirmed,
+                     order_block_confirmed, bool(structure_shift_15m)]
+    complementary_count = sum(complementary)
+
+    if SWING_REVERSAL_REQUIRE_COMPLEMENT and complementary_count < 1:
+        DIAGNOSTICS["v67_swing_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "V67_SWING",
+            "reason": "NO_INDEPENDENT_COMPLEMENTARY_CONFIRMATION",
+            "score": int(score), "required_score": SWING_REVERSAL_MIN_SCORE,
+            "direction": direction,
+            "complementary": {
+                "liquidity_sweep": bool(liquidity_sweep),
+                "fvg": fvg_confirmed,
+                "order_block": order_block_confirmed,
+                "structure_shift_15m": bool(structure_shift_15m)
+            }
+        })
+        return None
+
     sig = _v67_build_signal(symbol, direction, price, stop, atr, c,
         "V67_SWING_REVERSAL_LOCATION_REACTION", reference,
         "HOURLY EXTREME REACTION", "REVERSAL", score, 5,
-        int(c["close_time"]), int(c["time"]), vol, False)
+        int(c["close_time"]), int(c["time"]), vol, liquidity_sweep)
     if sig is None or not validate_target_room(symbol, direction, price, abs(price-stop), atr, df5, df15, "V67_SWING"):
         DIAGNOSTICS["v67_swing_rejected"] += 1
         DIAGNOSTICS["v67_target_rejected"] += 1
         return None
+
+    sig["fvg_retest"] = bool(fvg_confirmed)
+    sig["fvg_lower"] = float(fvg_zone["lower"]) if fvg_zone else None
+    sig["fvg_upper"] = float(fvg_zone["upper"]) if fvg_zone else None
+    sig["order_block"] = bool(order_block_confirmed)
+    sig["order_block_zone"] = order_block_zone
+    sig["structure_shift_15m"] = bool(structure_shift_15m)
+    sig["complementary_count"] = int(complementary_count)
+
     DIAGNOSTICS["v67_swing_confirmed"] += 1
     return sig
 
@@ -3647,7 +3705,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry model: SWING REVERSAL ONLY (SMC and Momentum entries disabled).")
+    print("Entry model: SWING REVERSAL QUALITY (minimum 4/5 + at least 1 complementary confirmation).")
 
     print("=" * 48)
 
