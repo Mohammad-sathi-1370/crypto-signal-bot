@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.7
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.6.8
 # =========================================================
 
-VERSION = "6.6.7"
+VERSION = "6.6.8"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -27,6 +27,16 @@ RETEST_EVENT_MAX_AGE_BARS = 4
 RETEST_CURRENT_PRICE_MAX_DISTANCE_ATR = 0.40
 
 # Independent early-reversal model; it supplements rather than weakens SMC.
+
+# A 1R target is not automatically tradable: reject trades whose TP1 is too
+# small in volatility terms or blocked by a nearby confirmed swing level.
+MIN_TP1_DISTANCE_ATR = 0.75
+MIN_TP1_DISTANCE_PCT = 0.0025
+TARGET_STRUCTURE_BUFFER_ATR = 0.15
+TARGET_PIVOT_LEFT = 2
+TARGET_PIVOT_RIGHT = 2
+TARGET_LOOKBACK_5M = 72
+TARGET_LOOKBACK_15M = 32
 EARLY_REVERSAL_LOOKBACK = 12
 EARLY_REVERSAL_MAX_AGE_BARS = 2
 EARLY_REVERSAL_MIN_WICK_RATIO = 0.35
@@ -151,6 +161,8 @@ DIAGNOSTICS = {
     "risk_rejected": 0,
     "risk_rejected_invalid": 0,
     "risk_rejected_too_wide": 0,
+    "target_distance_rejected": 0,
+    "target_structure_rejected": 0,
     "duplicate_signals": 0,
     "open_trade_locked": 0,
     "news_warning_active": 0,
@@ -2053,6 +2065,71 @@ def evaluate_pending_retest(state, symbol, df5, df15):
 
 
 
+def validate_target_room(symbol, direction, entry, risk, atr, df5, df15, model):
+    """Reject undersized TP1s and trades with a nearby confirmed opposing swing."""
+    values = [entry, risk, atr]
+    if not np.isfinite(values).all() or entry <= 0 or risk <= 0 or atr <= 0:
+        DIAGNOSTICS["target_distance_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "TARGET_QUALITY",
+            "reason": "INVALID_TARGET_INPUT", "model": model
+        })
+        return False
+
+    min_distance = max(atr * MIN_TP1_DISTANCE_ATR, entry * MIN_TP1_DISTANCE_PCT)
+    if risk < min_distance:
+        DIAGNOSTICS["target_distance_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "TARGET_QUALITY",
+            "reason": "TP1_DISTANCE_TOO_SMALL", "model": model,
+            "risk_atr": round(float(risk / atr), 3),
+            "tp1_distance_pct": round(float(risk / entry * 100), 4),
+            "minimum_atr": MIN_TP1_DISTANCE_ATR,
+            "minimum_pct": MIN_TP1_DISTANCE_PCT * 100
+        })
+        return False
+
+    # Use only fractal pivots with two subsequent candles available for confirmation.
+    levels = []
+    for frame, lookback in ((df5, TARGET_LOOKBACK_5M), (df15, TARGET_LOOKBACK_15M)):
+        if frame is None or len(frame) < TARGET_PIVOT_LEFT + TARGET_PIVOT_RIGHT + 3:
+            continue
+        sample = frame.tail(lookback + TARGET_PIVOT_RIGHT + 2).reset_index(drop=True)
+        highs = pd.to_numeric(sample["high"], errors="coerce").to_numpy(dtype=float)
+        lows = pd.to_numeric(sample["low"], errors="coerce").to_numpy(dtype=float)
+        last_confirmable = len(sample) - TARGET_PIVOT_RIGHT
+        for i in range(TARGET_PIVOT_LEFT, last_confirmable):
+            left_h = highs[i-TARGET_PIVOT_LEFT:i]
+            right_h = highs[i+1:i+1+TARGET_PIVOT_RIGHT]
+            left_l = lows[i-TARGET_PIVOT_LEFT:i]
+            right_l = lows[i+1:i+1+TARGET_PIVOT_RIGHT]
+            if not (np.isfinite(highs[i]) and np.isfinite(lows[i])):
+                continue
+            if direction == "BUY":
+                if highs[i] > entry and highs[i] >= np.max(left_h) and highs[i] > np.max(right_h):
+                    levels.append(float(highs[i]))
+            else:
+                if lows[i] < entry and lows[i] <= np.min(left_l) and lows[i] < np.min(right_l):
+                    levels.append(float(lows[i]))
+
+    if levels:
+        nearest = min(levels, key=lambda x: abs(x - entry))
+        free_distance = abs(nearest - entry)
+        required_room = risk + atr * TARGET_STRUCTURE_BUFFER_ATR
+        if free_distance < required_room:
+            DIAGNOSTICS["target_structure_rejected"] += 1
+            REJECTION_DEBUG.append({
+                "symbol": symbol, "stage": "TARGET_QUALITY",
+                "reason": "OPPOSING_STRUCTURE_TOO_CLOSE", "model": model,
+                "nearest_structure": round(float(nearest), 10),
+                "free_distance_atr": round(float(free_distance / atr), 3),
+                "required_room_atr": round(float(required_room / atr), 3),
+                "direction": direction
+            })
+            return False
+    return True
+
+
 def generate_early_reversal_signal(symbol, df5, df15):
     """Fresh 5m liquidity-sweep reversal with wick, reclaim, RSI and volume checks."""
     if len(df5) < EARLY_REVERSAL_LOOKBACK + 5 or len(df15) < 3:
@@ -2184,6 +2261,10 @@ def generate_early_reversal_signal(symbol, df5, df15):
         if not np.isfinite(risk) or risk < atr * EARLY_REVERSAL_MIN_RISK_ATR:
             DIAGNOSTICS["early_reversal_rejected"] += 1
             REJECTION_DEBUG.append({"symbol": symbol, "stage": "EARLY_REVERSAL", "reason": "STOP_DISTANCE_TOO_SMALL_OR_INVALID"})
+            continue
+
+        if not validate_target_room(symbol, direction, price, risk, atr, df5, df15, "EARLY_REVERSAL"):
+            DIAGNOSTICS["early_reversal_rejected"] += 1
             continue
 
         if direction == "BUY":
@@ -2435,6 +2516,10 @@ def _generate_smc_signal(symbol, df5, df15, state=None):
     if not np.isfinite(risk) or risk <= 0:
         state["pending_retests"].pop(symbol, None)
         DIAGNOSTICS["invalid_values"] += 1
+        return None
+
+    if not validate_target_room(symbol, direction, entry, risk, atr, df5, df15, "SMC"):
+        state["pending_retests"].pop(symbol, None)
         return None
 
     risk_atr = float(risk / atr)
@@ -2705,6 +2790,10 @@ def generate_momentum_signal(symbol, df5, df15):
                 "momentum_reject_risk", "STOP_DISTANCE_OUTSIDE_VALID_RANGE",
                 risk_atr=round(float(risk_atr), 3)
             )
+            continue
+
+        if not validate_target_room(symbol, direction, price, risk, atr, df5, df15, "MOMENTUM"):
+            DIAGNOSTICS["momentum_rejected"] += 1
             continue
 
         if direction == "BUY":
