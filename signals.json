@@ -651,11 +651,11 @@
       "structure_time": 1794676199999,
       "sweep_time": 1794675900000,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794678599999,
+      "last_checked_time": 1794679499999,
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
@@ -669,7 +669,8 @@
       "trailing_active": false,
       "active_stop": 103.15446330619932,
       "tp1_hit_time": 1794677099999,
-      "tp2_hit_time": 1794677099999
+      "tp2_hit_time": 1794677099999,
+      "stop_hit_time": 1794678899999
     },
     {
       "symbol": "PUMPUSDT",
@@ -781,7 +782,7 @@
       "structure_time": 1794676199999,
       "sweep_time": 1794676199999,
       "signal_time": 1794676199999,
-      "last_checked_time": 1794678599999,
+      "last_checked_time": 1794679499999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1102,7 +1103,7 @@
       "structure_time": 1794676799999,
       "sweep_time": 1794676500000,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794678599999,
+      "last_checked_time": 1794679499999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1295,11 +1296,11 @@
       "structure_time": 1794676799999,
       "sweep_time": 1794676500000,
       "signal_time": 1794676799999,
-      "last_checked_time": 1794678599999,
+      "last_checked_time": 1794679499999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
@@ -1311,7 +1312,8 @@
       "telegram_chat_id": 104951844,
       "trailing_active": false,
       "active_stop": 0.0838,
-      "tp1_hit_time": 1794677699999
+      "tp1_hit_time": 1794677699999,
+      "stop_hit_time": 1794679499999
     },
     {
       "symbol": "PENGUUSDT",
@@ -1359,19 +1361,26 @@
       "structure_time": 1794678599999,
       "sweep_time": 1794678599999,
       "signal_time": 1794678599999,
-      "last_checked_time": 1794678599999,
-      "tp1_hit": false,
-      "tp2_hit": false,
+      "last_checked_time": 1794679499999,
+      "tp1_hit": true,
+      "tp2_hit": true,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-14 21:20",
       "created_date": "2026-11-14",
       "telegram_message_id": 248,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.0051339194821453426,
+      "tp1_hit_time": 1794678899999,
+      "tp2_hit_time": 1794679199999,
+      "stop_hit_time": 1794679499999
     },
     {
       "symbol": "PAXGUSDT",
@@ -1419,7 +1428,7 @@
       "structure_time": 1794678599999,
       "sweep_time": 1794678300000,
       "signal_time": 1794678599999,
-      "last_checked_time": 1794678599999,
+      "last_checked_time": 1794679499999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -1431,7 +1440,9 @@
       "created_at": "2026-11-14 21:20",
       "created_date": "2026-11-14",
       "telegram_message_id": 249,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 3840.2365245197084
     }
   ],
   "news_filter": {
