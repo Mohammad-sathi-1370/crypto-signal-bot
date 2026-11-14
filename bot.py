@@ -13,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.0
 # =========================================================
 
-VERSION = "6.7.0"
+VERSION = "6.7.1-SWING-ONLY"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -3280,7 +3280,7 @@ def _v67_momentum_engine(symbol, df5, df15):
 
 
 def generate_signal(symbol, df5, df15, df1h=None, state=None):
-    """v6.7.0 independent entry engines: Swing Reversal, SMC, then Momentum."""
+    """v6.7.1: only the v6.7 Swing Reversal entry model is allowed."""
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
@@ -3288,15 +3288,11 @@ def generate_signal(symbol, df5, df15, df1h=None, state=None):
     df15i = calculate_indicators(df15)
     df1hi = calculate_indicators(df1h) if df1h is not None and len(df1h) >= 30 else None
 
-    # Priority: reversal at meaningful HTF extremes, then fresh structure, then continuation.
-    if df1hi is not None:
-        signal = _v67_swing_engine(symbol, df5i, df15i, df1hi)
-        if signal is not None:
-            return signal
-    signal = _v67_smc_engine(symbol, df5i, df15i)
-    if signal is not None:
-        return signal
-    return _v67_momentum_engine(symbol, df5i, df15i)
+    # Swing-only mode: SMC and Momentum engines are intentionally not called.
+    # If 1h context is unavailable, do not fall back to another entry model.
+    if df1hi is None:
+        return None
+    return _v67_swing_engine(symbol, df5i, df15i, df1hi)
 
 
 
@@ -3651,7 +3647,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry models v6.7: redesigned Swing Reversal + fresh BOS/CHOCH SMC + early Momentum impulse.")
+    print("Entry model: SWING REVERSAL ONLY (SMC and Momentum entries disabled).")
 
     print("=" * 48)
 
