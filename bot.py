@@ -13,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.0
 # =========================================================
 
-VERSION = "6.7.2-SWING-QUALITY"
+VERSION = "6.7.3-SWING-FLEX"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -51,7 +51,7 @@ SWING_REVERSAL_LOOKBACK_1H = 12
 SWING_REVERSAL_MAX_EVENT_AGE = 0  # Use the latest fully closed 5m candle only.
 SWING_REVERSAL_MIN_WICK_RATIO = 0.30
 SWING_REVERSAL_MIN_SCORE = 4  # Require at least 4 of the 5 active core confirmations.
-SWING_REVERSAL_REQUIRE_COMPLEMENT = True  # Also require at least one independent confirmation.
+SWING_REVERSAL_REQUIRE_COMPLEMENT = False  # Complementary evidence is quality information, not a hard gate.
 SWING_REVERSAL_MIN_VOLUME_RATIO = 0.80
 SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.45
 SWING_REVERSAL_STOP_BUFFER_ATR = 0.22
@@ -3705,7 +3705,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry model: SWING REVERSAL QUALITY (minimum 4/5 + at least 1 complementary confirmation).")
+    print("Entry model: SWING REVERSAL FLEX (minimum 4/5 core confirmations; complementary evidence is optional quality context).")
 
     print("=" * 48)
 
