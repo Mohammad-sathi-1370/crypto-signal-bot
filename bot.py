@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.4
 # =========================================================
 
-VERSION = "6.7.3-SWING-FLEX"
+VERSION = "6.7.4-HTF-TARGET-ENGINE"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -37,6 +37,17 @@ TARGET_PIVOT_LEFT = 2
 TARGET_PIVOT_RIGHT = 2
 TARGET_LOOKBACK_5M = 72
 TARGET_LOOKBACK_15M = 32
+
+# 6.7.4: hourly structure and volatility drive swing trade targets.
+HTF_TARGET_LOOKBACK_1H = 180
+HTF_TARGET_PIVOT_LEFT = 2
+HTF_TARGET_PIVOT_RIGHT = 2
+HTF_TARGET_MIN_R_MULTIPLE = 1.25
+HTF_TARGET_MIN_ATR5_MULTIPLE = 1.50
+HTF_TARGET_MIN_ATR1H_MULTIPLE = 0.45
+HTF_TARGET_BUFFER_ATR1H = 0.08
+HTF_TARGET_EXTENSION_ATR1H = (0.75, 1.50, 2.25)
+HTF_TARGET_MIN_SEPARATION_ATR1H = 0.30
 EARLY_REVERSAL_LOOKBACK = 12
 EARLY_REVERSAL_MAX_AGE_BARS = 2
 EARLY_REVERSAL_MIN_WICK_RATIO = 0.35
@@ -324,7 +335,8 @@ def send_signal(signal):
         f"ADX: {signal['adx']:.2f}\n"
         f"Volume Ratio: {signal['volume_ratio']:.2f}\n"
         f"Risk: {risk_atr:.2f} ATR\n"
-        f"Targets: {signal.get('tp1_atr', 1.0):.2f}/{signal.get('tp2_atr', 2.0):.2f}/{signal.get('tp3_atr', 3.0):.2f} ATR"
+        f"Targets: {signal.get('tp1_atr', 1.0):.2f}/{signal.get('tp2_atr', 2.0):.2f}/{signal.get('tp3_atr', 3.0):.2f} 5m ATR\n"
+        f"Target Model: {signal.get('target_mode', 'LEGACY_5M_ATR')}"
         f"{risk_warning}"
         + (
             f"\n\n⚠️ HIGH-IMPACT NEWS WINDOW\n"
@@ -3048,10 +3060,85 @@ def generate_momentum_signal(symbol, df5, df15):
     return None
 
 
+
+def _v674_calculate_hourly_targets(direction, entry, risk, atr5, df1h):
+    """Select targets from confirmed 1h swing levels, with ATR1h extensions only beyond known structure."""
+    if df1h is None or len(df1h) < 30:
+        return None
+    h = df1h.tail(HTF_TARGET_LOOKBACK_1H).reset_index(drop=True)
+    required = ["high", "low", "atr"]
+    if any(col not in h.columns for col in required):
+        return None
+    atr1h = float(h.iloc[-1]["atr"])
+    if not np.isfinite([entry, risk, atr5, atr1h]).all() or min(entry, risk, atr5, atr1h) <= 0:
+        return None
+
+    sign = 1.0 if direction == "BUY" else -1.0
+    min_distance = max(risk * HTF_TARGET_MIN_R_MULTIPLE,
+                       atr5 * HTF_TARGET_MIN_ATR5_MULTIPLE,
+                       atr1h * HTF_TARGET_MIN_ATR1H_MULTIPLE)
+    highs = pd.to_numeric(h["high"], errors="coerce").to_numpy(dtype=float)
+    lows = pd.to_numeric(h["low"], errors="coerce").to_numpy(dtype=float)
+    pivots = []
+    last = len(h) - HTF_TARGET_PIVOT_RIGHT
+    for i in range(HTF_TARGET_PIVOT_LEFT, last):
+        if direction == "BUY":
+            left = highs[i-HTF_TARGET_PIVOT_LEFT:i]
+            right = highs[i+1:i+1+HTF_TARGET_PIVOT_RIGHT]
+            if np.isfinite(highs[i]) and np.isfinite(left).all() and np.isfinite(right).all():
+                if highs[i] >= np.max(left) and highs[i] > np.max(right) and highs[i] > entry:
+                    pivots.append(float(highs[i]))
+        else:
+            left = lows[i-HTF_TARGET_PIVOT_LEFT:i]
+            right = lows[i+1:i+1+HTF_TARGET_PIVOT_RIGHT]
+            if np.isfinite(lows[i]) and np.isfinite(left).all() and np.isfinite(right).all():
+                if lows[i] <= np.min(left) and lows[i] < np.min(right) and lows[i] < entry:
+                    pivots.append(float(lows[i]))
+
+    # Convert pivot prices to executable target prices just before the opposing level.
+    buffer = atr1h * HTF_TARGET_BUFFER_ATR1H
+    pivot_distances = sorted({round((p - sign * buffer - entry) * sign, 12)
+                              for p in pivots
+                              if (p - sign * buffer - entry) * sign > 0})
+
+    # A nearby hourly barrier inside the minimum TP1 distance means there is not enough room.
+    if pivot_distances and pivot_distances[0] < min_distance:
+        return None
+
+    distances = []
+    if pivot_distances:
+        for d in pivot_distances:
+            if not distances or d - distances[-1] >= atr1h * HTF_TARGET_MIN_SEPARATION_ATR1H:
+                distances.append(float(d))
+            if len(distances) == 3:
+                break
+
+    # If the chart has fewer than three confirmed pivots, extend beyond the last known level.
+    base = max(min_distance, distances[-1] if distances else 0.0)
+    for multiple in HTF_TARGET_EXTENSION_ATR1H:
+        candidate = max(min_distance * multiple / HTF_TARGET_EXTENSION_ATR1H[0], atr1h * multiple)
+        if candidate <= base:
+            continue
+        if not distances or candidate - distances[-1] >= atr1h * HTF_TARGET_MIN_SEPARATION_ATR1H:
+            distances.append(float(candidate))
+        if len(distances) >= 3:
+            break
+    # Ensure three strictly increasing levels without compressing the hourly scale.
+    while len(distances) < 3:
+        next_distance = (distances[-1] if distances else min_distance) + max(atr1h * 0.75, min_distance * 0.5)
+        distances.append(float(next_distance))
+
+    distances = distances[:3]
+    targets = [float(entry + sign * d) for d in distances]
+    r_values = [float(d / risk) for d in distances]
+    atr5_values = [float(d / atr5) for d in distances]
+    return targets, r_values, atr5_values, distances, atr1h
+
+
 def _v67_build_signal(symbol, direction, entry, stop_loss, atr, row, model,
                       reference, structure, trend_label, confirmations,
                       confirmation_total, structure_time=None, sweep_time=None,
-                      volume_ratio=None, liquidity_sweep=False):
+                      volume_ratio=None, liquidity_sweep=False, df1h=None):
     """Build the unchanged signal schema consumed by Telegram and trade tracking."""
     risk = entry - stop_loss if direction == "BUY" else stop_loss - entry
     risk_atr = risk / atr if atr > 0 else float("inf")
@@ -3060,7 +3147,14 @@ def _v67_build_signal(symbol, direction, entry, stop_loss, atr, row, model,
     if risk <= max(atr * 0.18, entry * 0.0005) or risk_atr > 3.2:
         return None
 
-    targets, target_r, target_atr, _ = calculate_trade_targets(direction, entry, risk, atr)
+    hourly_targets = _v674_calculate_hourly_targets(direction, entry, risk, atr, df1h) if df1h is not None else None
+    if df1h is not None and hourly_targets is None:
+        return None
+    if hourly_targets is not None:
+        targets, target_r, target_atr, target_distances, atr1h = hourly_targets
+    else:
+        targets, target_r, target_atr, target_distances = calculate_trade_targets(direction, entry, risk, atr)
+        atr1h = None
     signal_time = int(row["close_time"])
     stime = int(structure_time if structure_time is not None else signal_time)
     swtime = int(sweep_time if sweep_time is not None else stime)
@@ -3070,6 +3164,10 @@ def _v67_build_signal(symbol, direction, entry, stop_loss, atr, row, model,
         "tp2": float(targets[1]), "tp3": float(targets[2]),
         "tp1_r": float(target_r[0]), "tp2_r": float(target_r[1]), "tp3_r": float(target_r[2]),
         "tp1_atr": float(target_atr[0]), "tp2_atr": float(target_atr[1]), "tp3_atr": float(target_atr[2]),
+        "target_mode": "1H_STRUCTURE_ATR" if hourly_targets is not None else "LEGACY_5M_ATR",
+        "target_atr_1h": float(atr1h) if atr1h is not None else None,
+        "target_distance_1": float(target_distances[0]), "target_distance_2": float(target_distances[1]),
+        "target_distance_3": float(target_distances[2]),
         "risk": float(risk), "risk_atr": float(risk_atr), "high_risk": risk_atr > MAX_RISK_ATR,
         "risk_limit_atr": MAX_RISK_ATR, "confirmations": int(confirmations),
         "confirmation_total": int(confirmation_total), "analysis_label": model.replace("_", " "),
@@ -3197,7 +3295,7 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
     sig = _v67_build_signal(symbol, direction, price, stop, atr, c,
         "V67_SWING_REVERSAL_LOCATION_REACTION", reference,
         "HOURLY EXTREME REACTION", "REVERSAL", score, 5,
-        int(c["close_time"]), int(c["time"]), vol, liquidity_sweep)
+        int(c["close_time"]), int(c["time"]), vol, liquidity_sweep, df1h=df1h)
     if sig is None or not validate_target_room(symbol, direction, price, abs(price-stop), atr, df5, df15, "V67_SWING"):
         DIAGNOSTICS["v67_swing_rejected"] += 1
         DIAGNOSTICS["v67_target_rejected"] += 1
@@ -3338,7 +3436,7 @@ def _v67_momentum_engine(symbol, df5, df15):
 
 
 def generate_signal(symbol, df5, df15, df1h=None, state=None):
-    """v6.7.1: only the v6.7 Swing Reversal entry model is allowed."""
+    """v6.7.4: swing-reversal entries with 1h structure/volatility-based targets."""
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
