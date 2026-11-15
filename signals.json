@@ -2513,14 +2513,15 @@
       "structure_time": 1794742499999,
       "sweep_time": 1794742200000,
       "signal_time": 1794742499999,
-      "last_checked_time": 1794744899999,
+      "last_checked_time": 1794746699999,
       "tp1_hit": true,
-      "tp2_hit": false,
+      "tp2_hit": true,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
         "ENTRY": true,
-        "TP1": true
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-15 15:09",
@@ -2530,8 +2531,9 @@
       "telegram_message_id": 306,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 1.503,
-      "tp1_hit_time": 1794744299999
+      "active_stop": 1.4924046618512763,
+      "tp1_hit_time": 1794744299999,
+      "tp2_hit_time": 1794746099999
     },
     {
       "symbol": "RENDERUSDT",
@@ -2645,13 +2647,14 @@
       "structure_time": 1794744899999,
       "sweep_time": 1794744600000,
       "signal_time": 1794744899999,
-      "last_checked_time": 1794744899999,
+      "last_checked_time": 1794746699999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-15 15:49",
@@ -2659,7 +2662,10 @@
       "structure_shift_15m": false,
       "complementary_count": 0,
       "telegram_message_id": 312,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.5357715967567823,
+      "stop_hit_time": 1794745199999
     }
   ],
   "news_filter": {
