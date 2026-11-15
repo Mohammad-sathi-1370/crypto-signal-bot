@@ -2038,7 +2038,7 @@
       "structure_time": 1794733799999,
       "sweep_time": 1794733500000,
       "signal_time": 1794733799999,
-      "last_checked_time": 1794737399999,
+      "last_checked_time": 1794740099999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2304,11 +2304,11 @@
       "structure_time": 1794734399999,
       "sweep_time": 1794734100000,
       "signal_time": 1794734399999,
-      "last_checked_time": 1794737399999,
+      "last_checked_time": 1794740099999,
       "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true
@@ -2322,7 +2322,8 @@
       "telegram_chat_id": 104951844,
       "trailing_active": false,
       "active_stop": 7.296,
-      "tp1_hit_time": 1794735299999
+      "tp1_hit_time": 1794735299999,
+      "stop_hit_time": 1794737699999
     },
     {
       "symbol": "TAOUSDT",
