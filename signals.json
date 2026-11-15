@@ -2538,7 +2538,7 @@
       "structure_time": 1794753899999,
       "sweep_time": 1794753600000,
       "signal_time": 1794753899999,
-      "last_checked_time": 1794753899999,
+      "last_checked_time": 1794754199999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2552,7 +2552,9 @@
       "structure_shift_15m": false,
       "complementary_count": 1,
       "telegram_message_id": 315,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 876.259689791508
     },
     {
       "symbol": "HYPEUSDT",
@@ -2600,7 +2602,7 @@
       "structure_time": 1794753899999,
       "sweep_time": 1794753600000,
       "signal_time": 1794753899999,
-      "last_checked_time": 1794753899999,
+      "last_checked_time": 1794754199999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -2614,7 +2616,9 @@
       "structure_shift_15m": false,
       "complementary_count": 1,
       "telegram_message_id": 316,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 66.52716185518743
     }
   ],
   "news_filter": {
