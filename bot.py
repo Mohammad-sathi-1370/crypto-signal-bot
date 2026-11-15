@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.4
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.5
 # =========================================================
 
-VERSION = "6.7.4-HTF-TARGET-ENGINE"
+VERSION = "6.7.5-HTF-REVERSAL-ENGINE"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -68,6 +68,13 @@ SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.45
 SWING_REVERSAL_STOP_BUFFER_ATR = 0.22
 SWING_REVERSAL_HOURLY_ZONE_ATR = 0.85
 SWING_REVERSAL_LOCAL_ZONE_ATR = 0.35
+
+# 6.7.5: multi-timeframe reversal validation.
+SWING_1H_PIVOT_LOOKBACK = 72
+SWING_1H_PIVOT_ZONE_ATR = 0.70
+SWING_1H_RANGE_ZONE_ATR = 0.95
+SWING_15M_SHIFT_LOOKBACK = 48
+SWING_COMPLEMENT_MIN_WITHOUT_SHIFT = 2  # Sweep/OB/FVG: at least two if no genuine 15m shift.
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -205,6 +212,7 @@ DIAGNOSTICS = {
     "v67_momentum_confirmed": 0,
     "v67_momentum_rejected": 0,
     "v67_target_rejected": 0,
+    "v675_quality_rejected": 0,
     "errors": 0
 }
 
@@ -3188,6 +3196,50 @@ def _v67_build_signal(symbol, direction, entry, stop_loss, atr, row, model,
     }
 
 
+def _v675_detect_15m_reversal_shift(df15, direction):
+    """Require a closed 15m candle to cross the latest confirmed opposing swing level."""
+    if df15 is None or len(df15) < 12:
+        return False, None
+    work = df15.tail(SWING_15M_SHIFT_LOOKBACK).reset_index(drop=True)
+    # The last two bars on either side are needed to confirm a pivot; exclude
+    # the current candle from pivot discovery and use only closed candles.
+    highs, lows = find_confirmed_swings(work, len(work) - 2)
+    if direction == "BUY":
+        pivots = [p for p in highs if p["index"] < len(work) - 2]
+        if not pivots:
+            return False, None
+        level = float(pivots[-1]["price"])
+        prev_close = float(work.iloc[-2]["close"])
+        last = work.iloc[-1]
+        valid = (prev_close <= level and float(last["close"]) > level
+                 and float(last["close"]) > float(last["open"]))
+    else:
+        pivots = [p for p in lows if p["index"] < len(work) - 2]
+        if not pivots:
+            return False, None
+        level = float(pivots[-1]["price"])
+        prev_close = float(work.iloc[-2]["close"])
+        last = work.iloc[-1]
+        valid = (prev_close >= level and float(last["close"]) < level
+                 and float(last["close"]) < float(last["open"]))
+    return bool(valid), level
+
+
+def _v675_hourly_pivot_location(df1h, direction, current_extreme, atr1h):
+    """Check proximity to a recently confirmed 1h swing pivot, not just a rolling range."""
+    if df1h is None or len(df1h) < 20 or atr1h <= 0:
+        return False, None
+    work = df1h.tail(SWING_1H_PIVOT_LOOKBACK).reset_index(drop=True)
+    highs, lows = find_confirmed_swings(work, len(work) - 2)
+    pivots = lows if direction == "BUY" else highs
+    if not pivots:
+        return False, None
+    # Prefer the latest confirmed pivot; it represents the nearest recent structure.
+    pivot = float(pivots[-1]["price"])
+    distance = abs(float(current_extreme) - pivot)
+    return bool(distance <= atr1h * SWING_1H_PIVOT_ZONE_ATR), pivot
+
+
 def _v67_swing_engine(symbol, df5, df15, df1h):
     """Early turning-point engine: hourly location + multi-candle reaction; no wick/sweep mandate."""
     if df1h is None or min(len(df5), len(df15), len(df1h)) < 30:
@@ -3201,13 +3253,18 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
         return None
     price, atr, atr1h = float(c["close"]), float(c["atr"]), float(h1["atr"])
     local = df5.iloc[-25:-1]
-    hourly = df1h.iloc[-25:-1]
-    if len(local) < 12 or len(hourly) < 12:
+    hourly = df1h.iloc[-49:-1]
+    if len(local) < 12 or len(hourly) < 20:
         return None
     local_low, local_high = float(local["low"].min()), float(local["high"].max())
     hour_low, hour_high = float(hourly["low"].min()), float(hourly["high"].max())
-    buy_location = (float(c["low"]) <= hour_low + 1.15 * atr1h or float(c["low"]) <= local_low + .45 * atr)
-    sell_location = (float(c["high"]) >= hour_high - 1.15 * atr1h or float(c["high"]) >= local_high - .45 * atr)
+    buy_pivot_ok, buy_pivot = _v675_hourly_pivot_location(df1h, "BUY", float(c["low"]), atr1h)
+    sell_pivot_ok, sell_pivot = _v675_hourly_pivot_location(df1h, "SELL", float(c["high"]), atr1h)
+    buy_hourly_range = float(c["low"]) <= hour_low + SWING_1H_RANGE_ZONE_ATR * atr1h
+    sell_hourly_range = float(c["high"]) >= hour_high - SWING_1H_RANGE_ZONE_ATR * atr1h
+    # 1H is a true location filter; a local 5m extreme alone cannot qualify.
+    buy_location = (buy_hourly_range or buy_pivot_ok) and float(c["low"]) <= local_low + .45 * atr
+    sell_location = (sell_hourly_range or sell_pivot_ok) and float(c["high"]) >= local_high - .45 * atr
 
     # Reversal can be a reclaim, engulfing move, or two-bar momentum turn.
     bull_trigger = (float(c["close"]) > float(c["open"]) and
@@ -3259,22 +3316,38 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
     prior_high = float(recent["high"].max())
     if direction == "BUY":
         liquidity_sweep = float(c["low"]) < prior_low and price > prior_low
-        structure_shift_15m = (float(t["close"]) > float(tp["high"]) and
-                               float(t["close"]) > float(t["open"]))
         ob_reference = local_edge
     else:
         liquidity_sweep = float(c["high"]) > prior_high and price < prior_high
-        structure_shift_15m = (float(t["close"]) < float(tp["low"]) and
-                               float(t["close"]) < float(t["open"]))
         ob_reference = local_edge
+    structure_shift_15m, structure_shift_level = _v675_detect_15m_reversal_shift(df15, direction)
 
     fvg_zone = detect_fvg_retest(df5, direction, int(p["close_time"]), atr)
     order_block_zone = detect_order_block(df5, direction, int(p["close_time"]), ob_reference)
     fvg_confirmed = bool(fvg_zone)
     order_block_confirmed = bool(order_block_zone)
-    complementary = [bool(liquidity_sweep), fvg_confirmed,
-                     order_block_confirmed, bool(structure_shift_15m)]
+    non_shift_complementary = [bool(liquidity_sweep), fvg_confirmed, order_block_confirmed]
+    complementary = non_shift_complementary + [bool(structure_shift_15m)]
     complementary_count = sum(complementary)
+    # A real 15m swing break can validate the turn on its own. Without it,
+    # demand at least two independent clues among sweep, FVG and order block.
+    quality_gate_ok = bool(structure_shift_15m) or (
+        sum(non_shift_complementary) >= SWING_COMPLEMENT_MIN_WITHOUT_SHIFT
+    )
+
+    if not quality_gate_ok:
+        DIAGNOSTICS["v67_swing_rejected"] += 1
+        DIAGNOSTICS["v675_quality_rejected"] += 1
+        REJECTION_DEBUG.append({
+            "symbol": symbol, "stage": "V675_QUALITY",
+            "reason": "15M_SHIFT_OR_TWO_COMPLEMENTARY_CONFIRMATIONS_REQUIRED",
+            "direction": direction, "score": int(score),
+            "liquidity_sweep": bool(liquidity_sweep),
+            "fvg": bool(fvg_confirmed), "order_block": bool(order_block_confirmed),
+            "structure_shift_15m": bool(structure_shift_15m),
+            "structure_shift_level": structure_shift_level
+        })
+        return None
 
     if SWING_REVERSAL_REQUIRE_COMPLEMENT and complementary_count < 1:
         DIAGNOSTICS["v67_swing_rejected"] += 1
@@ -3307,7 +3380,11 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
     sig["order_block"] = bool(order_block_confirmed)
     sig["order_block_zone"] = order_block_zone
     sig["structure_shift_15m"] = bool(structure_shift_15m)
+    sig["structure_shift_level_15m"] = float(structure_shift_level) if structure_shift_level is not None else None
+    pivot_reference = buy_pivot if direction == "BUY" else sell_pivot
+    sig["hourly_pivot_reference"] = float(pivot_reference) if pivot_reference is not None else None
     sig["complementary_count"] = int(complementary_count)
+    sig["quality_gate"] = "15M_SHIFT" if structure_shift_15m else "2_OF_SWEEP_OB_FVG"
 
     DIAGNOSTICS["v67_swing_confirmed"] += 1
     return sig
@@ -3436,7 +3513,7 @@ def _v67_momentum_engine(symbol, df5, df15):
 
 
 def generate_signal(symbol, df5, df15, df1h=None, state=None):
-    """v6.7.4: swing-reversal entries with 1h structure/volatility-based targets."""
+    """v6.7.5: 1h pivot location + genuine 15m swing-break validation + 5m reversal entry."""
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
