@@ -2909,14 +2909,15 @@
       "structure_time": 1794818399999,
       "sweep_time": 1794818100000,
       "signal_time": 1794818399999,
-      "last_checked_time": 1794824699999,
+      "last_checked_time": 1794829499999,
       "tp1_hit": true,
-      "tp2_hit": false,
+      "tp2_hit": true,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
         "ENTRY": true,
-        "TP1": true
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-16 12:11",
@@ -2926,8 +2927,10 @@
       "telegram_message_id": 334,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 6.647,
-      "tp1_hit_time": 1794823799999
+      "active_stop": 6.697485203610163,
+      "tp1_hit_time": 1794823799999,
+      "tp2_hit_time": 1794826799999,
+      "stop_hit_time": 1794829199999
     },
     {
       "symbol": "BEAMXUSDT",
@@ -3049,13 +3052,17 @@
       "structure_time": 1794824699999,
       "sweep_time": 1794824400000,
       "signal_time": 1794824699999,
-      "last_checked_time": 1794824699999,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "status": "OPEN",
+      "last_checked_time": 1794829499999,
+      "tp1_hit": true,
+      "tp2_hit": true,
+      "tp3_hit": true,
+      "status": "TRAILING_STOP",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true,
+        "TP2": true,
+        "TP3": true,
+        "TRAILING_STOP": true
       },
       "pending_events": [],
       "created_at": "2026-11-16 13:57",
@@ -3063,7 +3070,15 @@
       "structure_shift_15m": false,
       "complementary_count": 1,
       "telegram_message_id": 338,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": true,
+      "active_stop": 0.20543716177563506,
+      "tp1_hit_time": 1794824999999,
+      "tp2_hit_time": 1794826499999,
+      "tp3_hit_time": 1794826799999,
+      "best_price": 0.2063,
+      "trailing_stop": 0.20543716177563506,
+      "stop_hit_time": 1794827699999
     }
   ],
   "news_filter": {
