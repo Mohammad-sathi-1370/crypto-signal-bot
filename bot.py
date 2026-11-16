@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.4 RSI EXTREME
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.6 RSI 26/74
 # =========================================================
 
-VERSION = "6.7.5-SWING-FLEX-RSI-EXTREME-WIDER-STOP"
+VERSION = "6.7.6-SWING-FLEX-RSI-26-74-WIDER-STOP"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -3339,7 +3339,7 @@ def _v67_momentum_engine(symbol, df5, df15):
 
 
 def generate_rsi_extreme_signal(symbol, df5, df15_live):
-    """Independent 15m live-candle RSI extreme model (BUY <=23, SELL >=77)."""
+    """Independent 15m live-candle RSI extreme model (BUY <=26, SELL >=74)."""
     if df5 is None or df15_live is None or len(df5) < 30 or len(df15_live) < 50:
         return None
 
@@ -3354,9 +3354,9 @@ def generate_rsi_extreme_signal(symbol, df5, df15_live):
         return None
 
     rsi_value = float(live_15m["rsi"])
-    if rsi_value >= 77.0:
+    if rsi_value >= 74.0:
         direction = "SELL"
-    elif rsi_value < 23.0:
+    elif rsi_value <= 26.0:
         direction = "BUY"
     else:
         return None
@@ -3391,7 +3391,7 @@ def generate_rsi_extreme_signal(symbol, df5, df15_live):
 
     signal["signal_timeframe"] = "15m"
     signal["rsi_candle_time"] = candle_open_time
-    signal["rsi_threshold"] = 77.0 if direction == "SELL" else 23.0
+    signal["rsi_threshold"] = 74.0 if direction == "SELL" else 26.0
     signal["analysis_label"] = "RSI EXTREME 15M"
     return signal
 
@@ -3769,7 +3769,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry models: RSI EXTREME 15M (live RSI <23 BUY / >=77 SELL) + existing SWING REVERSAL FLEX.")
+    print("Entry models: RSI EXTREME 15M (live RSI <=26 BUY / >=74 SELL) + existing SWING REVERSAL FLEX.")
 
     print("=" * 48)
 
