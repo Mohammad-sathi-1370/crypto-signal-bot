@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.6 RSI 26/74
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.7 BINANCE SPOT TOP 100
 # =========================================================
 
-VERSION = "6.7.6-SWING-FLEX-RSI-26-74-WIDER-STOP"
+VERSION = "6.7.7-SWING-FLEX-RSI-26-74-WIDER-STOP-BINANCE-TOP100"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -64,7 +64,7 @@ BASE_URL = "https://data-api.binance.vision"
 TIMEFRAME = "5m"
 TREND_TIMEFRAME = "15m"
 
-TOP_COINS = 50
+TOP_COINS = 100
 MIN_CONFIRMATIONS = 6
 
 VOLUME_MULTIPLIER = 0.90
@@ -493,55 +493,45 @@ def save_state(state):
 # =========================================================
 
 def get_market_coins():
-    """
-    Top 50 liquid Binance USDT markets intersected
-    with active Nobitex assets.
-    """
+    """Return the 100 most liquid active Binance Spot USDT markets."""
 
-    nobitex_response = session.get(
-        NOBITEX_STATS_URL,
-        timeout=15
+    exchange_response = session.get(
+        f"{BASE_URL}/api/v3/exchangeInfo",
+        timeout=20
     )
+    exchange_response.raise_for_status()
+    exchange_payload = exchange_response.json()
+    exchange_symbols = exchange_payload.get("symbols", [])
 
-    nobitex_response.raise_for_status()
-
-    nobitex_payload = nobitex_response.json()
-    stats = nobitex_payload.get("stats", {})
-
-    if not isinstance(stats, dict) or not stats:
+    if not isinstance(exchange_symbols, list) or not exchange_symbols:
         raise RuntimeError(
-            "Nobitex market list is empty or has an unexpected format"
+            "Binance Spot exchange information is empty or has an unexpected format"
         )
 
-    nobitex_assets = set()
-
-    for market, details in stats.items():
-        if not isinstance(details, dict):
+    active_spot_symbols = set()
+    for market in exchange_symbols:
+        if not isinstance(market, dict):
             continue
-
-        if details.get("isClosed") is True:
-            continue
-
-        normalized = str(market).lower().replace("_", "-")
-        parts = normalized.split("-")
-
+        symbol = str(market.get("symbol", "")).upper()
         if (
-            len(parts) == 2
-            and parts[1] in ("rls", "usdt")
+            market.get("status") == "TRADING"
+            and market.get("quoteAsset") == "USDT"
+            and market.get("isSpotTradingAllowed", False) is True
+            and symbol.endswith("USDT")
         ):
-            nobitex_assets.add(parts[0].upper())
+            active_spot_symbols.add(symbol)
 
-    if not nobitex_assets:
+    if not active_spot_symbols:
         raise RuntimeError(
-            "Could not identify active Nobitex spot assets"
+            "Could not identify active Binance Spot USDT markets"
         )
 
-    response = session.get(
+    ticker_response = session.get(
         f"{BASE_URL}/api/v3/ticker/24hr",
         timeout=20
     )
-
-    response.raise_for_status()
+    ticker_response.raise_for_status()
+    ticker_payload = ticker_response.json()
 
     excluded = {
         "USDC", "FDUSD", "TUSD", "USDP", "DAI", "USDE",
@@ -550,21 +540,14 @@ def get_market_coins():
     }
 
     coins = []
-
-    for item in response.json():
-        symbol = str(item.get("symbol", ""))
-
-        if not symbol.endswith("USDT"):
+    for item in ticker_payload:
+        symbol = str(item.get("symbol", "")).upper()
+        if symbol not in active_spot_symbols:
             continue
 
         base = symbol[:-4]
-
-        if base not in nobitex_assets:
-            continue
-
         if base in excluded:
             continue
-
         if base.endswith(("UP", "DOWN", "BULL", "BEAR")):
             continue
 
@@ -576,15 +559,8 @@ def get_market_coins():
         if quote_volume > 0:
             coins.append((symbol, quote_volume))
 
-    coins.sort(
-        key=lambda item: item[1],
-        reverse=True
-    )
-
-    return [
-        symbol for symbol, _ in coins[:TOP_COINS]
-    ]
-
+    coins.sort(key=lambda item: item[1], reverse=True)
+    return [symbol for symbol, _ in coins[:TOP_COINS]]
 
 def candles_to_dataframe(data):
     columns = [
@@ -721,7 +697,6 @@ def get_tracking_candles(symbol, start_time):
 # =========================================================
 
 NEWS_API_URL = "https://showmytrades.com/api/public/calendar/v1"
-NOBITEX_STATS_URL = "https://apiv2.nobitex.ir/market/stats"
 
 NEWS_CURRENCIES = (
     "USD,EUR,GBP,JPY,AUD,NZD,CAD,CHF,CNY"
@@ -3858,9 +3833,8 @@ def run_scanner():
         coins = []
 
     print(
-        f"Market universe: {len(coins)} active Nobitex "
-        f"assets with liquid Binance USDT markets "
-        f"(max {TOP_COINS})."
+        f"Market universe: {len(coins)} active Binance Spot USDT "
+        f"markets ranked by 24h quote volume (max {TOP_COINS})."
     )
 
     new_signals = 0
