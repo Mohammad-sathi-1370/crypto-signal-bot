@@ -13,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.4 RSI EXTREME
 # =========================================================
 
-VERSION = "6.7.4-SWING-FLEX-RSI-EXTREME"
+VERSION = "6.7.5-SWING-FLEX-RSI-EXTREME-WIDER-STOP"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -55,6 +55,7 @@ SWING_REVERSAL_REQUIRE_COMPLEMENT = False  # Complementary evidence is quality i
 SWING_REVERSAL_MIN_VOLUME_RATIO = 0.80
 SWING_REVERSAL_MAX_ENTRY_DISTANCE_ATR = 0.45
 SWING_REVERSAL_STOP_BUFFER_ATR = 0.22
+V67_SWING_STOP_BUFFER_ATR = 0.30  # 6.7.5: wider buffer beyond the recent 5m extreme.
 SWING_REVERSAL_HOURLY_ZONE_ATR = 0.85
 SWING_REVERSAL_LOCAL_ZONE_ATR = 0.35
 
@@ -3148,11 +3149,11 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
         return None
     if direction == "BUY":
         extreme = min(float(df5.iloc[-6:]["low"].min()), float(c["low"]))
-        stop = extreme - .18 * atr
+        stop = extreme - V67_SWING_STOP_BUFFER_ATR * atr
         reference = max(local_edge, hourly_edge)
     else:
         extreme = max(float(df5.iloc[-6:]["high"].max()), float(c["high"]))
-        stop = extreme + .18 * atr
+        stop = extreme + V67_SWING_STOP_BUFFER_ATR * atr
         reference = min(local_edge, hourly_edge)
 
     # Independent complementary evidence. The location/reversal score alone is not enough.
