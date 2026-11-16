@@ -10,10 +10,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.0
+# SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.4 RSI EXTREME
 # =========================================================
 
-VERSION = "6.7.3-SWING-FLEX"
+VERSION = "6.7.4-SWING-FLEX-RSI-EXTREME"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -300,7 +300,7 @@ def send_signal(signal):
         "━━━━━━━━━━━━━━━━━━\n\n"
         f"💎 Symbol: {signal['symbol']}\n"
         f"📍 Direction: {label}\n"
-        "⏱ Timeframe: 5m\n"
+        f"⏱ Timeframe: {signal.get('signal_timeframe', '5m')}\n"
         f"⭐ Confirmations: {signal['confirmations']}/{signal.get('confirmation_total', 7)}\n\n"
         f"📊 {signal.get('analysis_label', 'SMC ANALYSIS')}\n"
         f"Liquidity Sweep: {'YES' if signal.get('liquidity_sweep', True) else 'NO'}\n"
@@ -625,7 +625,7 @@ def candles_to_dataframe(data):
     return df.reset_index(drop=True)
 
 
-def get_candles(symbol, timeframe):
+def get_candles(symbol, timeframe, include_current=False):
     response = session.get(
         f"{BASE_URL}/api/v3/klines",
         params={
@@ -643,11 +643,11 @@ def get_candles(symbol, timeframe):
     if df.empty:
         return df
 
-    now_ms = int(time.time() * 1000)
+    if include_current:
+        return df.reset_index(drop=True)
 
-    return df[
-        df["close_time"] < now_ms
-    ].reset_index(drop=True)
+    now_ms = int(time.time() * 1000)
+    return df[df["close_time"] < now_ms].reset_index(drop=True)
 
 
 def get_tracking_candles(symbol, start_time):
@@ -3337,16 +3337,79 @@ def _v67_momentum_engine(symbol, df5, df15):
     return sig
 
 
-def generate_signal(symbol, df5, df15, df1h=None, state=None):
-    """v6.7.1: only the v6.7 Swing Reversal entry model is allowed."""
+def generate_rsi_extreme_signal(symbol, df5, df15_live):
+    """Independent 15m live-candle RSI extreme model (BUY <=23, SELL >=77)."""
+    if df5 is None or df15_live is None or len(df5) < 30 or len(df15_live) < 50:
+        return None
+
+    df5i = calculate_indicators(df5)
+    df15i = calculate_indicators(df15_live)
+    candle_5m = df5i.iloc[-1]
+    live_15m = df15i.iloc[-1]
+
+    values = [candle_5m.get("atr"), live_15m.get("rsi"),
+              live_15m.get("close"), live_15m.get("adx")]
+    if not np.isfinite(values).all():
+        return None
+
+    rsi_value = float(live_15m["rsi"])
+    if rsi_value >= 77.0:
+        direction = "SELL"
+    elif rsi_value < 23.0:
+        direction = "BUY"
+    else:
+        return None
+
+    entry = float(live_15m["close"])
+    atr = float(candle_5m["atr"])
+    if entry <= 0 or atr <= 0:
+        return None
+
+    # Keep risk management consistent with the existing signal schema.
+    stop_loss = entry - atr if direction == "BUY" else entry + atr
+    now_ms = int(time.time() * 1000)
+    candle_open_time = int(live_15m["time"])
+
+    signal_row = candle_5m.copy()
+    signal_row["close_time"] = now_ms
+    signal_row["rsi"] = rsi_value
+    signal_row["adx"] = float(live_15m["adx"])
+
+    signal = _v67_build_signal(
+        symbol=symbol, direction=direction, entry=entry,
+        stop_loss=stop_loss, atr=atr, row=signal_row,
+        model="RSI_EXTREME_15M", reference=entry,
+        structure=f"RSI 15M EXTREME ({rsi_value:.2f})",
+        trend_label="RSI EXTREME", confirmations=1,
+        confirmation_total=1, structure_time=candle_open_time,
+        sweep_time=candle_open_time, volume_ratio=1.0,
+        liquidity_sweep=False
+    )
+    if signal is None:
+        return None
+
+    signal["signal_timeframe"] = "15m"
+    signal["rsi_candle_time"] = candle_open_time
+    signal["rsi_threshold"] = 77.0 if direction == "SELL" else 23.0
+    signal["analysis_label"] = "RSI EXTREME 15M"
+    return signal
+
+
+def generate_signal(symbol, df5, df15, df1h=None, state=None, df15_live=None):
+    """Run independent RSI Extreme first, then the unchanged Swing Reversal model."""
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
         return None
+    # RSI Extreme uses the currently forming 15m candle for same-scan detection.
+    rsi_signal = generate_rsi_extreme_signal(symbol, df5, df15_live) if df15_live is not None else None
+    if rsi_signal is not None:
+        return rsi_signal
+
     df5i = calculate_indicators(df5)
     df15i = calculate_indicators(df15)
     df1hi = calculate_indicators(df1h) if df1h is not None and len(df1h) >= 30 else None
 
-    # Swing-only mode: SMC and Momentum engines are intentionally not called.
+    # Existing Swing-only mode remains unchanged; SMC and Momentum are not called.
     # If 1h context is unavailable, do not fall back to another entry model.
     if df1hi is None:
         return None
@@ -3705,7 +3768,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry model: SWING REVERSAL FLEX (minimum 4/5 core confirmations; complementary evidence is optional quality context).")
+    print("Entry models: RSI EXTREME 15M (live RSI <23 BUY / >=77 SELL) + existing SWING REVERSAL FLEX.")
 
     print("=" * 48)
 
@@ -3819,10 +3882,13 @@ def run_scanner():
                 TIMEFRAME
             )
 
-            df15 = get_candles(
-                symbol,
-                TREND_TIMEFRAME
+            df15_live = get_candles(
+                symbol, TREND_TIMEFRAME, include_current=True
             )
+            now_ms_for_candles = int(time.time() * 1000)
+            df15 = df15_live[
+                df15_live["close_time"] < now_ms_for_candles
+            ].reset_index(drop=True)
 
             try:
                 df1h = get_candles(symbol, "1h")
@@ -3837,7 +3903,8 @@ def run_scanner():
                 df5,
                 df15,
                 df1h,
-                state
+                state,
+                df15_live=df15_live
             )
 
             if signal is None:
