@@ -3664,7 +3664,7 @@
       "structure_time": 1794933000000,
       "sweep_time": 1794933000000,
       "signal_time": 1794933345873,
-      "last_checked_time": 1794940199999,
+      "last_checked_time": 1794940799999,
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": true,
@@ -3951,15 +3951,17 @@
       "structure_time": 1794936600000,
       "sweep_time": 1794936600000,
       "signal_time": 1794937159723,
-      "last_checked_time": 1794940199999,
+      "last_checked_time": 1794940799999,
       "tp1_hit": true,
       "tp2_hit": true,
-      "tp3_hit": false,
-      "status": "OPEN",
+      "tp3_hit": true,
+      "status": "TRAILING_STOP",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
-        "TP2": true
+        "TP2": true,
+        "TP3": true,
+        "TRAILING_STOP": true
       },
       "pending_events": [],
       "created_at": "2026-11-17 21:09",
@@ -3969,10 +3971,14 @@
       "rsi_threshold": 26.0,
       "telegram_message_id": 476,
       "telegram_chat_id": 104951844,
-      "trailing_active": false,
-      "active_stop": 0.04415980869762089,
+      "trailing_active": true,
+      "active_stop": 0.04452028695356866,
       "tp1_hit_time": 1794939899999,
-      "tp2_hit_time": 1794939899999
+      "tp2_hit_time": 1794939899999,
+      "tp3_hit_time": 1794940499999,
+      "best_price": 0.04491,
+      "trailing_stop": 0.04452028695356866,
+      "stop_hit_time": 1794940799999
     },
     {
       "symbol": "KAVAUSDT",
@@ -4020,13 +4026,14 @@
       "structure_time": 1794940200000,
       "sweep_time": 1794940200000,
       "signal_time": 1794940371608,
-      "last_checked_time": 1794940371608,
+      "last_checked_time": 1794940799999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-17 22:02",
@@ -4035,7 +4042,10 @@
       "rsi_candle_time": 1794940200000,
       "rsi_threshold": 74.0,
       "telegram_message_id": 481,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.031042769721460924,
+      "stop_hit_time": 1794940799999
     }
   ],
   "news_filter": {
