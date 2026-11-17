@@ -2537,16 +2537,17 @@
       "structure_time": 1794906900000,
       "sweep_time": 1794906900000,
       "signal_time": 1794907611206,
-      "last_checked_time": 1794911399999,
+      "last_checked_time": 1794914399999,
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": true,
-      "status": "OPEN",
+      "status": "TRAILING_STOP",
       "telegram_events": {
         "ENTRY": true,
         "TP1": true,
         "TP2": true,
-        "TP3": true
+        "TP3": true,
+        "TRAILING_STOP": true
       },
       "pending_events": [],
       "created_at": "2026-11-17 12:56",
@@ -2557,12 +2558,13 @@
       "telegram_message_id": 402,
       "telegram_chat_id": 104951844,
       "trailing_active": true,
-      "active_stop": 376.5765231874873,
+      "active_stop": 376.7665231874873,
       "tp1_hit_time": 1794908399999,
       "tp2_hit_time": 1794909299999,
       "tp3_hit_time": 1794910799999,
-      "best_price": 377.36,
-      "trailing_stop": 376.5765231874873
+      "best_price": 377.55,
+      "trailing_stop": 376.7665231874873,
+      "stop_hit_time": 1794912599999
     },
     {
       "symbol": "GOOGLBUSDT",
@@ -2616,13 +2618,14 @@
       "structure_time": 1794911399999,
       "sweep_time": 1794911100000,
       "signal_time": 1794911399999,
-      "last_checked_time": 1794911399999,
+      "last_checked_time": 1794914399999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-17 14:00",
@@ -2643,7 +2646,10 @@
         true
       ],
       "telegram_message_id": 406,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 281.7835432351289,
+      "stop_hit_time": 1794912899999
     },
     {
       "symbol": "DODOUSDT",
@@ -2691,13 +2697,14 @@
       "structure_time": 1794911400000,
       "sweep_time": 1794911400000,
       "signal_time": 1794911469831,
-      "last_checked_time": 1794911469831,
+      "last_checked_time": 1794914399999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-17 14:01",
@@ -2706,7 +2713,10 @@
       "rsi_candle_time": 1794911400000,
       "rsi_threshold": 74.0,
       "telegram_message_id": 407,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.034534143131049404,
+      "stop_hit_time": 1794911999999
     },
     {
       "symbol": "BNCBUSDT",
@@ -2754,13 +2764,14 @@
       "structure_time": 1794911400000,
       "sweep_time": 1794911400000,
       "signal_time": 1794911470200,
-      "last_checked_time": 1794911470200,
-      "tp1_hit": false,
+      "last_checked_time": 1794914399999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-17 14:01",
@@ -2769,7 +2780,11 @@
       "rsi_candle_time": 1794911400000,
       "rsi_threshold": 26.0,
       "telegram_message_id": 408,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 3.45,
+      "tp1_hit_time": 1794911999999,
+      "stop_hit_time": 1794912299999
     }
   ],
   "news_filter": {
