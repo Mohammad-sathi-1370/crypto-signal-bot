@@ -2871,13 +2871,14 @@
       "structure_time": 1794897900000,
       "sweep_time": 1794897900000,
       "signal_time": 1794898691560,
-      "last_checked_time": 1794898691560,
-      "tp1_hit": false,
+      "last_checked_time": 1794903599999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-17 10:28",
@@ -2887,7 +2888,11 @@
       "rsi_threshold": 74.0,
       "news_warning": "GBP | Average Earnings Excluding Bonus 3Mo/Y | UTC: 2026-11-17T07:00:00Z",
       "telegram_message_id": 400,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.0487,
+      "tp1_hit_time": 1794899099999,
+      "stop_hit_time": 1794899399999
     }
   ],
   "news_filter": {
