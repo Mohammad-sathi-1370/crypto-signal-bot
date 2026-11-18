@@ -3504,7 +3504,7 @@ def _v67_momentum_engine(symbol, df5, df15):
 
 
 def generate_rsi_extreme_signal(symbol, df5, df15_live):
-    """Independent 15m live-candle RSI extreme model (BUY <=26, SELL >=74)."""
+    """Independent 15m live-candle RSI extreme model (BUY <=20, SELL >=80)."""
     if df5 is None or df15_live is None or len(df5) < 30 or len(df15_live) < 50:
         return None
 
@@ -3519,9 +3519,9 @@ def generate_rsi_extreme_signal(symbol, df5, df15_live):
         return None
 
     rsi_value = float(live_15m["rsi"])
-    if rsi_value >= 74.0:
+    if rsi_value >= 80.0:
         direction = "SELL"
-    elif rsi_value <= 26.0:
+    elif rsi_value <= 20.0:
         direction = "BUY"
     else:
         return None
@@ -3556,7 +3556,7 @@ def generate_rsi_extreme_signal(symbol, df5, df15_live):
 
     signal["signal_timeframe"] = "15m"
     signal["rsi_candle_time"] = candle_open_time
-    signal["rsi_threshold"] = 74.0 if direction == "SELL" else 26.0
+    signal["rsi_threshold"] = 80.0 if direction == "SELL" else 20.0
     signal["analysis_label"] = "RSI EXTREME 15M"
     return signal
 
@@ -3934,7 +3934,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry models: RSI EXTREME 15M (live RSI <=26 BUY / >=74 SELL) + existing SWING REVERSAL FLEX.")
+    print("Entry models: RSI EXTREME 15M (live RSI <=20 BUY / >=80 SELL) + existing SWING REVERSAL FLEX.")
 
     print("=" * 48)
 
