@@ -13,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.7 BINANCE SPOT TOP 100
 # =========================================================
 
-VERSION = "6.7.8-SWING-TREND-STRUCTURE-QUALITY-RSI-UNCHANGED-BINANCE-TOP100"
+VERSION = "6.7.9-SWING-MULTIBAR-TREND-PULLBACK-EXPERIMENT-RSI-UNCHANGED-BINANCE-TOP100"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -64,6 +64,11 @@ SWING_TREND_ADX_STRONG = 20.0
 SWING_TREND_SLOPE_LOOKBACK = 3
 SWING_MIN_QUALITY_SCORE = 5
 SWING_REQUIRE_STRUCTURAL_EVIDENCE = True
+# 6.7.9 experimental pullback controls (RSI logic is not used here).
+PULLBACK_MIN_1H_ADX = 16.0
+PULLBACK_MAX_EMA20_EXTENSION_ATR = 0.90
+PULLBACK_ZONE_TOLERANCE_ATR = 0.30
+PULLBACK_MAX_STOP_ATR = 2.80
 
 BASE_URL = "https://data-api.binance.vision"
 
@@ -204,6 +209,15 @@ DIAGNOSTICS = {
     "v678_swing_trend_rejected": 0,
     "v678_swing_structure_rejected": 0,
     "v678_swing_quality_rejected": 0,
+    "v679_swing_multibar_candidates": 0,
+    "v679_pullback_candidates": 0,
+    "v679_pullback_confirmed": 0,
+    "v679_pullback_rejected": 0,
+    "v679_pullback_trend_rejected": 0,
+    "v679_pullback_no_retest": 0,
+    "v679_pullback_no_trigger": 0,
+    "v679_pullback_extension_rejected": 0,
+    "v679_pullback_target_rejected": 0,
     "errors": 0
 }
 
@@ -3122,13 +3136,20 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
     local_low, local_high = float(local["low"].min()), float(local["high"].max())
     hour_low, hour_high = float(hourly["low"].min()), float(hourly["high"].max())
 
+    recent_three = df5.iloc[-3:]
+    swing_recent_low = float(recent_three["low"].min())
+    swing_recent_high = float(recent_three["high"].max())
     buy_location = (
         float(c["low"]) <= hour_low + 0.85 * atr1h
         or float(c["low"]) <= local_low + 0.30 * atr
+        or swing_recent_low <= hour_low + 0.85 * atr1h
+        or swing_recent_low <= local_low + 0.30 * atr
     )
     sell_location = (
         float(c["high"]) >= hour_high - 0.85 * atr1h
         or float(c["high"]) >= local_high - 0.30 * atr
+        or swing_recent_high >= hour_high - 0.85 * atr1h
+        or swing_recent_high >= local_high - 0.30 * atr
     )
 
     # A meaningful 5m rejection: close must take the previous candle's
@@ -3148,8 +3169,24 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
     )
     bull_break = float(c["close"]) > float(p["high"]) and float(c["close"]) > float(c["open"])
     bear_break = float(c["close"]) < float(p["low"]) and float(c["close"]) < float(c["open"])
-    bull_trigger = bull_break or bull_engulf
-    bear_trigger = bear_break or bear_engulf
+    # Multi-bar follow-through: a turn may develop over two closes after the
+    # extreme instead of requiring a single engulfing candle on the exact bar.
+    bull_two_bar_follow = (
+        float(p["close"]) > float(p["open"])
+        and float(c["close"]) > float(c["open"])
+        and float(c["close"]) > float(p["close"])
+        and float(p["close"]) > float(p2["close"])
+    )
+    bear_two_bar_follow = (
+        float(p["close"]) < float(p["open"])
+        and float(c["close"]) < float(c["open"])
+        and float(c["close"]) < float(p["close"])
+        and float(p["close"]) < float(p2["close"])
+    )
+    bull_trigger = bull_break or bull_engulf or bull_two_bar_follow
+    bear_trigger = bear_break or bear_engulf or bear_two_bar_follow
+    if (buy_location and bull_two_bar_follow) or (sell_location and bear_two_bar_follow):
+        DIAGNOSTICS["v679_swing_multibar_candidates"] += 1
 
     # RSI remains only a Swing confirmation here; the independent RSI Extreme
     # entry model and its thresholds/conditions are unchanged.
@@ -3374,6 +3411,119 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
     return sig
 
 
+
+def _v679_trend_pullback_engine(symbol, df5, df15, df1h):
+    """Trend-aligned pullback entry. Uses price/EMA/DI/ADX only; no RSI rules."""
+    if df1h is None or min(len(df5), len(df15), len(df1h)) < 55:
+        return None
+
+    c, p, p2 = df5.iloc[-1], df5.iloc[-2], df5.iloc[-3]
+    t, tp = df15.iloc[-1], df15.iloc[-2]
+    h, hp = df1h.iloc[-1], df1h.iloc[-4]
+    needed = [c["open"], c["high"], c["low"], c["close"], c["atr"],
+              c["volume"], c["volume_avg"], c["adx"], c["plus_di"], c["minus_di"],
+              c["ema20"], p["high"], p["low"], p["close"], p2["close"],
+              t["close"], t["ema20"], tp["ema20"], h["close"], h["ema20"],
+              h["ema50"], h["ema200"], h["adx"], h["plus_di"], h["minus_di"],
+              hp["ema20"]]
+    try:
+        if not np.isfinite([float(x) for x in needed]).all():
+            return None
+    except (TypeError, ValueError):
+        return None
+
+    price, atr = float(c["close"]), float(c["atr"])
+    if price <= 0 or atr <= 0:
+        return None
+
+    # Confirm the dominant hourly direction with EMA structure, slope and DI.
+    uptrend = (float(h["ema20"]) > float(h["ema50"]) > float(h["ema200"])
+               and float(h["ema20"]) > float(hp["ema20"])
+               and float(h["plus_di"]) > float(h["minus_di"])
+               and float(h["adx"]) >= PULLBACK_MIN_1H_ADX)
+    downtrend = (float(h["ema20"]) < float(h["ema50"]) < float(h["ema200"])
+                 and float(h["ema20"]) < float(hp["ema20"])
+                 and float(h["minus_di"]) > float(h["plus_di"])
+                 and float(h["adx"]) >= PULLBACK_MIN_1H_ADX)
+    if not (uptrend or downtrend):
+        return None
+
+    DIAGNOSTICS["v679_pullback_candidates"] += 1
+    recent = df5.iloc[-5:-1]
+    recent_low, recent_high = float(recent["low"].min()), float(recent["high"].max())
+    ema20_5 = float(c["ema20"])
+    ema20_15 = float(t["ema20"])
+    ema20_15_prev = float(tp["ema20"])
+
+    if uptrend:
+        # 15m trend still points up; 5m revisited its mean and has turned back up.
+        trend_ok = float(t["close"]) > ema20_15 and ema20_15 >= ema20_15_prev
+        pullback = (recent_low <= ema20_5 + PULLBACK_ZONE_TOLERANCE_ATR * atr
+                    or recent_low <= ema20_15 + PULLBACK_ZONE_TOLERANCE_ATR * atr)
+        trigger = (float(c["close"]) > float(c["open"])
+                   and (float(c["close"]) > float(p["high"])
+                        or (float(p["close"]) > float(p["open"])
+                            and float(c["close"]) > float(p["close"]) > float(p2["close"]))))
+        extension = (price - ema20_5) / atr
+        direction = "BUY"
+        stop = min(float(df5.iloc[-6:]["low"].min()), recent_low) - 0.18 * atr
+        structure = "1H UPTREND + 5M EMA PULLBACK + RECLAIM"
+        trend_label = "WITH_1H_UPTREND_PULLBACK"
+    else:
+        trend_ok = float(t["close"]) < ema20_15 and ema20_15 <= ema20_15_prev
+        pullback = (recent_high >= ema20_5 - PULLBACK_ZONE_TOLERANCE_ATR * atr
+                    or recent_high >= ema20_15 - PULLBACK_ZONE_TOLERANCE_ATR * atr)
+        trigger = (float(c["close"]) < float(c["open"])
+                   and (float(c["close"]) < float(p["low"])
+                        or (float(p["close"]) < float(p["open"])
+                            and float(c["close"]) < float(p["close"]) < float(p2["close"]))))
+        extension = (ema20_5 - price) / atr
+        direction = "SELL"
+        stop = max(float(df5.iloc[-6:]["high"].max()), recent_high) + 0.18 * atr
+        structure = "1H DOWNTREND + 5M EMA PULLBACK + REJECTION"
+        trend_label = "WITH_1H_DOWNTREND_PULLBACK"
+
+    if not trend_ok:
+        DIAGNOSTICS["v679_pullback_trend_rejected"] += 1
+        return None
+    if not pullback:
+        DIAGNOSTICS["v679_pullback_no_retest"] += 1
+        return None
+    if not trigger:
+        DIAGNOSTICS["v679_pullback_no_trigger"] += 1
+        return None
+    if extension < -0.25 or extension > PULLBACK_MAX_EMA20_EXTENSION_ATR:
+        DIAGNOSTICS["v679_pullback_extension_rejected"] += 1
+        return None
+
+    risk_atr = abs(price - stop) / atr
+    if risk_atr > PULLBACK_MAX_STOP_ATR:
+        DIAGNOSTICS["v679_pullback_rejected"] += 1
+        return None
+
+    volume_ratio = float(c["volume"]) / max(float(c["volume_avg"]), 1e-12)
+    # 15m alignment + 1h trend + price-action trigger form the confirmations.
+    confirmations = 4 + int(volume_ratio >= 0.80)
+    sig = _v67_build_signal(
+        symbol, direction, price, stop, atr, c,
+        "V679_TREND_PULLBACK", ema20_5, structure, trend_label,
+        confirmations, 5, int(c["close_time"]), int(c["time"]),
+        volume_ratio, False
+    )
+    if sig is None or not validate_target_room(
+        symbol, direction, price, abs(price - stop), atr, df5, df15, "V679_PULLBACK"
+    ):
+        DIAGNOSTICS["v679_pullback_target_rejected"] += 1
+        DIAGNOSTICS["v679_pullback_rejected"] += 1
+        return None
+
+    sig["trend_1h_strong"] = True
+    sig["trend_1h_bias"] = trend_label
+    sig["trend_1h_adx"] = float(h["adx"])
+    sig["pullback_extension_atr"] = float(extension)
+    DIAGNOSTICS["v679_pullback_confirmed"] += 1
+    return sig
+
 def _v67_smc_engine(symbol, df5, df15):
     """Fresh 15m BOS/CHOCH plus a current 5m hold/reclaim; no persistent retest queue."""
     if len(df5) < 40 or len(df15) < 30:
@@ -3568,11 +3718,15 @@ def generate_signal(symbol, df5, df15, df1h=None, state=None, df15_live=None):
     df15i = calculate_indicators(df15)
     df1hi = calculate_indicators(df1h) if df1h is not None and len(df1h) >= 30 else None
 
-    # Existing Swing-only mode remains unchanged; SMC and Momentum are not called.
-    # If 1h context is unavailable, do not fall back to another entry model.
+    # 6.7.9: keep Swing first; use the independent trend-pullback model only
+    # when Swing has no confirmed setup. Legacy SMC/Momentum remain disabled.
+    # RSI Extreme above is intentionally untouched.
     if df1hi is None:
         return None
-    return _v67_swing_engine(symbol, df5i, df15i, df1hi)
+    swing_signal = _v67_swing_engine(symbol, df5i, df15i, df1hi)
+    if swing_signal is not None:
+        return swing_signal
+    return _v679_trend_pullback_engine(symbol, df5i, df15i, df1hi)
 
 
 
