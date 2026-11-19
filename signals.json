@@ -8695,14 +8695,15 @@
       "structure_time": 1795080899999,
       "sweep_time": 1795080600000,
       "signal_time": 1795080899999,
-      "last_checked_time": 1795086299999,
+      "last_checked_time": 1795086899999,
       "tp1_hit": true,
-      "tp2_hit": false,
+      "tp2_hit": true,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
         "ENTRY": true,
-        "TP1": true
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-19 13:06",
@@ -8727,8 +8728,9 @@
       "telegram_message_id": 788,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 1.428,
-      "tp1_hit_time": 1795085099999
+      "active_stop": 1.4332927676594418,
+      "tp1_hit_time": 1795085099999,
+      "tp2_hit_time": 1795086599999
     },
     {
       "symbol": "RENDERUSDT",
@@ -8776,14 +8778,15 @@
       "structure_time": 1795080899999,
       "sweep_time": 1795080600000,
       "signal_time": 1795080899999,
-      "last_checked_time": 1795086299999,
+      "last_checked_time": 1795086899999,
       "tp1_hit": true,
-      "tp2_hit": false,
+      "tp2_hit": true,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
         "ENTRY": true,
-        "TP1": true
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-19 13:06",
@@ -8808,8 +8811,9 @@
       "telegram_message_id": 789,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 1.428,
-      "tp1_hit_time": 1795085099999
+      "active_stop": 1.4332927676594418,
+      "tp1_hit_time": 1795085099999,
+      "tp2_hit_time": 1795086599999
     },
     {
       "symbol": "GOOGLBUSDT",
@@ -8995,13 +8999,14 @@
       "structure_time": 1795086000000,
       "sweep_time": 1795086000000,
       "signal_time": 1795086355252,
-      "last_checked_time": 1795086355252,
+      "last_checked_time": 1795086899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-19 14:35",
@@ -9010,7 +9015,10 @@
       "rsi_candle_time": 1795086000000,
       "rsi_threshold": 74.0,
       "telegram_message_id": 801,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 295.04848843122943,
+      "stop_hit_time": 1795086899999
     },
     {
       "symbol": "FILUSDT",
@@ -9058,13 +9066,14 @@
       "structure_time": 1795086299999,
       "sweep_time": 1795086000000,
       "signal_time": 1795086299999,
-      "last_checked_time": 1795086299999,
-      "tp1_hit": false,
+      "last_checked_time": 1795086899999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-19 14:36",
@@ -9085,7 +9094,10 @@
         true
       ],
       "telegram_message_id": 802,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.577,
+      "tp1_hit_time": 1795086899999
     },
     {
       "symbol": "SKYUSDT",
@@ -9133,7 +9145,7 @@
       "structure_time": 1795086000000,
       "sweep_time": 1795086000000,
       "signal_time": 1795086365046,
-      "last_checked_time": 1795086365046,
+      "last_checked_time": 1795086899999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -9148,6 +9160,71 @@
       "rsi_candle_time": 1795086000000,
       "rsi_threshold": 26.0,
       "telegram_message_id": 803,
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.04534190225836822
+    },
+    {
+      "symbol": "GOOGLBUSDT",
+      "direction": "SELL",
+      "entry": 293.62,
+      "stop_loss": 294.13935993750874,
+      "tp1": 293.10064006249127,
+      "tp2": 292.58128012498247,
+      "tp3": 292.06192018747373,
+      "tp1_r": 1.0000000000000424,
+      "tp2_r": 2.000000000000085,
+      "tp3_r": 3.000000000000127,
+      "tp1_atr": 1.0,
+      "tp2_atr": 2.0,
+      "tp3_atr": 3.0,
+      "risk": 0.5193599375087388,
+      "risk_atr": 0.9999999999999577,
+      "high_risk": false,
+      "risk_limit_atr": 4.0,
+      "confirmations": 1,
+      "confirmation_total": 1,
+      "analysis_label": "RSI EXTREME 15M",
+      "liquidity_sweep": false,
+      "rsi": 79.3840330165747,
+      "adx": 58.977139731345986,
+      "volume_ratio": 1.0,
+      "atr": 0.5193599375087607,
+      "fvg_lower": null,
+      "fvg_upper": null,
+      "fvg_retest": false,
+      "fvg_required": false,
+      "entry_model": "RSI_EXTREME_15M",
+      "retest_time": null,
+      "retest_event_age_bars": 0,
+      "retest_current_distance_atr": 0.0,
+      "retest_bars_after_structure": 0,
+      "retest_tolerance": null,
+      "bars_since_structure": 0,
+      "entry_extension_atr": 0.0,
+      "structure_reference": 293.62,
+      "order_block": false,
+      "order_block_zone": null,
+      "structure": "RSI 15M EXTREME (79.38)",
+      "structure_trend": "RSI EXTREME",
+      "structure_time": 1795086900000,
+      "sweep_time": 1795086900000,
+      "signal_time": 1795087117410,
+      "last_checked_time": 1795087117410,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "status": "OPEN",
+      "telegram_events": {
+        "ENTRY": true
+      },
+      "pending_events": [],
+      "created_at": "2026-11-19 14:48",
+      "created_date": "2026-11-19",
+      "signal_timeframe": "15m",
+      "rsi_candle_time": 1795086900000,
+      "rsi_threshold": 74.0,
+      "telegram_message_id": 808,
       "telegram_chat_id": 104951844
     }
   ],
