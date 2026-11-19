@@ -13,7 +13,7 @@ from urllib3.util.retry import Retry
 # SMART MONEY CRYPTO SIGNAL BOT - VERSION 6.7.7 BINANCE SPOT TOP 100
 # =========================================================
 
-VERSION = "6.8.0-DUAL-INDEPENDENT-SWING-ENGINES-RSI-20-80-BINANCE-TOP100"
+VERSION = "6.7.9-SWING-MULTIBAR-TREND-PULLBACK-EXPERIMENT-RSI-UNCHANGED-BINANCE-TOP100"
 MAX_RISK_ATR = 4.0
 MAX_SIGNAL_TRACKING_AGE_MS = 48 * 60 * 60 * 1000  # Stop monitoring each signal after 48 hours.
 
@@ -210,17 +210,6 @@ DIAGNOSTICS = {
     "v678_swing_structure_rejected": 0,
     "v678_swing_quality_rejected": 0,
     "v679_swing_multibar_candidates": 0,
-    "v679_swing_candidates": 0,
-    "v679_target_rejected": 0,
-    "v679_swing_confirmed": 0,
-    "v679_swing_rejected": 0,
-    "v679_swing_trend_rejected": 0,
-    "v679_swing_structure_rejected": 0,
-    "v679_swing_quality_rejected": 0,
-    "branch_678_signals": 0,
-    "branch_679_signals": 0,
-    "rsi_20_80_signals": 0,
-    "engine_open_trade_locked": 0,
     "v679_pullback_candidates": 0,
     "v679_pullback_confirmed": 0,
     "v679_pullback_rejected": 0,
@@ -965,21 +954,14 @@ def prune_expired_signals(state, now_ms=None):
     return expired
 
 
-def has_open_trade_for_engine(state, symbol, engine_id):
-    """Lock only the same symbol+engine; other independent engines remain eligible."""
-    for old in state.get("signals", []):
-        if old.get("symbol") != symbol or old.get("status") != "OPEN":
-            continue
-        old_engine = old.get("signal_engine")
-        if old_engine is None or old_engine == engine_id:
-            return True
-    return False
-
-
 def has_open_trade_for_symbol(state, symbol):
-    """Compatibility helper: true when any engine has an open trade for symbol."""
-    return any(old.get("symbol") == symbol and old.get("status") == "OPEN"
-               for old in state.get("signals", []))
+    """Keep the symbol locked until the initial stop or trailing stop exits."""
+
+    return any(
+        old.get("symbol") == symbol
+        and old.get("status") == "OPEN"
+        for old in state.get("signals", [])
+    )
 
 
 # =========================================================
@@ -3430,627 +3412,6 @@ def _v67_swing_engine(symbol, df5, df15, df1h):
 
 
 
-def _v678_swing_engine(symbol, df5, df15, df1h):
-    """
-    6.7.8 Swing reversal engine.
-
-    Uses closed candles only (the scanner supplies closed 5m/15m/1h frames).
-    A counter-trend reversal is allowed only after stronger 5m + 15m evidence.
-    RSI Extreme is a separate engine and is not modified by this function.
-    """
-    if df1h is None or min(len(df5), len(df15), len(df1h)) < 55:
-        return None
-
-    c, p, p2 = df5.iloc[-1], df5.iloc[-2], df5.iloc[-3]
-    t, tp = df15.iloc[-1], df15.iloc[-2]
-    h1, h1_prev = df1h.iloc[-1], df1h.iloc[-1-SWING_TREND_SLOPE_LOOKBACK]
-
-    required = [
-        c["open"], c["high"], c["low"], c["close"], c["atr"], c["rsi"],
-        c["volume"], c["volume_avg"], c["adx"], c["plus_di"], c["minus_di"],
-        p["open"], p["high"], p["low"], p["close"], p["rsi"],
-        p2["rsi"], t["open"], t["high"], t["low"], t["close"],
-        t["ema20"], t["rsi"], tp["high"], tp["low"], tp["close"],
-        tp["ema20"], tp["rsi"], h1["atr"], h1["adx"], h1["plus_di"],
-        h1["minus_di"], h1["ema20"], h1["ema50"], h1["ema200"],
-        h1_prev["ema20"]
-    ]
-    try:
-        if not np.isfinite([float(x) for x in required]).all():
-            return None
-    except (TypeError, ValueError):
-        return None
-
-    price, atr = float(c["close"]), float(c["atr"])
-    atr1h = float(h1["atr"])
-    if price <= 0 or atr <= 0 or atr1h <= 0:
-        return None
-
-    # Location is measured against the previous completed bars, excluding
-    # the signal candle to avoid allowing the candidate candle to define its
-    # own extreme.
-    local = df5.iloc[-25:-1]
-    hourly = df1h.iloc[-25:-1]
-    if len(local) < 20 or len(hourly) < 20:
-        return None
-
-    local_low, local_high = float(local["low"].min()), float(local["high"].max())
-    hour_low, hour_high = float(hourly["low"].min()), float(hourly["high"].max())
-
-    buy_location = (
-        float(c["low"]) <= hour_low + 0.85 * atr1h
-        or float(c["low"]) <= local_low + 0.30 * atr
-    )
-    sell_location = (
-        float(c["high"]) >= hour_high - 0.85 * atr1h
-        or float(c["high"]) >= local_high - 0.30 * atr
-    )
-
-    # A meaningful 5m rejection: close must take the previous candle's
-    # extreme, or form a real engulfing body. Merely changing candle colour
-    # is not sufficient.
-    bull_engulf = (
-        float(c["close"]) > float(c["open"])
-        and float(p["close"]) < float(p["open"])
-        and float(c["open"]) <= float(p["close"])
-        and float(c["close"]) >= float(p["open"])
-    )
-    bear_engulf = (
-        float(c["close"]) < float(c["open"])
-        and float(p["close"]) > float(p["open"])
-        and float(c["open"]) >= float(p["close"])
-        and float(c["close"]) <= float(p["open"])
-    )
-    bull_break = float(c["close"]) > float(p["high"]) and float(c["close"]) > float(c["open"])
-    bear_break = float(c["close"]) < float(p["low"]) and float(c["close"]) < float(c["open"])
-    bull_trigger = bull_break or bull_engulf
-    bear_trigger = bear_break or bear_engulf
-
-    # RSI remains only a Swing confirmation here; the independent RSI Extreme
-    # entry model and its thresholds/conditions are unchanged.
-    rsi_up = float(c["rsi"]) > float(p["rsi"]) and float(p["rsi"]) <= float(p2["rsi"])
-    rsi_down = float(c["rsi"]) < float(p["rsi"]) and float(p["rsi"]) >= float(p2["rsi"])
-
-    vol = float(c["volume"]) / max(float(c["volume_avg"]), 1e-12)
-    five_di_buy = float(c["plus_di"]) > float(c["minus_di"])
-    five_di_sell = float(c["minus_di"]) > float(c["plus_di"])
-
-    # Higher-timeframe regime: EMA stack + EMA20 slope + DI/ADX.
-    h1_ema20 = float(h1["ema20"])
-    h1_ema50 = float(h1["ema50"])
-    h1_ema200 = float(h1["ema200"])
-    h1_slope_up = h1_ema20 > float(h1_prev["ema20"])
-    h1_slope_down = h1_ema20 < float(h1_prev["ema20"])
-    h1_di_buy = float(h1["plus_di"]) > float(h1["minus_di"])
-    h1_di_sell = float(h1["minus_di"]) > float(h1["plus_di"])
-    h1_adx = float(h1["adx"])
-
-    strong_uptrend = (
-        h1_ema20 > h1_ema50 > h1_ema200
-        and h1_slope_up and h1_di_buy
-        and h1_adx >= SWING_TREND_ADX_STRONG
-    )
-    strong_downtrend = (
-        h1_ema20 < h1_ema50 < h1_ema200
-        and h1_slope_down and h1_di_sell
-        and h1_adx >= SWING_TREND_ADX_STRONG
-    )
-    h1_buy_bias = (
-        h1_ema20 > h1_ema50 and h1_slope_up and h1_di_buy
-    )
-    h1_sell_bias = (
-        h1_ema20 < h1_ema50 and h1_slope_down and h1_di_sell
-    )
-
-    # Closed 15m confirmation. A simple RSI uptick alone is not treated as a
-    # structural shift. A close through the previous 15m candle's extreme is.
-    shift_15m_buy = (
-        float(t["close"]) > float(tp["high"])
-        and float(t["close"]) > float(t["open"])
-    )
-    shift_15m_sell = (
-        float(t["close"]) < float(tp["low"])
-        and float(t["close"]) < float(t["open"])
-    )
-    align_15m_buy = (
-        float(t["close"]) > float(t["ema20"])
-        and float(t["ema20"]) >= float(tp["ema20"])
-    )
-    align_15m_sell = (
-        float(t["close"]) < float(t["ema20"])
-        and float(t["ema20"]) <= float(tp["ema20"])
-    )
-
-    # Liquidity sweep is calculated independently from the current candle.
-    recent = df5.iloc[-13:-1]
-    prior_low = float(recent["low"].min())
-    prior_high = float(recent["high"].max())
-    liquidity_sweep_buy = float(c["low"]) < prior_low and price > prior_low
-    liquidity_sweep_sell = float(c["high"]) > prior_high and price < prior_high
-
-    # Complementary SMC evidence is quality information, not a requirement
-    # that every trade must have FVG + OB + sweep simultaneously.
-    options = []
-    if buy_location and bull_trigger:
-        buy_score_items = [
-            True,                         # location
-            True,                         # decisive 5m rejection
-            rsi_up,
-            align_15m_buy or shift_15m_buy,
-            h1_buy_bias,
-            five_di_buy,
-            vol >= SWING_REVERSAL_MIN_VOLUME_RATIO,
-            liquidity_sweep_buy or shift_15m_buy
-        ]
-        options.append(("BUY", sum(bool(x) for x in buy_score_items),
-                        local_low, hour_low, buy_score_items))
-    if sell_location and bear_trigger:
-        sell_score_items = [
-            True,
-            True,
-            rsi_down,
-            align_15m_sell or shift_15m_sell,
-            h1_sell_bias,
-            five_di_sell,
-            vol >= SWING_REVERSAL_MIN_VOLUME_RATIO,
-            liquidity_sweep_sell or shift_15m_sell
-        ]
-        options.append(("SELL", sum(bool(x) for x in sell_score_items),
-                        local_high, hour_high, sell_score_items))
-
-    if not options:
-        return None
-
-    DIAGNOSTICS["v67_swing_candidates"] += len(options)
-    options.sort(key=lambda x: x[1], reverse=True)
-    direction, score, local_edge, hourly_edge, checks = options[0]
-
-    # Ambiguous simultaneous long/short candidates are always rejected.
-    if len(options) > 1:
-        DIAGNOSTICS["v678_swing_quality_rejected"] += 1
-        DIAGNOSTICS["v67_swing_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "V678_SWING",
-            "reason": "AMBIGUOUS_BOTH_DIRECTIONS",
-            "score": int(score)
-        })
-        return None
-
-    if score < SWING_MIN_QUALITY_SCORE:
-        DIAGNOSTICS["v678_swing_quality_rejected"] += 1
-        DIAGNOSTICS["v67_swing_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "V678_SWING",
-            "reason": "QUALITY_SCORE_TOO_LOW",
-            "score": int(score), "required": SWING_MIN_QUALITY_SCORE,
-            "checks": [bool(x) for x in checks]
-        })
-        return None
-
-    if direction == "BUY":
-        # A counter-trend BUY against a strong 1h downtrend must prove both
-        # a 15m structure shift and a decisive 5m break/engulfing close.
-        if strong_downtrend and not shift_15m_buy:
-            DIAGNOSTICS["v678_swing_trend_rejected"] += 1
-            DIAGNOSTICS["v67_swing_rejected"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol, "stage": "V678_SWING",
-                "reason": "BUY_AGAINST_STRONG_1H_DOWNTREND_WITHOUT_15M_SHIFT",
-                "score": int(score)
-            })
-            return None
-        if SWING_REQUIRE_STRUCTURAL_EVIDENCE and not (
-            liquidity_sweep_buy or shift_15m_buy or bull_break
-        ):
-            DIAGNOSTICS["v678_swing_structure_rejected"] += 1
-            DIAGNOSTICS["v67_swing_rejected"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol, "stage": "V678_SWING",
-                "reason": "BUY_WITHOUT_SWEEP_OR_STRUCTURE_BREAK",
-                "score": int(score)
-            })
-            return None
-        extreme = min(float(df5.iloc[-6:]["low"].min()), float(c["low"]))
-        stop = extreme - V67_SWING_STOP_BUFFER_ATR * atr
-        reference = max(local_edge, hourly_edge)
-        trend_label = "REVERSAL_AGAINST_1H" if strong_downtrend else (
-            "WITH_1H_BIAS" if h1_buy_bias else "MIXED_1H"
-        )
-        liquidity_sweep = liquidity_sweep_buy
-        structure_shift_15m = shift_15m_buy
-        ob_reference = local_edge
-    else:
-        if strong_uptrend and not shift_15m_sell:
-            DIAGNOSTICS["v678_swing_trend_rejected"] += 1
-            DIAGNOSTICS["v67_swing_rejected"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol, "stage": "V678_SWING",
-                "reason": "SELL_AGAINST_STRONG_1H_UPTREND_WITHOUT_15M_SHIFT",
-                "score": int(score)
-            })
-            return None
-        if SWING_REQUIRE_STRUCTURAL_EVIDENCE and not (
-            liquidity_sweep_sell or shift_15m_sell or bear_break
-        ):
-            DIAGNOSTICS["v678_swing_structure_rejected"] += 1
-            DIAGNOSTICS["v67_swing_rejected"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol, "stage": "V678_SWING",
-                "reason": "SELL_WITHOUT_SWEEP_OR_STRUCTURE_BREAK",
-                "score": int(score)
-            })
-            return None
-        extreme = max(float(df5.iloc[-6:]["high"].max()), float(c["high"]))
-        stop = extreme + V67_SWING_STOP_BUFFER_ATR * atr
-        reference = min(local_edge, hourly_edge)
-        trend_label = "REVERSAL_AGAINST_1H" if strong_uptrend else (
-            "WITH_1H_BIAS" if h1_sell_bias else "MIXED_1H"
-        )
-        liquidity_sweep = liquidity_sweep_sell
-        structure_shift_15m = shift_15m_sell
-        ob_reference = local_edge
-
-    fvg_zone = detect_fvg_retest(df5, direction, int(p["close_time"]), atr)
-    order_block_zone = detect_order_block(df5, direction, int(p["close_time"]), ob_reference)
-    fvg_confirmed = bool(fvg_zone)
-    order_block_confirmed = bool(order_block_zone)
-    complementary_count = sum([
-        bool(liquidity_sweep), fvg_confirmed,
-        order_block_confirmed, bool(structure_shift_15m)
-    ])
-
-    sig = _v67_build_signal(
-        symbol, direction, price, stop, atr, c,
-        "V678_SWING_REVERSAL_TREND_STRUCTURE_FILTERED", reference,
-        "HOURLY EXTREME + 5M REJECTION + HTF CONTEXT",
-        trend_label, score, 8, int(c["close_time"]), int(c["time"]),
-        vol, liquidity_sweep
-    )
-    if sig is None or not validate_target_room(
-        symbol, direction, price, abs(price-stop), atr, df5, df15, "V678_SWING"
-    ):
-        DIAGNOSTICS["v67_swing_rejected"] += 1
-        DIAGNOSTICS["v67_target_rejected"] += 1
-        return None
-
-    sig["fvg_retest"] = bool(fvg_confirmed)
-    sig["fvg_lower"] = float(fvg_zone["lower"]) if fvg_zone else None
-    sig["fvg_upper"] = float(fvg_zone["upper"]) if fvg_zone else None
-    sig["order_block"] = bool(order_block_confirmed)
-    sig["order_block_zone"] = order_block_zone
-    sig["structure_shift_15m"] = bool(structure_shift_15m)
-    sig["complementary_count"] = int(complementary_count)
-    sig["trend_1h_strong"] = bool(strong_uptrend or strong_downtrend)
-    sig["trend_1h_bias"] = trend_label
-    sig["trend_1h_adx"] = float(h1_adx)
-    sig["quality_checks"] = [bool(x) for x in checks]
-
-    DIAGNOSTICS["v67_swing_confirmed"] += 1
-    return sig
-
-
-def _v679_multibar_swing_engine(symbol, df5, df15, df1h):
-    """
-    6.7.8 Swing reversal engine.
-
-    Uses closed candles only (the scanner supplies closed 5m/15m/1h frames).
-    A counter-trend reversal is allowed only after stronger 5m + 15m evidence.
-    RSI Extreme is a separate engine and is not modified by this function.
-    """
-    if df1h is None or min(len(df5), len(df15), len(df1h)) < 55:
-        return None
-
-    c, p, p2 = df5.iloc[-1], df5.iloc[-2], df5.iloc[-3]
-    t, tp = df15.iloc[-1], df15.iloc[-2]
-    h1, h1_prev = df1h.iloc[-1], df1h.iloc[-1-SWING_TREND_SLOPE_LOOKBACK]
-
-    required = [
-        c["open"], c["high"], c["low"], c["close"], c["atr"], c["rsi"],
-        c["volume"], c["volume_avg"], c["adx"], c["plus_di"], c["minus_di"],
-        p["open"], p["high"], p["low"], p["close"], p["rsi"],
-        p2["rsi"], t["open"], t["high"], t["low"], t["close"],
-        t["ema20"], t["rsi"], tp["high"], tp["low"], tp["close"],
-        tp["ema20"], tp["rsi"], h1["atr"], h1["adx"], h1["plus_di"],
-        h1["minus_di"], h1["ema20"], h1["ema50"], h1["ema200"],
-        h1_prev["ema20"]
-    ]
-    try:
-        if not np.isfinite([float(x) for x in required]).all():
-            return None
-    except (TypeError, ValueError):
-        return None
-
-    price, atr = float(c["close"]), float(c["atr"])
-    atr1h = float(h1["atr"])
-    if price <= 0 or atr <= 0 or atr1h <= 0:
-        return None
-
-    # Location is measured against the previous completed bars, excluding
-    # the signal candle to avoid allowing the candidate candle to define its
-    # own extreme.
-    local = df5.iloc[-25:-1]
-    hourly = df1h.iloc[-25:-1]
-    if len(local) < 20 or len(hourly) < 20:
-        return None
-
-    local_low, local_high = float(local["low"].min()), float(local["high"].max())
-    hour_low, hour_high = float(hourly["low"].min()), float(hourly["high"].max())
-
-    recent_three = df5.iloc[-3:]
-    swing_recent_low = float(recent_three["low"].min())
-    swing_recent_high = float(recent_three["high"].max())
-    buy_location = (
-        float(c["low"]) <= hour_low + 0.85 * atr1h
-        or float(c["low"]) <= local_low + 0.30 * atr
-        or swing_recent_low <= hour_low + 0.85 * atr1h
-        or swing_recent_low <= local_low + 0.30 * atr
-    )
-    sell_location = (
-        float(c["high"]) >= hour_high - 0.85 * atr1h
-        or float(c["high"]) >= local_high - 0.30 * atr
-        or swing_recent_high >= hour_high - 0.85 * atr1h
-        or swing_recent_high >= local_high - 0.30 * atr
-    )
-
-    # A meaningful 5m rejection: close must take the previous candle's
-    # extreme, or form a real engulfing body. Merely changing candle colour
-    # is not sufficient.
-    bull_engulf = (
-        float(c["close"]) > float(c["open"])
-        and float(p["close"]) < float(p["open"])
-        and float(c["open"]) <= float(p["close"])
-        and float(c["close"]) >= float(p["open"])
-    )
-    bear_engulf = (
-        float(c["close"]) < float(c["open"])
-        and float(p["close"]) > float(p["open"])
-        and float(c["open"]) >= float(p["close"])
-        and float(c["close"]) <= float(p["open"])
-    )
-    bull_break = float(c["close"]) > float(p["high"]) and float(c["close"]) > float(c["open"])
-    bear_break = float(c["close"]) < float(p["low"]) and float(c["close"]) < float(c["open"])
-    # Multi-bar follow-through: a turn may develop over two closes after the
-    # extreme instead of requiring a single engulfing candle on the exact bar.
-    bull_two_bar_follow = (
-        float(p["close"]) > float(p["open"])
-        and float(c["close"]) > float(c["open"])
-        and float(c["close"]) > float(p["close"])
-        and float(p["close"]) > float(p2["close"])
-    )
-    bear_two_bar_follow = (
-        float(p["close"]) < float(p["open"])
-        and float(c["close"]) < float(c["open"])
-        and float(c["close"]) < float(p["close"])
-        and float(p["close"]) < float(p2["close"])
-    )
-    bull_trigger = bull_break or bull_engulf or bull_two_bar_follow
-    bear_trigger = bear_break or bear_engulf or bear_two_bar_follow
-    if (buy_location and bull_two_bar_follow) or (sell_location and bear_two_bar_follow):
-        DIAGNOSTICS["v679_swing_multibar_candidates"] += 1
-
-    # RSI remains only a Swing confirmation here; the independent RSI Extreme
-    # entry model and its thresholds/conditions are unchanged.
-    rsi_up = float(c["rsi"]) > float(p["rsi"]) and float(p["rsi"]) <= float(p2["rsi"])
-    rsi_down = float(c["rsi"]) < float(p["rsi"]) and float(p["rsi"]) >= float(p2["rsi"])
-
-    vol = float(c["volume"]) / max(float(c["volume_avg"]), 1e-12)
-    five_di_buy = float(c["plus_di"]) > float(c["minus_di"])
-    five_di_sell = float(c["minus_di"]) > float(c["plus_di"])
-
-    # Higher-timeframe regime: EMA stack + EMA20 slope + DI/ADX.
-    h1_ema20 = float(h1["ema20"])
-    h1_ema50 = float(h1["ema50"])
-    h1_ema200 = float(h1["ema200"])
-    h1_slope_up = h1_ema20 > float(h1_prev["ema20"])
-    h1_slope_down = h1_ema20 < float(h1_prev["ema20"])
-    h1_di_buy = float(h1["plus_di"]) > float(h1["minus_di"])
-    h1_di_sell = float(h1["minus_di"]) > float(h1["plus_di"])
-    h1_adx = float(h1["adx"])
-
-    strong_uptrend = (
-        h1_ema20 > h1_ema50 > h1_ema200
-        and h1_slope_up and h1_di_buy
-        and h1_adx >= SWING_TREND_ADX_STRONG
-    )
-    strong_downtrend = (
-        h1_ema20 < h1_ema50 < h1_ema200
-        and h1_slope_down and h1_di_sell
-        and h1_adx >= SWING_TREND_ADX_STRONG
-    )
-    h1_buy_bias = (
-        h1_ema20 > h1_ema50 and h1_slope_up and h1_di_buy
-    )
-    h1_sell_bias = (
-        h1_ema20 < h1_ema50 and h1_slope_down and h1_di_sell
-    )
-
-    # Closed 15m confirmation. A simple RSI uptick alone is not treated as a
-    # structural shift. A close through the previous 15m candle's extreme is.
-    shift_15m_buy = (
-        float(t["close"]) > float(tp["high"])
-        and float(t["close"]) > float(t["open"])
-    )
-    shift_15m_sell = (
-        float(t["close"]) < float(tp["low"])
-        and float(t["close"]) < float(t["open"])
-    )
-    align_15m_buy = (
-        float(t["close"]) > float(t["ema20"])
-        and float(t["ema20"]) >= float(tp["ema20"])
-    )
-    align_15m_sell = (
-        float(t["close"]) < float(t["ema20"])
-        and float(t["ema20"]) <= float(tp["ema20"])
-    )
-
-    # Liquidity sweep is calculated independently from the current candle.
-    recent = df5.iloc[-13:-1]
-    prior_low = float(recent["low"].min())
-    prior_high = float(recent["high"].max())
-    liquidity_sweep_buy = float(c["low"]) < prior_low and price > prior_low
-    liquidity_sweep_sell = float(c["high"]) > prior_high and price < prior_high
-
-    # Complementary SMC evidence is quality information, not a requirement
-    # that every trade must have FVG + OB + sweep simultaneously.
-    options = []
-    if buy_location and bull_trigger:
-        buy_score_items = [
-            True,                         # location
-            True,                         # decisive 5m rejection
-            rsi_up,
-            align_15m_buy or shift_15m_buy,
-            h1_buy_bias,
-            five_di_buy,
-            vol >= SWING_REVERSAL_MIN_VOLUME_RATIO,
-            liquidity_sweep_buy or shift_15m_buy
-        ]
-        options.append(("BUY", sum(bool(x) for x in buy_score_items),
-                        local_low, hour_low, buy_score_items))
-    if sell_location and bear_trigger:
-        sell_score_items = [
-            True,
-            True,
-            rsi_down,
-            align_15m_sell or shift_15m_sell,
-            h1_sell_bias,
-            five_di_sell,
-            vol >= SWING_REVERSAL_MIN_VOLUME_RATIO,
-            liquidity_sweep_sell or shift_15m_sell
-        ]
-        options.append(("SELL", sum(bool(x) for x in sell_score_items),
-                        local_high, hour_high, sell_score_items))
-
-    if not options:
-        return None
-
-    DIAGNOSTICS["v679_swing_candidates"] += len(options)
-    options.sort(key=lambda x: x[1], reverse=True)
-    direction, score, local_edge, hourly_edge, checks = options[0]
-
-    # Ambiguous simultaneous long/short candidates are always rejected.
-    if len(options) > 1:
-        DIAGNOSTICS["v679_swing_quality_rejected"] += 1
-        DIAGNOSTICS["v679_swing_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "V679_MULTIBAR_SWING",
-            "reason": "AMBIGUOUS_BOTH_DIRECTIONS",
-            "score": int(score)
-        })
-        return None
-
-    if score < SWING_MIN_QUALITY_SCORE:
-        DIAGNOSTICS["v679_swing_quality_rejected"] += 1
-        DIAGNOSTICS["v679_swing_rejected"] += 1
-        REJECTION_DEBUG.append({
-            "symbol": symbol, "stage": "V679_MULTIBAR_SWING",
-            "reason": "QUALITY_SCORE_TOO_LOW",
-            "score": int(score), "required": SWING_MIN_QUALITY_SCORE,
-            "checks": [bool(x) for x in checks]
-        })
-        return None
-
-    if direction == "BUY":
-        # A counter-trend BUY against a strong 1h downtrend must prove both
-        # a 15m structure shift and a decisive 5m break/engulfing close.
-        if strong_downtrend and not shift_15m_buy:
-            DIAGNOSTICS["v679_swing_trend_rejected"] += 1
-            DIAGNOSTICS["v679_swing_rejected"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol, "stage": "V679_MULTIBAR_SWING",
-                "reason": "BUY_AGAINST_STRONG_1H_DOWNTREND_WITHOUT_15M_SHIFT",
-                "score": int(score)
-            })
-            return None
-        if SWING_REQUIRE_STRUCTURAL_EVIDENCE and not (
-            liquidity_sweep_buy or shift_15m_buy or bull_break
-        ):
-            DIAGNOSTICS["v679_swing_structure_rejected"] += 1
-            DIAGNOSTICS["v679_swing_rejected"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol, "stage": "V679_MULTIBAR_SWING",
-                "reason": "BUY_WITHOUT_SWEEP_OR_STRUCTURE_BREAK",
-                "score": int(score)
-            })
-            return None
-        extreme = min(float(df5.iloc[-6:]["low"].min()), float(c["low"]))
-        stop = extreme - V67_SWING_STOP_BUFFER_ATR * atr
-        reference = max(local_edge, hourly_edge)
-        trend_label = "REVERSAL_AGAINST_1H" if strong_downtrend else (
-            "WITH_1H_BIAS" if h1_buy_bias else "MIXED_1H"
-        )
-        liquidity_sweep = liquidity_sweep_buy
-        structure_shift_15m = shift_15m_buy
-        ob_reference = local_edge
-    else:
-        if strong_uptrend and not shift_15m_sell:
-            DIAGNOSTICS["v679_swing_trend_rejected"] += 1
-            DIAGNOSTICS["v679_swing_rejected"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol, "stage": "V679_MULTIBAR_SWING",
-                "reason": "SELL_AGAINST_STRONG_1H_UPTREND_WITHOUT_15M_SHIFT",
-                "score": int(score)
-            })
-            return None
-        if SWING_REQUIRE_STRUCTURAL_EVIDENCE and not (
-            liquidity_sweep_sell or shift_15m_sell or bear_break
-        ):
-            DIAGNOSTICS["v679_swing_structure_rejected"] += 1
-            DIAGNOSTICS["v679_swing_rejected"] += 1
-            REJECTION_DEBUG.append({
-                "symbol": symbol, "stage": "V679_MULTIBAR_SWING",
-                "reason": "SELL_WITHOUT_SWEEP_OR_STRUCTURE_BREAK",
-                "score": int(score)
-            })
-            return None
-        extreme = max(float(df5.iloc[-6:]["high"].max()), float(c["high"]))
-        stop = extreme + V67_SWING_STOP_BUFFER_ATR * atr
-        reference = min(local_edge, hourly_edge)
-        trend_label = "REVERSAL_AGAINST_1H" if strong_uptrend else (
-            "WITH_1H_BIAS" if h1_sell_bias else "MIXED_1H"
-        )
-        liquidity_sweep = liquidity_sweep_sell
-        structure_shift_15m = shift_15m_sell
-        ob_reference = local_edge
-
-    fvg_zone = detect_fvg_retest(df5, direction, int(p["close_time"]), atr)
-    order_block_zone = detect_order_block(df5, direction, int(p["close_time"]), ob_reference)
-    fvg_confirmed = bool(fvg_zone)
-    order_block_confirmed = bool(order_block_zone)
-    complementary_count = sum([
-        bool(liquidity_sweep), fvg_confirmed,
-        order_block_confirmed, bool(structure_shift_15m)
-    ])
-
-    sig = _v67_build_signal(
-        symbol, direction, price, stop, atr, c,
-        "V679_MULTIBAR_SWING_REVERSAL_TREND_STRUCTURE_FILTERED", reference,
-        "HOURLY EXTREME + 5M REJECTION + HTF CONTEXT",
-        trend_label, score, 8, int(c["close_time"]), int(c["time"]),
-        vol, liquidity_sweep
-    )
-    if sig is None or not validate_target_room(
-        symbol, direction, price, abs(price-stop), atr, df5, df15, "V679_MULTIBAR_SWING"
-    ):
-        DIAGNOSTICS["v679_swing_rejected"] += 1
-        DIAGNOSTICS["v679_target_rejected"] += 1
-        return None
-
-    sig["fvg_retest"] = bool(fvg_confirmed)
-    sig["fvg_lower"] = float(fvg_zone["lower"]) if fvg_zone else None
-    sig["fvg_upper"] = float(fvg_zone["upper"]) if fvg_zone else None
-    sig["order_block"] = bool(order_block_confirmed)
-    sig["order_block_zone"] = order_block_zone
-    sig["structure_shift_15m"] = bool(structure_shift_15m)
-    sig["complementary_count"] = int(complementary_count)
-    sig["trend_1h_strong"] = bool(strong_uptrend or strong_downtrend)
-    sig["trend_1h_bias"] = trend_label
-    sig["trend_1h_adx"] = float(h1_adx)
-    sig["quality_checks"] = [bool(x) for x in checks]
-
-    DIAGNOSTICS["v679_swing_confirmed"] += 1
-    return sig
-
-
 def _v679_trend_pullback_engine(symbol, df5, df15, df1h):
     """Trend-aligned pullback entry. Uses price/EMA/DI/ADX only; no RSI rules."""
     if df1h is None or min(len(df5), len(df15), len(df1h)) < 55:
@@ -4286,7 +3647,7 @@ def _v67_momentum_engine(symbol, df5, df15):
 
 
 def generate_rsi_extreme_signal(symbol, df5, df15_live):
-    """Independent 15m live-candle RSI extreme model (BUY <=20, SELL >=80)."""
+    """Independent 15m live-candle RSI extreme model (BUY <=26, SELL >=74)."""
     if df5 is None or df15_live is None or len(df5) < 30 or len(df15_live) < 50:
         return None
 
@@ -4301,9 +3662,9 @@ def generate_rsi_extreme_signal(symbol, df5, df15_live):
         return None
 
     rsi_value = float(live_15m["rsi"])
-    if rsi_value >= 80.0:
+    if rsi_value >= 74.0:
         direction = "SELL"
-    elif rsi_value <= 20.0:
+    elif rsi_value <= 26.0:
         direction = "BUY"
     else:
         return None
@@ -4338,58 +3699,34 @@ def generate_rsi_extreme_signal(symbol, df5, df15_live):
 
     signal["signal_timeframe"] = "15m"
     signal["rsi_candle_time"] = candle_open_time
-    signal["rsi_threshold"] = 80.0 if direction == "SELL" else 20.0
+    signal["rsi_threshold"] = 74.0 if direction == "SELL" else 26.0
     signal["analysis_label"] = "RSI EXTREME 15M"
     return signal
 
 
-def generate_signals(symbol, df5, df15, df1h=None, state=None, df15_live=None):
-    """Collect independent signals from RSI, 6.7.8 Swing, and 6.7.9 experimental branch.
-
-    Each engine is evaluated regardless of the result of the other engines.
-    The 6.7.9 branch retains its own internal priority: multibar swing first,
-    then trend-pullback if that branch's swing setup is absent.
-    """
-    signals = []
+def generate_signal(symbol, df5, df15, df1h=None, state=None, df15_live=None):
+    """Run independent RSI Extreme first, then the unchanged Swing Reversal model."""
     if len(df5) < 210 or len(df15) < 50:
         DIAGNOSTICS["insufficient_data"] += 1
-        return signals
-
-    # RSI Extreme is a separate independent engine, with requested 20/80 thresholds.
-    if df15_live is not None:
-        rsi_signal = generate_rsi_extreme_signal(symbol, df5, df15_live)
-        if rsi_signal is not None:
-            rsi_signal["signal_engine"] = "RSI_20_80"
-            rsi_signal["engine_label"] = "RSI EXTREME 20/80"
-            signals.append(rsi_signal)
-            DIAGNOSTICS["rsi_20_80_signals"] += 1
+        return None
+    # RSI Extreme uses the currently forming 15m candle for same-scan detection.
+    rsi_signal = generate_rsi_extreme_signal(symbol, df5, df15_live) if df15_live is not None else None
+    if rsi_signal is not None:
+        return rsi_signal
 
     df5i = calculate_indicators(df5)
     df15i = calculate_indicators(df15)
     df1hi = calculate_indicators(df1h) if df1h is not None and len(df1h) >= 30 else None
+
+    # 6.7.9: keep Swing first; use the independent trend-pullback model only
+    # when Swing has no confirmed setup. Legacy SMC/Momentum remain disabled.
+    # RSI Extreme above is intentionally untouched.
     if df1hi is None:
-        return signals
-
-    # Branch 1: original 6.7.8 structure-quality swing engine.
-    signal_678 = _v678_swing_engine(symbol, df5i, df15i, df1hi)
-    if signal_678 is not None:
-        signal_678["signal_engine"] = "SWING_678"
-        signal_678["engine_label"] = "6.7.8 SWING TREND STRUCTURE QUALITY"
-        signals.append(signal_678)
-        DIAGNOSTICS["branch_678_signals"] += 1
-
-    # Branch 2: independent 6.7.9 multibar swing / trend-pullback experiment.
-    # It is always evaluated even if branch 1 or RSI already produced a signal.
-    signal_679 = _v679_multibar_swing_engine(symbol, df5i, df15i, df1hi)
-    if signal_679 is None:
-        signal_679 = _v679_trend_pullback_engine(symbol, df5i, df15i, df1hi)
-    if signal_679 is not None:
-        signal_679["signal_engine"] = "SWING_679_EXPERIMENT"
-        signal_679["engine_label"] = "6.7.9 MULTIBAR TREND PULLBACK EXPERIMENT"
-        signals.append(signal_679)
-        DIAGNOSTICS["branch_679_signals"] += 1
-
-    return signals
+        return None
+    swing_signal = _v67_swing_engine(symbol, df5i, df15i, df1hi)
+    if swing_signal is not None:
+        return swing_signal
+    return _v679_trend_pullback_engine(symbol, df5i, df15i, df1hi)
 
 
 
@@ -4744,7 +4081,7 @@ def run_scanner():
     )
 
     print("Iran time:", current_time_string())
-    print("Entry engines: 6.7.8 Swing Structure Quality + independent 6.7.9 Multibar/Pullback + RSI 20/80.")
+    print("Entry models: RSI EXTREME 15M (live RSI <=26 BUY / >=74 SELL) + existing SWING REVERSAL FLEX.")
 
     print("=" * 48)
 
@@ -4848,6 +4185,10 @@ def run_scanner():
 
     for symbol in coins_to_scan:
         try:
+            if has_open_trade_for_symbol(state, symbol):
+                DIAGNOSTICS["open_trade_locked"] += 1
+                continue
+
             df5 = get_candles(
                 symbol,
                 TIMEFRAME
@@ -4869,7 +4210,7 @@ def run_scanner():
                 df1h = None
                 print(f"1H CONTEXT UNAVAILABLE {symbol}: {context_error}")
 
-            signals = generate_signals(
+            signal = generate_signal(
                 symbol,
                 df5,
                 df15,
@@ -4878,47 +4219,59 @@ def run_scanner():
                 df15_live=df15_live
             )
 
-            for signal in signals:
-                engine_id = signal.get("signal_engine", "UNKNOWN_ENGINE")
-                if news_warning:
-                    signal["news_warning"] = news_warning
+            if signal is None:
+                continue
 
-                # Open positions in one branch do not lock another branch.
-                if has_open_trade_for_engine(state, symbol, engine_id):
-                    DIAGNOSTICS["engine_open_trade_locked"] += 1
-                    continue
+            if news_warning:
+                signal["news_warning"] = news_warning
 
-                same_signal = any(
-                    old.get("symbol") == symbol
-                    and old.get("signal_engine") == engine_id
-                    and (
-                        (engine_id == "RSI_20_80"
-                         and old.get("rsi_candle_time") == signal.get("rsi_candle_time"))
-                        or (engine_id != "RSI_20_80" and (
-                            int(old.get("signal_time", 0)) == int(signal["signal_time"])
-                            or (old.get("sweep_time") == signal.get("sweep_time")
-                                and old.get("structure_time") == signal.get("structure_time"))
-                        ))
+            if has_open_trade_for_symbol(state, symbol):
+                DIAGNOSTICS["duplicate_signals"] += 1
+                continue
+
+            same_signal = any(
+                old.get("symbol") == symbol
+                and (
+                    int(old.get("signal_time", 0))
+                    == int(signal["signal_time"])
+                    or (
+                        old.get("sweep_time")
+                        == signal.get("sweep_time")
+                        and old.get("structure_time")
+                        == signal.get("structure_time")
                     )
-                    for old in state["signals"]
                 )
+                for old in state["signals"]
+            )
 
-                if same_signal:
-                    DIAGNOSTICS["duplicate_signals"] += 1
-                    continue
+            if same_signal:
+                DIAGNOSTICS["duplicate_signals"] += 1
+                continue
 
-                state["signals"].append(signal)
-                queue_event(signal, "ENTRY")
-                new_signals += 1
+            state["signals"].append(signal)
 
-                risk_tag = " ⚠️ HIGH RISK" if signal["risk_atr"] > MAX_RISK_ATR else ""
-                print(
-                    f"NEW SIGNAL [{signal.get('engine_label', engine_id)}]: {symbol} "
-                    f"{signal['direction']} "
-                    f"{signal['confirmations']}/{signal.get('confirmation_total', 7)} "
-                    f"RISK={signal['risk_atr']:.2f} ATR{risk_tag}"
-                )
-                save_state(state)
+            queue_event(
+                signal,
+                "ENTRY"
+            )
+
+            new_signals += 1
+
+            risk_tag = (
+                " ⚠️ HIGH RISK"
+                if signal["risk_atr"] > MAX_RISK_ATR
+                else ""
+            )
+
+            print(
+                f"NEW SIGNAL: {symbol} "
+                f"{signal['direction']} "
+                f"{signal['confirmations']}/{signal.get('confirmation_total', 7)} "
+                f"RISK={signal['risk_atr']:.2f} ATR"
+                f"{risk_tag}"
+            )
+
+            save_state(state)
 
         except Exception as error:
             DIAGNOSTICS["errors"] += 1
