@@ -8695,7 +8695,7 @@
       "structure_time": 1795080899999,
       "sweep_time": 1795080600000,
       "signal_time": 1795080899999,
-      "last_checked_time": 1795086899999,
+      "last_checked_time": 1795087499999,
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
@@ -8778,7 +8778,7 @@
       "structure_time": 1795080899999,
       "sweep_time": 1795080600000,
       "signal_time": 1795080899999,
-      "last_checked_time": 1795086899999,
+      "last_checked_time": 1795087499999,
       "tp1_hit": true,
       "tp2_hit": true,
       "tp3_hit": false,
@@ -9066,14 +9066,15 @@
       "structure_time": 1795086299999,
       "sweep_time": 1795086000000,
       "signal_time": 1795086299999,
-      "last_checked_time": 1795086899999,
+      "last_checked_time": 1795087499999,
       "tp1_hit": true,
-      "tp2_hit": false,
+      "tp2_hit": true,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
         "ENTRY": true,
-        "TP1": true
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-19 14:36",
@@ -9096,8 +9097,9 @@
       "telegram_message_id": 802,
       "telegram_chat_id": 104951844,
       "trailing_active": false,
-      "active_stop": 0.577,
-      "tp1_hit_time": 1795086899999
+      "active_stop": 0.578655237453677,
+      "tp1_hit_time": 1795086899999,
+      "tp2_hit_time": 1795087199999
     },
     {
       "symbol": "SKYUSDT",
@@ -9145,7 +9147,7 @@
       "structure_time": 1795086000000,
       "sweep_time": 1795086000000,
       "signal_time": 1795086365046,
-      "last_checked_time": 1795086899999,
+      "last_checked_time": 1795087499999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -9210,7 +9212,7 @@
       "structure_time": 1795086900000,
       "sweep_time": 1795086900000,
       "signal_time": 1795087117410,
-      "last_checked_time": 1795087117410,
+      "last_checked_time": 1795087499999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -9225,7 +9227,9 @@
       "rsi_candle_time": 1795086900000,
       "rsi_threshold": 74.0,
       "telegram_message_id": 808,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 294.13935993750874
     }
   ],
   "news_filter": {
