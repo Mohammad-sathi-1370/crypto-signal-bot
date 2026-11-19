@@ -8588,7 +8588,7 @@
       "structure_time": 1795113299999,
       "sweep_time": 1795113000000,
       "signal_time": 1795113299999,
-      "last_checked_time": 1795113599999,
+      "last_checked_time": 1795117199999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -8667,13 +8667,14 @@
       "structure_time": 1795113599999,
       "sweep_time": 1795113300000,
       "signal_time": 1795113599999,
-      "last_checked_time": 1795113599999,
-      "tp1_hit": false,
+      "last_checked_time": 1795117199999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-19 22:13",
@@ -8685,7 +8686,10 @@
       "signal_engine": "SWING_679_EXPERIMENT",
       "engine_label": "6.7.9 MULTIBAR TREND PULLBACK EXPERIMENT",
       "telegram_message_id": 858,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 53.64,
+      "tp1_hit_time": 1795114799999
     }
   ],
   "news_filter": {
