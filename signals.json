@@ -2435,7 +2435,7 @@
       "structure_time": 1795185000000,
       "sweep_time": 1795185000000,
       "signal_time": 1795185695823,
-      "last_checked_time": 1795268699999,
+      "last_checked_time": 1795271699999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
@@ -4678,13 +4678,14 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268901098,
-      "last_checked_time": 1795268901098,
+      "last_checked_time": 1795271699999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -4695,7 +4696,10 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 982,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 60931.78645767455,
+      "stop_hit_time": 1795269899999
     },
     {
       "symbol": "ETHUSDT",
@@ -4743,13 +4747,14 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268901473,
-      "last_checked_time": 1795268901473,
+      "last_checked_time": 1795271699999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -4760,7 +4765,10 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 983,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 1711.6177565327075,
+      "stop_hit_time": 1795269899999
     },
     {
       "symbol": "UNIUSDT",
@@ -4808,13 +4816,14 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268906318,
-      "last_checked_time": 1795268906318,
-      "tp1_hit": false,
+      "last_checked_time": 1795271699999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -4825,7 +4834,11 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 984,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 4.735,
+      "tp1_hit_time": 1795270199999,
+      "stop_hit_time": 1795270499999
     },
     {
       "symbol": "TRXUSDT",
@@ -4873,13 +4886,14 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268908178,
-      "last_checked_time": 1795268908178,
+      "last_checked_time": 1795271699999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -4890,7 +4904,10 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 985,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.30658490814001943,
+      "stop_hit_time": 1795269599999
     },
     {
       "symbol": "MSTRBUSDT",
@@ -4938,13 +4955,14 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268910791,
-      "last_checked_time": 1795268910791,
-      "tp1_hit": false,
+      "last_checked_time": 1795271699999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -4955,7 +4973,10 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 986,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 81.55,
+      "tp1_hit_time": 1795270499999
     },
     {
       "symbol": "XLMUSDT",
@@ -5003,13 +5024,15 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268917496,
-      "last_checked_time": 1795268917496,
-      "tp1_hit": false,
-      "tp2_hit": false,
+      "last_checked_time": 1795271699999,
+      "tp1_hit": true,
+      "tp2_hit": true,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true,
+        "TP2": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -5020,7 +5043,12 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 987,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 0.12875542103380969,
+      "tp1_hit_time": 1795270199999,
+      "tp2_hit_time": 1795270199999,
+      "stop_hit_time": 1795271099999
     },
     {
       "symbol": "WBTCUSDT",
@@ -5068,13 +5096,14 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268924232,
-      "last_checked_time": 1795268924232,
-      "tp1_hit": false,
+      "last_checked_time": 1795271699999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -5085,7 +5114,10 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 988,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 60799.96,
+      "tp1_hit_time": 1795270199999
     },
     {
       "symbol": "DASHUSDT",
@@ -5133,13 +5165,14 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268930190,
-      "last_checked_time": 1795268930190,
+      "last_checked_time": 1795271699999,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "status": "OPEN",
+      "status": "SL",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "SL": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -5150,7 +5183,10 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 989,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 33.97605775112554,
+      "stop_hit_time": 1795269599999
     },
     {
       "symbol": "COINBUSDT",
@@ -5198,13 +5234,14 @@
       "structure_time": 1795268700000,
       "sweep_time": 1795268700000,
       "signal_time": 1795268931679,
-      "last_checked_time": 1795268931679,
-      "tp1_hit": false,
+      "last_checked_time": 1795271699999,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "status": "OPEN",
       "telegram_events": {
-        "ENTRY": true
+        "ENTRY": true,
+        "TP1": true
       },
       "pending_events": [],
       "created_at": "2026-11-21 17:18",
@@ -5215,7 +5252,10 @@
       "signal_engine": "RSI_20_80",
       "engine_label": "RSI EXTREME 20/80",
       "telegram_message_id": 990,
-      "telegram_chat_id": 104951844
+      "telegram_chat_id": 104951844,
+      "trailing_active": false,
+      "active_stop": 104.61,
+      "tp1_hit_time": 1795270199999
     }
   ],
   "news_filter": {
